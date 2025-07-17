@@ -172,7 +172,8 @@ export class PasswordCrypto {
     salt: string
   ): Promise<EncryptedData> {
     const key = await this.deriveKeyFromPassword(password, salt)
-    const testData = JSON.stringify({ test: 'password_verification', timestamp: Date.now() })
+    // Use static test data to prevent timing analysis
+    const testData = JSON.stringify({ test: 'password_verification', static: true })
     return await this.encryptData(testData, key)
   }
 
@@ -198,24 +199,72 @@ export class PasswordCrypto {
  */
 export class PasswordSession {
   private static passwords = new Map<string, string>() // groupId -> password
+  private static readonly MAX_PASSWORD_AGE = 30 * 60 * 1000 // 30 minutes in milliseconds
+  private static passwordTimestamps = new Map<string, number>() // groupId -> timestamp
 
   static setPassword(groupId: string, password: string): void {
     this.passwords.set(groupId, password)
+    this.passwordTimestamps.set(groupId, Date.now())
+    
+    // Set up automatic cleanup
+    this.setupPasswordCleanup(groupId)
   }
 
   static getPassword(groupId: string): string | undefined {
-    return this.passwords.get(groupId)
+    const password = this.passwords.get(groupId)
+    const timestamp = this.passwordTimestamps.get(groupId)
+    
+    // Check if password has expired
+    if (password && timestamp && Date.now() - timestamp > this.MAX_PASSWORD_AGE) {
+      this.clearPassword(groupId)
+      return undefined
+    }
+    
+    return password
   }
 
   static clearPassword(groupId: string): void {
-    this.passwords.delete(groupId)
+    const password = this.passwords.get(groupId)
+    if (password) {
+      // Clear password from memory (basic attempt)
+      this.passwords.set(groupId, '')
+      this.passwords.delete(groupId)
+    }
+    this.passwordTimestamps.delete(groupId)
   }
 
   static clearAllPasswords(): void {
+    // Clear all passwords from memory
+    this.passwords.forEach((password, groupId) => {
+      this.passwords.set(groupId, '')
+    })
     this.passwords.clear()
+    this.passwordTimestamps.clear()
   }
 
   static hasPassword(groupId: string): boolean {
-    return this.passwords.has(groupId)
+    return this.getPassword(groupId) !== undefined
+  }
+
+  private static setupPasswordCleanup(groupId: string): void {
+    // Set up page unload cleanup
+    if (typeof window !== 'undefined') {
+      const cleanup = () => this.clearPassword(groupId)
+      
+      // Clean up on page unload
+      window.addEventListener('beforeunload', cleanup)
+      
+      // Clean up on visibility change (when tab becomes hidden)
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          cleanup()
+        }
+      })
+      
+      // Set up timeout-based cleanup
+      setTimeout(() => {
+        this.clearPassword(groupId)
+      }, this.MAX_PASSWORD_AGE)
+    }
   }
 }
