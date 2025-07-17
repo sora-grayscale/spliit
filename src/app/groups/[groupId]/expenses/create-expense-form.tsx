@@ -3,7 +3,7 @@ import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { trpc } from '@/trpc/client'
 import { useRouter } from 'next/navigation'
 import { ExpenseForm } from './expense-form'
-import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto'
+import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
 import { ExpenseFormValues } from '@/lib/schemas'
 
 export function CreateExpenseForm({
@@ -41,7 +41,7 @@ export function CreateExpenseForm({
           if (password) {
             const { encryptedData, iv } = await PasswordCrypto.encryptExpenseData(
               expenseFormValues.title,
-              expenseFormValues.notes || '',
+              expenseFormValues.notes,
               password,
               group.encryptionSalt
             )

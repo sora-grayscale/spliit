@@ -40,7 +40,7 @@ import {
   SplittingOptions,
   expenseFormSchema,
 } from '@/lib/schemas'
-import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto'
+import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
 import { calculateShare } from '@/lib/totals'
 import { cn } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
@@ -265,7 +265,8 @@ export function ExpenseForm({
           expense.encryptedData,
           expense.encryptionIv,
           password,
-          group.encryptionSalt
+          group.encryptionSalt,
+          group.id
         ).then(decrypted => {
           setDecryptedTitle(decrypted.title)
           setDecryptedNotes(decrypted.notes || '')

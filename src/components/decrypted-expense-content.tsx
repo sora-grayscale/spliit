@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto'
+import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
 import { Lock } from 'lucide-react'
 import {
   HoverCard,
@@ -16,11 +16,12 @@ interface DecryptedExpenseContentProps {
   groupId: string
   fallbackTitle: string
   className?: string
+  showNotes?: boolean
 }
 
 interface DecryptedExpenseData {
   title: string
-  notes: string
+  notes?: string
 }
 
 export function DecryptedExpenseContent({
@@ -30,6 +31,7 @@ export function DecryptedExpenseContent({
   groupId,
   fallbackTitle,
   className,
+  showNotes = false,
 }: DecryptedExpenseContentProps) {
   const [decryptedData, setDecryptedData] = useState<DecryptedExpenseData | null>(null)
   const [isDecrypting, setIsDecrypting] = useState(false)
@@ -47,10 +49,14 @@ export function DecryptedExpenseContent({
 
       try {
         setIsDecrypting(true)
-        const key = await PasswordCrypto.deriveKeyFromPassword(password, encryptionSalt)
-        const decryptedJson = await PasswordCrypto.decryptData(encryptedData, encryptionIv, key)
-        const parsed = JSON.parse(decryptedJson) as DecryptedExpenseData
-        setDecryptedData(parsed)
+        const result = await PasswordCrypto.decryptExpenseData(
+          encryptedData,
+          encryptionIv,
+          password,
+          encryptionSalt,
+          groupId
+        )
+        setDecryptedData(result)
       } catch (error) {
         console.error('Failed to decrypt expense data:', error)
         // Fall back to encrypted indicator
@@ -88,5 +94,14 @@ export function DecryptedExpenseContent({
   }
 
   // Show decrypted content or fallback
+  if (showNotes && decryptedData?.notes) {
+    return (
+      <span className={className}>
+        <div>{decryptedData.title || fallbackTitle}</div>
+        <div className="text-sm text-muted-foreground mt-1">{decryptedData.notes}</div>
+      </span>
+    )
+  }
+  
   return <span className={className}>{decryptedData?.title || fallbackTitle}</span>
 }
