@@ -217,7 +217,7 @@ export function sanitizeCryptoInput(input: string): string {
  */
 export class RateLimiter {
   private attempts = new Map<string, { count: number; lastAttempt: number; backoffMultiplier: number }>()
-  private cleanupTimer?: NodeJS.Timeout
+  private cleanupTimer?: ReturnType<typeof setInterval>
   
   constructor(
     private maxAttempts: number = SECURITY_CONSTANTS.MAX_LOGIN_ATTEMPTS,

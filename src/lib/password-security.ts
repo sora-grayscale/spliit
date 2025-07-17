@@ -3,6 +3,7 @@
  */
 
 import { SECURITY_CONSTANTS } from './security-constants'
+import { getUnbiasedRandomInt } from './crypto-utils'
 
 export interface PasswordStrength {
   score: number // 0-4 (very weak to very strong)
@@ -275,10 +276,6 @@ const PASSWORD_CHARS = {
   symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?~`',
 } as const
 
-/**
- * Import unbiased random integer function
- */
-import { getUnbiasedRandomInt } from './crypto-utils'
 
 /**
  * Fisher-Yates shuffle using unbiased secure random
