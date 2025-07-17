@@ -45,7 +45,12 @@ import { cn } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RecurrenceRule } from '@prisma/client'
-import { Save } from 'lucide-react'
+import { Save, Lock } from 'lucide-react'
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -323,7 +328,20 @@ export function ExpenseForm({
       <form onSubmit={form.handleSubmit(submit)}>
         <Card>
           <CardHeader>
-            <CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              {group.isEncrypted && (
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <Lock className="w-5 h-5 text-primary cursor-help" />
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80">
+                    <div className="text-sm">
+                      <p className="font-semibold mb-1">End-to-End Encrypted Expense</p>
+                      <p>This expense will be encrypted with E2EE. Only group members with the correct password can view the details.</p>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+              )}
               {t(`${sExpense}.${isCreate ? 'create' : 'edit'}`)}
             </CardTitle>
           </CardHeader>

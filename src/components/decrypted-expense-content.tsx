@@ -3,6 +3,11 @@
 import { useEffect, useState } from 'react'
 import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto'
 import { Lock } from 'lucide-react'
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card'
 
 interface DecryptedExpenseContentProps {
   encryptedData?: string | null
@@ -61,7 +66,17 @@ export function DecryptedExpenseContent({
   if (encryptedData && !decryptedData && !isDecrypting) {
     return (
       <span className={className}>
-        <Lock className="w-3 h-3 inline mr-1" />
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <Lock className="w-3 h-3 inline mr-1 text-primary cursor-help" />
+          </HoverCardTrigger>
+          <HoverCardContent className="w-80">
+            <div className="text-sm">
+              <p className="font-semibold mb-1">End-to-End Encrypted Expense</p>
+              <p>This expense is encrypted with E2EE. Enter the correct password to view the details.</p>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
         {fallbackTitle === '[Encrypted]' ? 'Encrypted Expense' : fallbackTitle}
       </span>
     )

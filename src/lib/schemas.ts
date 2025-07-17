@@ -8,6 +8,7 @@ export const groupFormSchema = z
     currency: z.string().min(1, 'min1').max(5, 'max5'),
     isEncrypted: z.boolean().default(false),
     password: z.string().optional(),
+    passwordConfirm: z.string().optional(),
     encryptionSalt: z.string().optional(),
     testEncryptedData: z.string().optional(),
     testIv: z.string().optional(),
@@ -20,7 +21,7 @@ export const groupFormSchema = z
       )
       .min(1),
   })
-  .superRefine(({ participants, isEncrypted, password, encryptionSalt }, ctx) => {
+  .superRefine(({ participants, isEncrypted, password, passwordConfirm, encryptionSalt }, ctx) => {
     participants.forEach((participant, i) => {
       participants.slice(0, i).forEach((otherParticipant) => {
         if (otherParticipant.name === participant.name) {
@@ -40,6 +41,15 @@ export const groupFormSchema = z
         code: 'custom',
         message: 'passwordRequired',
         path: ['password'],
+      })
+    }
+
+    // Validate password confirmation match
+    if (isEncrypted && !encryptionSalt && password && passwordConfirm && password !== passwordConfirm) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'passwordConfirmMismatch',
+        path: ['passwordConfirm'],
       })
     }
   })

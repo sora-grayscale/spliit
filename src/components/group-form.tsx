@@ -34,7 +34,7 @@ import {
 import { getGroup } from '@/lib/api'
 import { GroupFormValues, groupFormSchema } from '@/lib/schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Save, Trash2, Lock, AlertTriangle } from 'lucide-react'
+import { Save, Trash2, Lock, AlertTriangle, Eye, EyeOff } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -56,6 +56,7 @@ export function GroupForm({
   protectedParticipantIds = [],
 }: Props) {
   const t = useTranslations('GroupForm')
+  const tValidation = useTranslations('Validation')
   const form = useForm<GroupFormValues>({
     resolver: zodResolver(groupFormSchema),
     defaultValues: group
@@ -65,6 +66,7 @@ export function GroupForm({
           currency: group.currency,
           isEncrypted: group.isEncrypted ?? false,
           password: '', // Never populate existing password
+          passwordConfirm: '', // Never populate existing password
           participants: group.participants,
         }
       : {
@@ -73,6 +75,7 @@ export function GroupForm({
           currency: process.env.NEXT_PUBLIC_DEFAULT_CURRENCY_SYMBOL || '',
           isEncrypted: false,
           password: '',
+          passwordConfirm: '',
           participants: [
             { name: 'John' },
             { name: 'Jane' },
@@ -93,6 +96,8 @@ export function GroupForm({
   })
 
   const [activeUser, setActiveUser] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
   useEffect(() => {
     if (activeUser === null) {
       const currentActiveUser =
@@ -244,17 +249,73 @@ export function GroupForm({
                       <FormItem>
                         <FormLabel>Group Password</FormLabel>
                         <FormControl>
-                          <Input
-                            type="password"
-                            className="text-base"
-                            placeholder="Enter a secure password (min 6 characters)"
-                            {...field}
-                          />
+                          <div className="relative">
+                            <Input
+                              type={showPassword ? 'text' : 'password'}
+                              className="text-base pr-10"
+                              placeholder="Enter a secure password (min 6 characters)"
+                              {...field}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
                         </FormControl>
                         <FormDescription>
                           Share this password securely with group members
                         </FormDescription>
-                        <FormMessage />
+                        <FormMessage>
+                          {form.formState.errors.password?.message === 'passwordRequired' && tValidation('passwordRequired')}
+                        </FormMessage>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="passwordConfirm"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              type={showPasswordConfirm ? 'text' : 'password'}
+                              className="text-base pr-10"
+                              placeholder="Confirm your password"
+                              {...field}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                              onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                            >
+                              {showPasswordConfirm ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Enter the same password to confirm
+                        </FormDescription>
+                        <FormMessage>
+                          {form.formState.errors.passwordConfirm?.message === 'passwordConfirmMismatch' && tValidation('passwordConfirmMismatch')}
+                        </FormMessage>
                       </FormItem>
                     )}
                   />

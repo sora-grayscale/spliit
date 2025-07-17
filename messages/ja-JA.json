@@ -396,5 +396,16 @@
       "TV/Phone/Internet": "テレビ/電話/インターネット",
       "Water": "水道"
     }
+  },
+  "Validation": {
+    "passwordRequired": "暗号化グループにはパスワードが必要です（最低6文字）",
+    "passwordConfirmMismatch": "パスワードが一致しません"
+  },
+  "E2EE": {
+    "groupTooltipTitle": "エンドツーエンド暗号化グループ",
+    "groupTooltipDescription": "このグループはE2EEで保護されています。正しいパスワードを持つメンバーのみが経費詳細を閲覧できます。",
+    "expenseTooltipTitle": "エンドツーエンド暗号化経費",
+    "expenseTooltipDescription": "この経費はE2EEで暗号化されます。正しいパスワードを持つグループメンバーのみが詳細を閲覧できます。",
+    "encryptedExpenseTooltipDescription": "この経費はE2EEで暗号化されています。詳細を閲覧するには正しいパスワードを入力してください。"
   }
 }

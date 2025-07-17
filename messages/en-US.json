@@ -396,5 +396,16 @@
       "TV/Phone/Internet": "TV/Phone/Internet",
       "Water": "Water"
     }
+  },
+  "Validation": {
+    "passwordRequired": "Password is required for encrypted groups (minimum 6 characters)",
+    "passwordConfirmMismatch": "Passwords do not match"
+  },
+  "E2EE": {
+    "groupTooltipTitle": "End-to-End Encrypted Group",
+    "groupTooltipDescription": "This group is protected with E2EE. Only members with the correct password can view expense details.",
+    "expenseTooltipTitle": "End-to-End Encrypted Expense", 
+    "expenseTooltipDescription": "This expense will be encrypted with E2EE. Only group members with the correct password can view the details.",
+    "encryptedExpenseTooltipDescription": "This expense is encrypted with E2EE. Enter the correct password to view the details."
   }
 }
