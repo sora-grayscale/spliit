@@ -418,6 +418,14 @@ export async function getActivities(
       groupId,
       id: { in: expenseIds },
     },
+    include: {
+      paidBy: true,
+      paidFor: {
+        include: {
+          participant: true,
+        },
+      },
+    },
   })
 
   return activities.map((activity) => ({

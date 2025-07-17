@@ -182,7 +182,7 @@ export function ExpenseForm({
     resolver: zodResolver(expenseFormSchema),
     defaultValues: expense
       ? {
-          title: expense.title,
+          title: expense.title || '',
           expenseDate: expense.expenseDate ?? new Date(),
           amount: String(expense.amount / 100) as unknown as number, // hack
           category: expense.categoryId,
@@ -253,6 +253,42 @@ export function ExpenseForm({
   })
   const [isCategoryLoading, setCategoryLoading] = useState(false)
   const activeUserId = useActiveUser(group.id)
+  const [decryptedTitle, setDecryptedTitle] = useState<string | null>(null)
+  const [decryptedNotes, setDecryptedNotes] = useState<string | null>(null)
+  
+  // Decrypt title and notes if the group is encrypted
+  useEffect(() => {
+    if (expense && group.isEncrypted && group.encryptionSalt && expense.encryptedData && expense.encryptionIv) {
+      const password = PasswordSession.getPassword(group.id)
+      if (password) {
+        PasswordCrypto.decryptExpenseData(
+          expense.encryptedData,
+          expense.encryptionIv,
+          password,
+          group.encryptionSalt
+        ).then(decrypted => {
+          setDecryptedTitle(decrypted.title)
+          setDecryptedNotes(decrypted.notes || '')
+          // Update form values with decrypted data
+          form.setValue('title', decrypted.title)
+          form.setValue('notes', decrypted.notes || '')
+        }).catch(error => {
+          console.error('Failed to decrypt expense data:', error)
+          // In case of decryption failure, keep the original encrypted values
+          setDecryptedTitle(expense.title || '')
+          setDecryptedNotes(expense.notes || '')
+        })
+      } else {
+        // If no password is available, show fallback
+        setDecryptedTitle(expense.title || '')
+        setDecryptedNotes(expense.notes || '')
+      }
+    } else if (expense) {
+      // For non-encrypted groups, use the original values
+      setDecryptedTitle(expense.title || '')
+      setDecryptedNotes(expense.notes || '')
+    }
+  }, [expense, group, form])
 
   const submit = async (values: ExpenseFormValues) => {
     await persistDefaultSplittingOptions(group.id, values)

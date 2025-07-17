@@ -98,7 +98,7 @@ export function PasswordUnlockDialog({
             Password Required
           </DialogTitle>
           <DialogDescription>
-            This group is password-protected. Enter the password to view expense details for "{groupName}".
+            This group is password-protected. Enter the password to view expense details for &ldquo;{groupName}&rdquo;.
           </DialogDescription>
         </DialogHeader>
 

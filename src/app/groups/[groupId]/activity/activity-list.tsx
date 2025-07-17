@@ -141,6 +141,8 @@ export function ActivityList() {
                   activity={activity}
                   participant={participant}
                   dateStyle={dateStyle}
+                  isEncrypted={group.isEncrypted}
+                  encryptionSalt={group.encryptionSalt}
                 />
               )
             })}
