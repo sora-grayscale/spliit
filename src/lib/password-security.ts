@@ -28,10 +28,10 @@ export interface PasswordValidation {
  */
 function calculateEntropy(password: string): number {
   const charSets = {
-    lowercase: /[a-z]/.test(password) ? 26 : 0,
-    uppercase: /[A-Z]/.test(password) ? 26 : 0,
-    numbers: /[0-9]/.test(password) ? 10 : 0,
-    symbols: /[^A-Za-z0-9]/.test(password) ? 32 : 0, // Estimate for common symbols
+    lowercase: /[a-z]/.test(password) ? SECURITY_CONSTANTS.CHARSET_LOWERCASE : 0,
+    uppercase: /[A-Z]/.test(password) ? SECURITY_CONSTANTS.CHARSET_UPPERCASE : 0,
+    numbers: /[0-9]/.test(password) ? SECURITY_CONSTANTS.CHARSET_NUMBERS : 0,
+    symbols: /[^A-Za-z0-9]/.test(password) ? SECURITY_CONSTANTS.CHARSET_SYMBOLS : 0,
   }
   
   const poolSize = Object.values(charSets).reduce((sum, size) => sum + size, 0)
@@ -42,32 +42,70 @@ function calculateEntropy(password: string): number {
 }
 
 /**
+ * Weak password patterns with improved detection
+ */
+interface WeakPattern {
+  pattern: RegExp
+  message: string
+  severity: 'low' | 'medium' | 'high'
+}
+
+const WEAK_PATTERNS: ReadonlyArray<WeakPattern> = [
+  { pattern: /(.)\1{2,}/, message: 'Contains repeated characters', severity: 'medium' },
+  { pattern: /(.)\1{4,}/, message: 'Contains excessive repeated characters', severity: 'high' },
+  { pattern: /123|234|345|456|567|678|789|890|012/, message: 'Contains sequential numbers', severity: 'medium' },
+  { pattern: /abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz/i, message: 'Contains sequential letters', severity: 'medium' },
+  { pattern: /qwerty|asdf|zxcv|1234|password|admin|user|test|guest|root|welcome|letmein/i, message: 'Contains common patterns', severity: 'high' },
+  { pattern: /^[a-z]+$/i, message: 'Contains only letters', severity: 'high' },
+  { pattern: /^[0-9]+$/, message: 'Contains only numbers', severity: 'high' },
+  { pattern: /^.{1,3}$/, message: 'Too short', severity: 'high' },
+] as const
+
+/**
  * Check for common weak patterns
  */
 function hasWeakPatterns(password: string): string[] {
-  const weakPatterns: Array<{ pattern: RegExp; message: string }> = [
-    { pattern: /(.)\1{2,}/, message: 'Contains repeated characters' },
-    { pattern: /123|234|345|456|567|678|789|890/, message: 'Contains sequential numbers' },
-    { pattern: /abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz/i, message: 'Contains sequential letters' },
-    { pattern: /qwerty|asdf|zxcv|1234|password|admin|user|test/i, message: 'Contains common patterns' },
-  ]
-  
-  return weakPatterns
+  return WEAK_PATTERNS
     .filter(({ pattern }) => pattern.test(password))
     .map(({ message }) => message)
 }
 
 /**
- * Check against common passwords list (simplified)
+ * Comprehensive common passwords list
+ */
+const COMMON_PASSWORDS = new Set([
+  // Basic passwords
+  'password', 'Password', 'PASSWORD', 'password123', 'Password123',
+  '123456', '123456789', '12345678', '1234567890', '1234567',
+  'qwerty', 'QWERTY', 'qwerty123', 'asdf', 'zxcv',
+  
+  // Administrative
+  'admin', 'administrator', 'root', 'user', 'guest', 'test',
+  'demo', 'temp', 'temporary', 'welcome', 'login',
+  
+  // Common words
+  'monkey', 'dragon', 'sunshine', 'princess', 'football', 'baseball',
+  'master', 'jordan', 'harley', 'ranger', 'secret', 'shadow',
+  'mustang', 'buster', 'daniel', 'robert', 'matthew', 'jordan',
+  
+  // Keyboard patterns
+  'qwerty', 'asdfgh', 'zxcvbn', '1qaz2wsx', 'qazwsx', 'qwertyuiop',
+  
+  // Years and dates
+  '2023', '2024', '2025', '1234', '0000', '1111', '2222',
+  
+  // Japanese common
+  'sakura', 'nihon', 'japan', 'tokyo', 'yamada', 'tanaka',
+  
+  // Other languages
+  'contraseña', 'passwort', 'mot de passe', 'senha', 'hasło',
+])
+
+/**
+ * Check against comprehensive common passwords list
  */
 function isCommonPassword(password: string): boolean {
-  const commonPasswords = [
-    'password', '123456', '123456789', 'qwerty', 'abc123', 'password123',
-    'admin', 'user', 'test', 'guest', 'root', 'welcome', 'letmein',
-    'monkey', 'dragon', 'sunshine', 'princess', 'football', 'baseball',
-  ]
-  
-  return commonPasswords.includes(password.toLowerCase())
+  return COMMON_PASSWORDS.has(password) || COMMON_PASSWORDS.has(password.toLowerCase())
 }
 
 /**
@@ -114,18 +152,36 @@ export function analyzePasswordStrength(password: string): PasswordStrength {
   // Cap score at 4
   score = Math.min(4, score)
   
-  // Generate feedback
+  // Generate targeted feedback
   if (length < SECURITY_CONSTANTS.MIN_PASSWORD_LENGTH) {
     feedback.push(`Password must be at least ${SECURITY_CONSTANTS.MIN_PASSWORD_LENGTH} characters`)
   }
-  if (!hasLowercase) feedback.push('Add lowercase letters')
-  if (!hasUppercase) feedback.push('Add uppercase letters')
-  if (!hasNumbers) feedback.push('Add numbers')
-  if (!hasSymbols) feedback.push('Add symbols (!@#$%^&*)')
-  if (length > 0 && length < 8) feedback.push('Use at least 8 characters')
-  if (entropy < 30) feedback.push('Increase password complexity')
+  if (length > 0 && length < 8) {
+    feedback.push('Use at least 8 characters for better security')
+  }
+  if (length > 0 && length < 12 && (!hasSymbols || entropy < 40)) {
+    feedback.push('Consider using 12+ characters or adding symbols')
+  }
   
-  const isSecure = score >= 3 && entropy >= 40 && !isCommon && weakPatterns.length === 0
+  // Character set recommendations
+  const missingTypes = []
+  if (!hasLowercase) missingTypes.push('lowercase letters')
+  if (!hasUppercase) missingTypes.push('uppercase letters')
+  if (!hasNumbers) missingTypes.push('numbers')
+  if (!hasSymbols) missingTypes.push('symbols (!@#$%^&*)')
+  
+  if (missingTypes.length > 0) {
+    feedback.push(`Add ${missingTypes.join(', ')}`)
+  }
+  
+  // Entropy-based feedback
+  if (entropy < 30) {
+    feedback.push('Increase password complexity to improve security')
+  } else if (entropy < 50 && length < 10) {
+    feedback.push('Consider longer password or more character variety')
+  }
+  
+  const isSecure = score >= 3 && entropy >= 50 && !isCommon && weakPatterns.length === 0 && length >= 8
   
   return {
     score,
@@ -141,14 +197,20 @@ export function analyzePasswordStrength(password: string): PasswordStrength {
 }
 
 /**
- * Validate password according to security requirements
+ * Comprehensive password validation with enhanced security checks
  */
 export function validatePassword(password: string): PasswordValidation {
   const strength = analyzePasswordStrength(password)
   const errors: string[] = []
   const warnings: string[] = []
   
-  // Required validation
+  // Input validation
+  if (typeof password !== 'string') {
+    errors.push('Password must be a string')
+    return { isValid: false, errors, warnings, strength }
+  }
+  
+  // Length validation
   if (strength.length < SECURITY_CONSTANTS.MIN_PASSWORD_LENGTH) {
     errors.push(`Password must be at least ${SECURITY_CONSTANTS.MIN_PASSWORD_LENGTH} characters long`)
   }
@@ -157,23 +219,42 @@ export function validatePassword(password: string): PasswordValidation {
     errors.push(`Password must not exceed ${SECURITY_CONSTANTS.MAX_PASSWORD_LENGTH} characters`)
   }
   
-  // Security warnings
-  if (strength.score < 2) {
+  // Security validation
+  if (isCommonPassword(password)) {
+    errors.push('This password is commonly used and should be avoided')
+  }
+  
+  // Character composition requirements
+  const missingCharTypes: string[] = []
+  if (!strength.hasLowercase) missingCharTypes.push('lowercase letters')
+  if (!strength.hasUppercase) missingCharTypes.push('uppercase letters')
+  if (!strength.hasNumbers) missingCharTypes.push('numbers')
+  
+  if (missingCharTypes.length >= 3) {
+    errors.push(`Password must contain at least one of: ${missingCharTypes.join(', ')}`)
+  } else if (missingCharTypes.length >= 1) {
+    warnings.push(`Consider adding: ${missingCharTypes.join(', ')}`)
+  }
+  
+  // Entropy-based warnings
+  if (strength.entropy < 25) {
+    warnings.push('Password has very low entropy (highly predictable)')
+  } else if (strength.entropy < 40) {
+    warnings.push('Password has low entropy (somewhat predictable)')
+  }
+  
+  // Strength-based warnings
+  if (strength.score === 0) {
+    warnings.push('Password is extremely weak')
+  } else if (strength.score === 1) {
     warnings.push('Password is very weak')
-  } else if (strength.score < 3) {
+  } else if (strength.score === 2) {
     warnings.push('Password is weak')
   }
   
-  if (strength.entropy < 30) {
-    warnings.push('Password has low entropy (predictable)')
-  }
-  
-  if (!strength.hasUppercase || !strength.hasLowercase || !strength.hasNumbers) {
-    warnings.push('Consider using a mix of uppercase, lowercase, and numbers')
-  }
-  
-  if (!strength.hasSymbols) {
-    warnings.push('Consider adding special characters for better security')
+  // Specific pattern warnings
+  if (!strength.hasSymbols && strength.length < 12) {
+    warnings.push('Consider adding special characters or increasing length')
   }
   
   return {
@@ -185,31 +266,68 @@ export function validatePassword(password: string): PasswordValidation {
 }
 
 /**
- * Generate a secure password suggestion
+ * Character sets for password generation
+ */
+const PASSWORD_CHARS = {
+  lowercase: 'abcdefghijklmnopqrstuvwxyz',
+  uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  numbers: '0123456789',
+  symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?~`',
+} as const
+
+/**
+ * Cryptographically secure random number generator
+ */
+function getSecureRandomInt(max: number): number {
+  const array = new Uint32Array(1)
+  crypto.getRandomValues(array)
+  return array[0] % max
+}
+
+/**
+ * Fisher-Yates shuffle using secure random
+ */
+function secureShuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = getSecureRandomInt(i + 1)
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
+/**
+ * Generate a cryptographically secure password
  */
 export function generateSecurePassword(length: number = 16): string {
-  const lowercase = 'abcdefghijklmnopqrstuvwxyz'
-  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  const numbers = '0123456789'
-  const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?'
-  
-  const allChars = lowercase + uppercase + numbers + symbols
-  
-  let password = ''
-  
-  // Ensure at least one character from each set
-  password += lowercase[Math.floor(Math.random() * lowercase.length)]
-  password += uppercase[Math.floor(Math.random() * uppercase.length)]
-  password += numbers[Math.floor(Math.random() * numbers.length)]
-  password += symbols[Math.floor(Math.random() * symbols.length)]
-  
-  // Fill the rest randomly
-  for (let i = 4; i < length; i++) {
-    password += allChars[Math.floor(Math.random() * allChars.length)]
+  if (length < 4) {
+    throw new Error('Password length must be at least 4 characters')
   }
   
-  // Shuffle the password
-  return password.split('').sort(() => Math.random() - 0.5).join('')
+  if (length > SECURITY_CONSTANTS.MAX_PASSWORD_LENGTH) {
+    throw new Error(`Password length cannot exceed ${SECURITY_CONSTANTS.MAX_PASSWORD_LENGTH} characters`)
+  }
+  
+  const { lowercase, uppercase, numbers, symbols } = PASSWORD_CHARS
+  const allChars = lowercase + uppercase + numbers + symbols
+  
+  const passwordArray: string[] = []
+  
+  // Ensure at least one character from each required set
+  passwordArray.push(lowercase[getSecureRandomInt(lowercase.length)])
+  passwordArray.push(uppercase[getSecureRandomInt(uppercase.length)])
+  passwordArray.push(numbers[getSecureRandomInt(numbers.length)])
+  passwordArray.push(symbols[getSecureRandomInt(symbols.length)])
+  
+  // Fill the rest with random characters from all sets
+  for (let i = 4; i < length; i++) {
+    passwordArray.push(allChars[getSecureRandomInt(allChars.length)])
+  }
+  
+  // Securely shuffle the password array
+  const shuffledPassword = secureShuffleArray(passwordArray)
+  
+  return shuffledPassword.join('')
 }
 
 /**

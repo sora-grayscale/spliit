@@ -9,10 +9,19 @@ export const SECURITY_CONSTANTS = {
   
   // Session management
   PASSWORD_SESSION_TIMEOUT: 30 * 60 * 1000, // 30 minutes
+  PASSWORD_MEMORY_CLEAR_CYCLES: 10, // Number of overwrite cycles for secure memory clearing
   
   // Cryptographic settings
   PBKDF2_ITERATIONS: 100000,
   AES_KEY_LENGTH: 256,
+  AES_IV_LENGTH: 12, // 96-bit IV for GCM
+  SALT_LENGTH: 32, // 256-bit salt
+  
+  // Character set sizes for entropy calculation
+  CHARSET_LOWERCASE: 26,
+  CHARSET_UPPERCASE: 26,
+  CHARSET_NUMBERS: 10,
+  CHARSET_SYMBOLS: 32, // Estimate for common symbols
   
   // Rate limiting
   MAX_LOGIN_ATTEMPTS: 5,
@@ -27,6 +36,10 @@ export const SECURITY_CONSTANTS = {
   // File upload limits
   MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
   ALLOWED_FILE_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
+  
+  // Memory management
+  MEMORY_CLEAR_DELAY: 100, // Delay between memory clear operations (ms)
+  SECURE_RANDOM_BYTES: 32, // Default random bytes length
 } as const
 
 export type SecurityConstants = typeof SECURITY_CONSTANTS

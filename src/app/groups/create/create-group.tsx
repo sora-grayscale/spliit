@@ -19,13 +19,10 @@ export const CreateGroup = () => {
         // If encryption is enabled, generate salt and create test data
         if (groupFormValues.isEncrypted && groupFormValues.password) {
           const salt = PasswordCrypto.generateSalt()
-          const testData = PasswordCrypto.createTestData()
           
-          // Encrypt test data to verify password later
+          // Create test data to verify password later
           const { encryptedData: testEncryptedData, iv: testIv } = 
-            await PasswordCrypto.encryptData(testData, 
-              await PasswordCrypto.deriveKeyFromPassword(groupFormValues.password, salt)
-            )
+            await PasswordCrypto.createPasswordTest(groupFormValues.password, salt)
           
           processedGroupFormValues = {
             ...groupFormValues,
