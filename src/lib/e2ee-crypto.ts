@@ -3,6 +3,7 @@
  */
 
 import { SECURITY_CONSTANTS } from './security-constants'
+import { nonBlockingDelay, RateLimiter, timingSafeEqual } from './crypto-utils'
 
 export interface EncryptedData {
   encryptedData: string
@@ -148,16 +149,25 @@ export class PasswordCrypto {
   }
 
   /**
-   * Decrypt expense sensitive data with validation
+   * Decrypt expense sensitive data with validation and rate limiting
    */
   static async decryptExpenseData(
     encryptedData: string,
     iv: string,
     password: string,
-    salt: string
+    salt: string,
+    groupId?: string
   ): Promise<{ title: string; notes?: string }> {
     if (!encryptedData || !iv || !password || !salt) {
       throw new Error('All parameters (encryptedData, iv, password, salt) must be provided')
+    }
+    
+    // Apply rate limiting if groupId is provided
+    if (groupId) {
+      const isBlocked = await PasswordSession.checkDecryptionRateLimit(groupId)
+      if (isBlocked) {
+        throw new Error('Too many decryption attempts. Please try again later.')
+      }
     }
     
     try {
@@ -176,11 +186,21 @@ export class PasswordCrypto {
         throw new Error('Invalid decrypted data: title must be a string')
       }
       
+      // Reset rate limits on successful decryption
+      if (groupId) {
+        PasswordSession.resetRateLimits(groupId)
+      }
+      
       return {
         title: data.title,
         notes: typeof data.notes === 'string' ? data.notes : undefined
       }
     } catch (error) {
+      // Add delay on failed attempts
+      if (groupId) {
+        await nonBlockingDelay(500 + Math.random() * 500) // 0.5-1 second delay
+      }
+      
       if (error instanceof Error) {
         throw new Error(`Decryption failed: ${error.message}`)
       }
@@ -189,19 +209,38 @@ export class PasswordCrypto {
   }
 
   /**
-   * Verify password by attempting to decrypt a test payload
+   * Verify password by attempting to decrypt a test payload with rate limiting
    */
   static async verifyPassword(
     testEncryptedData: string,
     testIv: string,
     password: string,
-    salt: string
+    salt: string,
+    groupId?: string
   ): Promise<boolean> {
+    // Apply rate limiting if groupId is provided
+    if (groupId) {
+      const isBlocked = await PasswordSession.checkVerificationRateLimit(groupId)
+      if (isBlocked) {
+        throw new Error('Too many verification attempts. Please try again later.')
+      }
+    }
+    
     try {
       const key = await this.deriveKeyFromPassword(password, salt)
       await this.decryptData(testEncryptedData, testIv, key)
+      
+      // Reset rate limits on successful verification
+      if (groupId) {
+        PasswordSession.resetRateLimits(groupId)
+      }
+      
       return true
-    } catch {
+    } catch (error) {
+      // Add delay on failed attempts to slow down brute force
+      if (groupId) {
+        await nonBlockingDelay(1000 + Math.random() * 1000) // 1-2 second delay
+      }
       return false
     }
   }
@@ -246,57 +285,92 @@ export class PasswordCrypto {
 }
 
 /**
- * Secure memory management utility
+ * Secure memory management utility with enhanced documentation
+ * 
+ * IMPORTANT LIMITATIONS:
+ * - JavaScript strings are immutable primitives stored in the runtime's string table
+ * - True memory wiping is impossible due to garbage collection and string interning
+ * - This implementation provides best-effort defense against casual memory inspection
+ * - For true security, consider using WebAssembly or server-side encryption
+ * 
+ * ALTERNATIVE APPROACHES:
+ * 1. Use typed arrays (Uint8Array) for sensitive data storage when possible
+ * 2. Implement server-side encryption with zero-knowledge architecture
+ * 3. Use Web Workers to isolate sensitive operations
+ * 4. Consider using WebAssembly for memory-controlled operations
  */
 class SecureMemory {
   /**
-   * Securely overwrite string data in memory multiple times
+   * Attempt to securely overwrite string data in memory
+   * This is a best-effort approach with known limitations
    */
-  static secureWipeString(str: string): void {
-    // Note: In JavaScript, strings are immutable, so this is a best-effort approach
-    // The actual memory clearing depends on the JavaScript engine's garbage collection
+  static async secureWipeString(str: string): Promise<void> {
     try {
       // Create array buffer representation for overwriting
       const encoder = new TextEncoder()
-      const decoder = new TextDecoder()
       const buffer = encoder.encode(str)
       
       // Multiple overwrite cycles with different patterns
       for (let cycle = 0; cycle < SECURITY_CONSTANTS.PASSWORD_MEMORY_CLEAR_CYCLES; cycle++) {
-        const pattern = cycle % 2 === 0 ? 0x00 : 0xFF
+        const pattern = cycle % 3 === 0 ? 0x00 : cycle % 3 === 1 ? 0xFF : 0xAA
         buffer.fill(pattern)
         
-        // Force some processing time
-        if (cycle < 3) {
-          decoder.decode(buffer)
-        }
-        
-        // Small delay between cycles
-        if (SECURITY_CONSTANTS.MEMORY_CLEAR_DELAY > 0) {
-          // Blocking delay (not ideal but necessary for memory clearing)
-          const start = Date.now()
-          while (Date.now() - start < SECURITY_CONSTANTS.MEMORY_CLEAR_DELAY / 10) {
-            // Busy wait
-          }
+        // Non-blocking delay between cycles to prevent UI freezing
+        if (cycle % 2 === 0) {
+          await nonBlockingDelay(1)
         }
       }
       
       // Final overwrite with random data
       crypto.getRandomValues(buffer)
+      
+      // Additional overwrite with zeros
+      buffer.fill(0)
+      
     } catch (error) {
       console.warn('Secure memory wipe failed:', error)
     }
   }
+  
+  /**
+   * Create a secure buffer for sensitive data
+   * Returns a typed array that can be more reliably cleared
+   */
+  static createSecureBuffer(data: string): Uint8Array {
+    const encoder = new TextEncoder()
+    return encoder.encode(data)
+  }
+  
+  /**
+   * Securely clear a typed array
+   */
+  static async clearSecureBuffer(buffer: Uint8Array): Promise<void> {
+    // Multiple overwrite patterns
+    for (let cycle = 0; cycle < 3; cycle++) {
+      const pattern = cycle % 3 === 0 ? 0x00 : cycle % 3 === 1 ? 0xFF : 0xAA
+      buffer.fill(pattern)
+      
+      if (cycle < 2) {
+        await nonBlockingDelay(1)
+      }
+    }
+    
+    // Final random overwrite
+    crypto.getRandomValues(buffer)
+    buffer.fill(0)
+  }
 }
 
 /**
- * Browser-side password session management with enhanced security
+ * Browser-side password session management with enhanced security and rate limiting
  */
 export class PasswordSession {
   private static passwords = new Map<string, string>() // groupId -> password
   private static readonly MAX_PASSWORD_AGE = SECURITY_CONSTANTS.PASSWORD_SESSION_TIMEOUT
   private static passwordTimestamps = new Map<string, number>() // groupId -> timestamp
   private static wipeScheduled = new Set<string>() // groupIds scheduled for secure wipe
+  private static decryptionLimiter = new RateLimiter(5, 60000) // 5 attempts per minute
+  private static verificationLimiter = new RateLimiter(10, 300000) // 10 attempts per 5 minutes
 
   static setPassword(groupId: string, password: string): void {
     if (!groupId || !password) {
@@ -332,11 +406,10 @@ export class PasswordSession {
       // Schedule secure wipe to avoid blocking
       if (!this.wipeScheduled.has(groupId)) {
         this.wipeScheduled.add(groupId)
-        // Use setTimeout to avoid blocking the main thread
-        setTimeout(() => {
-          SecureMemory.secureWipeString(password)
+        // Use non-blocking secure wipe
+        SecureMemory.secureWipeString(password).finally(() => {
           this.wipeScheduled.delete(groupId)
-        }, 0)
+        })
       }
       
       // Clear password from memory immediately
@@ -349,7 +422,7 @@ export class PasswordSession {
     this.removePasswordCleanup(groupId)
   }
 
-  static clearAllPasswords(): void {
+  static async clearAllPasswords(): Promise<void> {
     // Securely wipe all passwords
     const passwordsToWipe: string[] = []
     this.passwords.forEach((password) => {
@@ -364,12 +437,34 @@ export class PasswordSession {
     this.cleanupListeners.clear()
     this.wipeScheduled.clear()
     
-    // Schedule secure wipe for all passwords
-    setTimeout(() => {
-      passwordsToWipe.forEach(password => {
-        SecureMemory.secureWipeString(password)
-      })
-    }, 0)
+    // Secure wipe for all passwords (non-blocking)
+    const wipePromises = passwordsToWipe.map(password => 
+      SecureMemory.secureWipeString(password)
+    )
+    
+    await Promise.all(wipePromises)
+  }
+  
+  /**
+   * Check if decryption is rate limited for a group
+   */
+  static async checkDecryptionRateLimit(groupId: string): Promise<boolean> {
+    return await this.decryptionLimiter.recordAttempt(groupId)
+  }
+  
+  /**
+   * Check if password verification is rate limited for a group
+   */
+  static async checkVerificationRateLimit(groupId: string): Promise<boolean> {
+    return await this.verificationLimiter.recordAttempt(groupId)
+  }
+  
+  /**
+   * Reset rate limits for a group (on successful operations)
+   */
+  static resetRateLimits(groupId: string): void {
+    this.decryptionLimiter.reset(groupId)
+    this.verificationLimiter.reset(groupId)
   }
 
   static hasPassword(groupId: string): boolean {

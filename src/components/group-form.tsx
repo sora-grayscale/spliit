@@ -92,9 +92,9 @@ export function GroupForm({
           password: '',
           passwordConfirm: '',
           participants: [
-            { name: 'John' },
-            { name: 'Jane' },
-            { name: 'Jack' },
+            { name: t('Participants.defaultNames.participant1') },
+            { name: t('Participants.defaultNames.participant2') },
+            { name: t('Participants.defaultNames.participant3') },
           ],
         },
   })

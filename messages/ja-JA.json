@@ -100,9 +100,11 @@
       "protectedParticipant": "この参加者は支出の一部であり、削除できません。",
       "new": "新規",
       "add": "参加者を追加",
-      "John": "John",
-      "Jane": "Jane",
-      "Jack": "Jack"
+      "defaultNames": {
+        "participant1": "太郎",
+        "participant2": "花子", 
+        "participant3": "次郎"
+      }
     },
     "Settings": {
       "title": "ローカル設定",

@@ -276,21 +276,17 @@ const PASSWORD_CHARS = {
 } as const
 
 /**
- * Cryptographically secure random number generator
+ * Import unbiased random integer function
  */
-function getSecureRandomInt(max: number): number {
-  const array = new Uint32Array(1)
-  crypto.getRandomValues(array)
-  return array[0] % max
-}
+import { getUnbiasedRandomInt } from './crypto-utils'
 
 /**
- * Fisher-Yates shuffle using secure random
+ * Fisher-Yates shuffle using unbiased secure random
  */
 function secureShuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array]
   for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = getSecureRandomInt(i + 1)
+    const j = getUnbiasedRandomInt(i + 1)
     ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
   return shuffled
@@ -314,14 +310,14 @@ export function generateSecurePassword(length: number = 16): string {
   const passwordArray: string[] = []
   
   // Ensure at least one character from each required set
-  passwordArray.push(lowercase[getSecureRandomInt(lowercase.length)])
-  passwordArray.push(uppercase[getSecureRandomInt(uppercase.length)])
-  passwordArray.push(numbers[getSecureRandomInt(numbers.length)])
-  passwordArray.push(symbols[getSecureRandomInt(symbols.length)])
+  passwordArray.push(lowercase[getUnbiasedRandomInt(lowercase.length)])
+  passwordArray.push(uppercase[getUnbiasedRandomInt(uppercase.length)])
+  passwordArray.push(numbers[getUnbiasedRandomInt(numbers.length)])
+  passwordArray.push(symbols[getUnbiasedRandomInt(symbols.length)])
   
   // Fill the rest with random characters from all sets
   for (let i = 4; i < length; i++) {
-    passwordArray.push(allChars[getSecureRandomInt(allChars.length)])
+    passwordArray.push(allChars[getUnbiasedRandomInt(allChars.length)])
   }
   
   // Securely shuffle the password array

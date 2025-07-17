@@ -100,9 +100,11 @@
       "protectedParticipant": "This participant is part of expenses, and can not be removed.",
       "new": "New",
       "add": "Add participant",
-      "John": "John",
-      "Jane": "Jane",
-      "Jack": "Jack"
+      "defaultNames": {
+        "participant1": "John",
+        "participant2": "Jane", 
+        "participant3": "Jack"
+      }
     },
     "Settings": {
       "title": "Local settings",
