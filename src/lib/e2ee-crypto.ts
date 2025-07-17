@@ -143,7 +143,7 @@ export class PasswordCrypto {
   ): Promise<{ title: string; notes?: string }> {
     const key = await this.deriveKeyFromPassword(password, salt)
     const decryptedJson = await this.decryptData(encryptedData, iv, key)
-    return JSON.parse(decryptedJson)
+    return JSON.parse(decryptedJson) as { title: string; notes?: string }
   }
 
   /**

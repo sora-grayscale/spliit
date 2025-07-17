@@ -644,3 +644,60 @@ function isDateInNextMonth(
 
   return true
 }
+
+export async function deleteGroup(groupId: string): Promise<void> {
+  // Verify that the group exists
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    include: {
+      participants: true,
+      expenses: {
+        include: {
+          paidFor: true,
+          documents: true,
+        },
+      },
+    },
+  })
+
+  if (!group) {
+    throw new Error('Group not found')
+  }
+
+  // Delete all related data in the correct order to avoid foreign key constraints
+  await prisma.$transaction(async (tx) => {
+    // Delete expense documents first
+    for (const expense of group.expenses) {
+      if (expense.documents.length > 0) {
+        await tx.expenseDocument.deleteMany({
+          where: { expenseId: expense.id },
+        })
+      }
+    }
+
+    // Delete expense paid-for relationships
+    await tx.expensePaidFor.deleteMany({
+      where: { expenseId: { in: group.expenses.map((e) => e.id) } },
+    })
+
+    // Delete expenses
+    await tx.expense.deleteMany({
+      where: { groupId },
+    })
+
+    // Delete activities
+    await tx.activity.deleteMany({
+      where: { groupId },
+    })
+
+    // Delete participants
+    await tx.participant.deleteMany({
+      where: { groupId },
+    })
+
+    // Finally, delete the group itself
+    await tx.group.delete({
+      where: { id: groupId },
+    })
+  })
+}

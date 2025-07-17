@@ -407,5 +407,21 @@
     "expenseTooltipTitle": "エンドツーエンド暗号化経費",
     "expenseTooltipDescription": "この経費はE2EEで暗号化されます。正しいパスワードを持つグループメンバーのみが詳細を閲覧できます。",
     "encryptedExpenseTooltipDescription": "この経費はE2EEで暗号化されています。詳細を閲覧するには正しいパスワードを入力してください。"
+  },
+  "GroupDeletion": {
+    "dangerZoneTitle": "危険ゾーン",
+    "dangerZoneDescription": "このグループと関連するすべてのデータを完全に削除します。この操作は元に戻すことができません。",
+    "deleteButtonText": "グループを完全に削除",
+    "confirmTitle": "本当によろしいですか？",
+    "confirmDescription": "この操作は元に戻すことができません。グループ\"{groupName}\"とすべての経費、参加者、関連データをデータベースから完全に削除します。",
+    "confirmButton": "完全に削除",
+    "cancelButton": "キャンセル"
+  },
+  "PasswordVerification": {
+    "verifyButton": "確認",
+    "verifyingText": "確認中...",
+    "passwordVerified": "パスワードが確認されました",
+    "incorrectPassword": "パスワードが間違っています",
+    "cannotChangeAfterCreation": "(作成後は変更できません)"
   }
 }

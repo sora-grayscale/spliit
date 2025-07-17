@@ -407,5 +407,21 @@
     "expenseTooltipTitle": "End-to-End Encrypted Expense", 
     "expenseTooltipDescription": "This expense will be encrypted with E2EE. Only group members with the correct password can view the details.",
     "encryptedExpenseTooltipDescription": "This expense is encrypted with E2EE. Enter the correct password to view the details."
+  },
+  "GroupDeletion": {
+    "dangerZoneTitle": "Danger Zone",
+    "dangerZoneDescription": "Permanently delete this group and all associated data. This action cannot be undone.",
+    "deleteButtonText": "Delete Group Permanently",
+    "confirmTitle": "Are you absolutely sure?",
+    "confirmDescription": "This action cannot be undone. This will permanently delete the group \"{groupName}\" and remove all expenses, participants, and associated data from the database.",
+    "confirmButton": "Delete Permanently",
+    "cancelButton": "Cancel"
+  },
+  "PasswordVerification": {
+    "verifyButton": "Verify",
+    "verifyingText": "Verifying...",
+    "passwordVerified": "Password verified",
+    "incorrectPassword": "Incorrect password",
+    "cannotChangeAfterCreation": "(Cannot be changed after creation)"
   }
 }
