@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { ExpenseFormValues, GroupFormValues } from '@/lib/schemas'
+import { PasswordCrypto } from '@/lib/e2ee-crypto'
 import {
   ActivityType,
   Expense,
@@ -19,6 +20,11 @@ export async function createGroup(groupFormValues: GroupFormValues) {
       name: groupFormValues.name,
       information: groupFormValues.information,
       currency: groupFormValues.currency,
+      // E2EE fields
+      isEncrypted: groupFormValues.isEncrypted ?? false,
+      encryptionSalt: groupFormValues.encryptionSalt || null,
+      testEncryptedData: groupFormValues.testEncryptedData || null,
+      testIv: groupFormValues.testIv || null,
       participants: {
         createMany: {
           data: groupFormValues.participants.map(({ name }) => ({
@@ -101,6 +107,9 @@ export async function createExpense(
         },
       },
       notes: expenseFormValues.notes,
+      // E2EE fields
+      encryptedData: expenseFormValues.encryptedData,
+      encryptionIv: expenseFormValues.encryptionIv,
     },
   })
 }
@@ -273,6 +282,9 @@ export async function updateExpense(
           })),
       },
       notes: expenseFormValues.notes,
+      // E2EE fields
+      encryptedData: expenseFormValues.encryptedData,
+      encryptionIv: expenseFormValues.encryptionIv,
     },
   })
 }
@@ -353,6 +365,9 @@ export async function getGroupExpenses(
       splitMode: true,
       recurrenceRule: true,
       title: true,
+      // E2EE fields
+      encryptedData: true,
+      encryptionIv: true,
       _count: { select: { documents: true } },
     },
     where: {

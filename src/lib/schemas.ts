@@ -6,6 +6,11 @@ export const groupFormSchema = z
     name: z.string().min(2, 'min2').max(50, 'max50'),
     information: z.string().optional(),
     currency: z.string().min(1, 'min1').max(5, 'max5'),
+    isEncrypted: z.boolean().default(false),
+    password: z.string().optional(),
+    encryptionSalt: z.string().optional(),
+    testEncryptedData: z.string().optional(),
+    testIv: z.string().optional(),
     participants: z
       .array(
         z.object({
@@ -15,7 +20,7 @@ export const groupFormSchema = z
       )
       .min(1),
   })
-  .superRefine(({ participants }, ctx) => {
+  .superRefine(({ participants, isEncrypted, password, encryptionSalt }, ctx) => {
     participants.forEach((participant, i) => {
       participants.slice(0, i).forEach((otherParticipant) => {
         if (otherParticipant.name === participant.name) {
@@ -27,6 +32,16 @@ export const groupFormSchema = z
         }
       })
     })
+
+    // Validate password requirement for encrypted groups
+    // Only check password if encryption is enabled and no encryptionSalt exists (client-side)
+    if (isEncrypted && !encryptionSalt && (!password || password.length < 6)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'passwordRequired',
+        path: ['password'],
+      })
+    }
   })
 
 export type GroupFormValues = z.infer<typeof groupFormSchema>
@@ -110,6 +125,9 @@ export const expenseFormSchema = z
         Object.values(RecurrenceRule) as any,
       )
       .default('NONE'),
+    // E2EE fields for encrypted expenses
+    encryptedData: z.string().optional(),
+    encryptionIv: z.string().optional(),
   })
   .superRefine((expense, ctx) => {
     let sum = 0

@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Form,
   FormControl,
@@ -33,11 +34,11 @@ import {
 import { getGroup } from '@/lib/api'
 import { GroupFormValues, groupFormSchema } from '@/lib/schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Save, Trash2 } from 'lucide-react'
+import { Save, Trash2, Lock, AlertTriangle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { Textarea } from './ui/textarea'
 
 export type Props = {
@@ -62,16 +63,20 @@ export function GroupForm({
           name: group.name,
           information: group.information ?? '',
           currency: group.currency,
+          isEncrypted: group.isEncrypted ?? false,
+          password: '', // Never populate existing password
           participants: group.participants,
         }
       : {
           name: '',
           information: '',
           currency: process.env.NEXT_PUBLIC_DEFAULT_CURRENCY_SYMBOL || '',
+          isEncrypted: false,
+          password: '',
           participants: [
-            { name: t('Participants.John') },
-            { name: t('Participants.Jane') },
-            { name: t('Participants.Jack') },
+            { name: 'John' },
+            { name: 'Jane' },
+            { name: 'Jack' },
           ],
         },
   })
@@ -79,6 +84,12 @@ export function GroupForm({
     control: form.control,
     name: 'participants',
     keyName: 'key',
+  })
+
+  // Watch isEncrypted field to show/hide password field
+  const isEncrypted = useWatch({
+    control: form.control,
+    name: 'isEncrypted',
   })
 
   const [activeUser, setActiveUser] = useState<string | null>(null)
@@ -171,19 +182,84 @@ export function GroupForm({
                 name="information"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('InformationField.label')}</FormLabel>
+                    <FormLabel>Description</FormLabel>
                     <FormControl>
                       <Textarea
                         rows={2}
                         className="text-base"
                         {...field}
-                        placeholder={t('InformationField.placeholder')}
+                        placeholder="Optional group description"
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            </div>
+
+            {/* E2EE Section */}
+            <div className="col-span-2 border-t pt-4">
+              <FormField
+                control={form.control}
+                name="isEncrypted"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="flex items-center gap-2">
+                        <Lock className="w-4 h-4" />
+                        Enable Password Protection
+                      </FormLabel>
+                      <FormDescription>
+                        Encrypt expense data so only group members with the password can view details
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              {isEncrypted && (
+                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-start gap-2 mb-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-800">
+                        Important Security Information
+                      </p>
+                      <p className="text-sm text-amber-700">
+                        Choose a strong password. If lost, encrypted data cannot be recovered.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Group Password</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            className="text-base"
+                            placeholder="Enter a secure password (min 6 characters)"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Share this password securely with group members
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

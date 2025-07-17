@@ -39,7 +39,7 @@ import {
   ExpenseFormValues,
   SplittingOptions,
   expenseFormSchema,
-} from '@/lib/schemas'
+} from '@/lib/schemas'\nimport { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto'
 import { calculateShare } from '@/lib/totals'
 import { cn } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'

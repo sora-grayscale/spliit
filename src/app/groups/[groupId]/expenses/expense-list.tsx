@@ -172,6 +172,8 @@ const ExpenseListForSearch = ({
                 expense={expense}
                 currency={group.currency}
                 groupId={groupId}
+                isGroupEncrypted={group.isEncrypted}
+                encryptionSalt={group.encryptionSalt}
               />
             ))}
           </div>
