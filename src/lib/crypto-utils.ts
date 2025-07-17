@@ -44,10 +44,23 @@ export function getUnbiasedRandomInt(max: number): number {
   const limit = Math.floor(0xFFFFFFFF / max) * max
   
   let value: number
+  let attempts = 0
+  const maxAttempts = 100 // Prevent infinite loops with malicious inputs
+  
   do {
+    if (attempts >= maxAttempts) {
+      throw new Error('Exceeded maximum attempts for unbiased random generation')
+    }
+    
     const array = new Uint32Array(1)
-    crypto.getRandomValues(array)
+    try {
+      crypto.getRandomValues(array)
+    } catch (error) {
+      throw new Error('Failed to generate secure random values')
+    }
+    
     value = array[0]
+    attempts++
   } while (value >= limit) // Rejection sampling to avoid bias
   
   return value % max

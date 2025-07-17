@@ -155,26 +155,21 @@ export class PasswordSession {
   }
 
   static async clearAllPasswords(): Promise<void> {
-    // Securely wipe all passwords
-    const passwordsToWipe: string[] = []
-    this.passwords.forEach((password) => {
-      if (password) {
-        passwordsToWipe.push(password)
-      }
-    })
+    // Process passwords one at a time to prevent memory doubling
+    const passwordEntries = Array.from(this.passwords.entries())
     
-    // Clear maps first
+    // Clear maps first to prevent access during cleanup
     this.passwords.clear()
     this.passwordTimestamps.clear()
     this.cleanupListeners.clear()
     this.wipeScheduled.clear()
     
-    // Secure wipe for all passwords (non-blocking)
-    const wipePromises = passwordsToWipe.map(password => 
-      SecureMemory.secureWipeString(password)
-    )
-    
-    await Promise.all(wipePromises)
+    // Securely wipe passwords one by one
+    for (const [groupId, password] of passwordEntries) {
+      if (password) {
+        await SecureMemory.secureWipeString(password)
+      }
+    }
     
     // Clean up all group rate limiters
     GroupRateLimiter.destroyAll()

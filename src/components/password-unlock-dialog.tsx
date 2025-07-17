@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Lock, AlertCircle, Eye, EyeOff } from 'lucide-react'
-import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto'
+import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
 
 interface PasswordUnlockDialogProps {
   isOpen: boolean
@@ -60,7 +60,8 @@ export function PasswordUnlockDialog({
           testEncryptedData,
           testIv,
           password,
-          encryptionSalt
+          encryptionSalt,
+          groupId
         )
 
         if (!isValid) {

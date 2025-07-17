@@ -40,6 +40,9 @@ export const SECURITY_CONSTANTS = {
   // Memory management
   MEMORY_CLEAR_DELAY: 100, // Delay between memory clear operations (ms)
   SECURE_RANDOM_BYTES: 32, // Default random bytes length
+  
+  // Timing attack prevention
+  MIN_DECRYPTION_TIME_MS: 100, // Minimum time for decryption operations to prevent timing attacks
 } as const
 
 export type SecurityConstants = typeof SECURITY_CONSTANTS

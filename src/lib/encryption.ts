@@ -3,7 +3,7 @@
  */
 
 import { SECURITY_CONSTANTS } from './security-constants'
-import { validateCryptoInputs } from './crypto-utils'
+import { validateCryptoInputs, constantTimeDelay } from './crypto-utils'
 import { KeyDerivation } from './key-derivation'
 
 export interface EncryptedData {
@@ -93,7 +93,7 @@ export class EncryptionService {
   }
 
   /**
-   * Decrypt expense sensitive data with validation
+   * Decrypt expense sensitive data with validation and constant-time operations
    */
   static async decryptExpenseData(
     encryptedData: string,
@@ -102,6 +102,11 @@ export class EncryptionService {
     salt: string
   ): Promise<{ title: string; notes?: string }> {
     validateCryptoInputs({ encryptedData, iv, password, salt })
+    
+    const startTime = Date.now()
+    let success = false
+    let result: { title: string; notes?: string } | null = null
+    let errorMessage = 'Decryption failed'
     
     try {
       const key = await KeyDerivation.deriveKeyFromPassword(password, salt)
@@ -119,15 +124,32 @@ export class EncryptionService {
         throw new Error('Invalid decrypted data: title must be a string')
       }
       
-      return {
+      result = {
         title: data.title,
         notes: typeof data.notes === 'string' ? data.notes : undefined
       }
+      success = true
     } catch (error) {
+      success = false
       if (error instanceof Error) {
-        throw new Error(`Decryption failed: ${error.message}`)
+        errorMessage = `Decryption failed: ${error.message}`
+      } else {
+        errorMessage = 'Decryption failed: Unknown error'
       }
-      throw new Error('Decryption failed: Unknown error')
+    }
+    
+    // Implement constant-time behavior to prevent timing attacks
+    const elapsedTime = Date.now() - startTime
+    const minOperationTime = SECURITY_CONSTANTS.MIN_DECRYPTION_TIME_MS || 100
+    
+    if (elapsedTime < minOperationTime) {
+      await constantTimeDelay(minOperationTime - elapsedTime)
+    }
+    
+    if (success && result) {
+      return result
+    } else {
+      throw new Error(errorMessage)
     }
   }
 

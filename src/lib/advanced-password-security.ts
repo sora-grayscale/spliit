@@ -104,9 +104,9 @@ export class AdvancedPasswordSecurity {
       variations.push(password.replace(/e/g, '3'))
       variations.push(password.replace(/l/g, '1'))
       
-      // Add numbers at the end
-      for (let i = 1; i <= 999; i++) {
-        if (i <= 9 || i % 10 === 0 || i === 123 || i === 321) {
+      // Add numbers at the end (limited to prevent memory exhaustion)
+      for (let i = 1; i <= 99; i++) {
+        if (i <= 9 || i % 10 === 0 || i === 23 || i === 123 || i === 321) {
           variations.push(password + i)
           variations.push(i + password)
         }

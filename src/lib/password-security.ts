@@ -290,15 +290,16 @@ function secureShuffleArray<T>(array: T[]): T[] {
 }
 
 /**
- * Generate a cryptographically secure password
+ * Generate a cryptographically secure password with enhanced validation and security
  */
 export function generateSecurePassword(length: number = 16): string {
-  if (length < 4) {
-    throw new Error('Password length must be at least 4 characters')
+  // Enhanced parameter validation
+  if (typeof length !== 'number' || !Number.isInteger(length) || length < 4) {
+    throw new Error('Password length must be a positive integer of at least 4 characters')
   }
   
   if (length > SECURITY_CONSTANTS.MAX_PASSWORD_LENGTH) {
-    throw new Error(`Password length cannot exceed ${SECURITY_CONSTANTS.MAX_PASSWORD_LENGTH} characters`)
+    throw new Error(`Password length cannot exceed ${SECURITY_CONSTANTS.MAX_PASSWORD_LENGTH} characters to prevent memory exhaustion attacks`)
   }
   
   const { lowercase, uppercase, numbers, symbols } = PASSWORD_CHARS
@@ -306,21 +307,32 @@ export function generateSecurePassword(length: number = 16): string {
   
   const passwordArray: string[] = []
   
-  // Ensure at least one character from each required set
-  passwordArray.push(lowercase[getUnbiasedRandomInt(lowercase.length)])
-  passwordArray.push(uppercase[getUnbiasedRandomInt(uppercase.length)])
-  passwordArray.push(numbers[getUnbiasedRandomInt(numbers.length)])
-  passwordArray.push(symbols[getUnbiasedRandomInt(symbols.length)])
-  
-  // Fill the rest with random characters from all sets
-  for (let i = 4; i < length; i++) {
-    passwordArray.push(allChars[getUnbiasedRandomInt(allChars.length)])
+  try {
+    // Ensure at least one character from each required set
+    passwordArray.push(lowercase[getUnbiasedRandomInt(lowercase.length)])
+    passwordArray.push(uppercase[getUnbiasedRandomInt(uppercase.length)])
+    passwordArray.push(numbers[getUnbiasedRandomInt(numbers.length)])
+    passwordArray.push(symbols[getUnbiasedRandomInt(symbols.length)])
+    
+    // Fill the rest with random characters from all sets
+    for (let i = 4; i < length; i++) {
+      passwordArray.push(allChars[getUnbiasedRandomInt(allChars.length)])
+    }
+    
+    // Securely shuffle the password array
+    const shuffledPassword = secureShuffleArray(passwordArray)
+    const finalPassword = shuffledPassword.join('')
+    
+    // Clear intermediate values to prevent memory exposure
+    passwordArray.fill('')
+    shuffledPassword.fill('')
+    
+    return finalPassword
+  } catch (error) {
+    // Clear any partial password data on error
+    passwordArray.fill('')
+    throw new Error(`Password generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
-  
-  // Securely shuffle the password array
-  const shuffledPassword = secureShuffleArray(passwordArray)
-  
-  return shuffledPassword.join('')
 }
 
 /**
