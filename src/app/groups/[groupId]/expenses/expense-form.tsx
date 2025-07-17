@@ -256,39 +256,84 @@ export function ExpenseForm({
   const [decryptedTitle, setDecryptedTitle] = useState<string | null>(null)
   const [decryptedNotes, setDecryptedNotes] = useState<string | null>(null)
   
-  // Decrypt title and notes if the group is encrypted
+  // Decrypt title and notes if the group is encrypted with enhanced error handling
   useEffect(() => {
-    if (expense && group.isEncrypted && group.encryptionSalt && expense.encryptedData && expense.encryptionIv) {
+    const decryptExpenseData = async () => {
+      if (!expense) {
+        // Clear state if no expense
+        setDecryptedTitle(null)
+        setDecryptedNotes(null)
+        return
+      }
+
+      // For non-encrypted groups, use the original values
+      if (!group.isEncrypted || !group.encryptionSalt) {
+        const safeTitle = expense.title ?? ''
+        const safeNotes = expense.notes ?? ''
+        setDecryptedTitle(safeTitle)
+        setDecryptedNotes(safeNotes)
+        
+        // Update form values safely
+        form.setValue('title', safeTitle)
+        form.setValue('notes', safeNotes)
+        return
+      }
+
+      // For encrypted groups, attempt decryption
+      if (!expense.encryptedData || !expense.encryptionIv) {
+        console.warn('Encrypted group but missing encrypted data')
+        const fallbackTitle = expense.title ?? 'Encrypted Expense'
+        const fallbackNotes = expense.notes ?? ''
+        setDecryptedTitle(fallbackTitle)
+        setDecryptedNotes(fallbackNotes)
+        return
+      }
+
       const password = PasswordSession.getPassword(group.id)
-      if (password) {
-        PasswordCrypto.decryptExpenseData(
+      if (!password) {
+        // If no password is available, show fallback
+        const fallbackTitle = expense.title ?? 'Encrypted Expense'
+        const fallbackNotes = expense.notes ?? ''
+        setDecryptedTitle(fallbackTitle)
+        setDecryptedNotes(fallbackNotes)
+        return
+      }
+
+      try {
+        const decrypted = await PasswordCrypto.decryptExpenseData(
           expense.encryptedData,
           expense.encryptionIv,
           password,
           group.encryptionSalt,
           group.id
-        ).then(decrypted => {
-          setDecryptedTitle(decrypted.title)
-          setDecryptedNotes(decrypted.notes || '')
-          // Update form values with decrypted data
-          form.setValue('title', decrypted.title)
-          form.setValue('notes', decrypted.notes || '')
-        }).catch(error => {
-          console.error('Failed to decrypt expense data:', error)
-          // In case of decryption failure, keep the original encrypted values
-          setDecryptedTitle(expense.title || '')
-          setDecryptedNotes(expense.notes || '')
-        })
-      } else {
-        // If no password is available, show fallback
-        setDecryptedTitle(expense.title || '')
-        setDecryptedNotes(expense.notes || '')
+        )
+        
+        // Validate decrypted data
+        const safeTitle = decrypted.title ?? 'Decryption Error'
+        const safeNotes = decrypted.notes ?? ''
+        
+        setDecryptedTitle(safeTitle)
+        setDecryptedNotes(safeNotes)
+        
+        // Update form values with decrypted data
+        form.setValue('title', safeTitle)
+        form.setValue('notes', safeNotes)
+      } catch (error) {
+        console.error('Failed to decrypt expense data:', error)
+        
+        // In case of decryption failure, use safe fallbacks
+        const fallbackTitle = expense.title ?? 'Decryption Failed'
+        const fallbackNotes = expense.notes ?? ''
+        setDecryptedTitle(fallbackTitle)
+        setDecryptedNotes(fallbackNotes)
+        
+        // Update form with fallback values
+        form.setValue('title', fallbackTitle)
+        form.setValue('notes', fallbackNotes)
       }
-    } else if (expense) {
-      // For non-encrypted groups, use the original values
-      setDecryptedTitle(expense.title || '')
-      setDecryptedNotes(expense.notes || '')
     }
+
+    decryptExpenseData()
   }, [expense, group, form])
 
   const submit = async (values: ExpenseFormValues) => {

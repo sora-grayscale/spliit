@@ -19,6 +19,11 @@ interface DecryptedExpenseContentProps {
   showNotes?: boolean
 }
 
+// Type guard to ensure safe string handling
+function isValidString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
 interface DecryptedExpenseData {
   title: string
   notes?: string
@@ -37,18 +42,35 @@ export function DecryptedExpenseContent({
   const [isDecrypting, setIsDecrypting] = useState(false)
 
   useEffect(() => {
+    // Use AbortController to prevent race conditions
+    const abortController = new AbortController()
+    let isMounted = true
+    
     const decryptExpenseData = async () => {
-      if (!encryptedData || !encryptionIv || !encryptionSalt) {
+      // Enhanced input validation
+      if (!isValidString(encryptedData) || !isValidString(encryptionIv) || !isValidString(encryptionSalt)) {
+        if (isMounted) setDecryptedData(null)
+        return
+      }
+
+      if (!isValidString(groupId)) {
+        console.error('Invalid groupId provided to DecryptedExpenseContent')
+        if (isMounted) setDecryptedData(null)
         return
       }
 
       const password = PasswordSession.getPassword(groupId)
-      if (!password) {
+      if (!isValidString(password)) {
+        if (isMounted) setDecryptedData(null)
         return
       }
 
+      // Check if operation was aborted
+      if (abortController.signal.aborted) return
+
       try {
-        setIsDecrypting(true)
+        if (isMounted) setIsDecrypting(true)
+        
         const result = await PasswordCrypto.decryptExpenseData(
           encryptedData,
           encryptionIv,
@@ -56,25 +78,53 @@ export function DecryptedExpenseContent({
           encryptionSalt,
           groupId
         )
-        setDecryptedData(result)
+        
+        // Check again if component is still mounted and operation wasn't aborted
+        if (abortController.signal.aborted || !isMounted) return
+        
+        // Validate decryption result
+        if (!result || !isValidString(result.title)) {
+          console.warn('Decryption returned invalid data structure')
+          if (isMounted) setDecryptedData(null)
+          return
+        }
+        
+        if (isMounted) setDecryptedData(result)
       } catch (error) {
-        console.error('Failed to decrypt expense data:', error)
-        // Fall back to encrypted indicator
+        // Don't log errors if the operation was aborted
+        if (!abortController.signal.aborted) {
+          console.error('Failed to decrypt expense data:', error)
+        }
+        if (isMounted) setDecryptedData(null)
       } finally {
-        setIsDecrypting(false)
+        if (isMounted) setIsDecrypting(false)
       }
     }
 
     decryptExpenseData()
+    
+    // Cleanup function to prevent race conditions
+    return () => {
+      isMounted = false
+      abortController.abort()
+    }
   }, [encryptedData, encryptionIv, encryptionSalt, groupId])
 
+  // Enhanced fallback title handling
+  const safeFallbackTitle = isValidString(fallbackTitle) ? fallbackTitle : 'Unknown Expense'
+  
   // If we have encrypted data but no decryption available, show locked indicator
-  if (encryptedData && !decryptedData && !isDecrypting) {
+  if (isValidString(encryptedData) && !decryptedData && !isDecrypting) {
+    const displayTitle = fallbackTitle === '[Encrypted]' ? 'Encrypted Expense' : safeFallbackTitle
+    
     return (
       <span className={className}>
         <HoverCard>
           <HoverCardTrigger asChild>
-            <Lock className="w-3 h-3 inline mr-1 text-primary cursor-help" />
+            <span className="inline-flex items-center">
+              <Lock className="w-3 h-3 mr-1 text-primary cursor-help" />
+              {displayTitle}
+            </span>
           </HoverCardTrigger>
           <HoverCardContent className="w-80">
             <div className="text-sm">
@@ -83,7 +133,6 @@ export function DecryptedExpenseContent({
             </div>
           </HoverCardContent>
         </HoverCard>
-        {fallbackTitle === '[Encrypted]' ? 'Encrypted Expense' : fallbackTitle}
       </span>
     )
   }
@@ -93,15 +142,27 @@ export function DecryptedExpenseContent({
     return <span className={className}>Decrypting...</span>
   }
 
-  // Show decrypted content or fallback
-  if (showNotes && decryptedData?.notes) {
+  // Enhanced notes display logic with proper undefined checks
+  if (showNotes && decryptedData) {
+    const hasValidNotes = isValidString(decryptedData.notes)
+    const displayTitle = isValidString(decryptedData.title) ? decryptedData.title : safeFallbackTitle
+    
     return (
       <span className={className}>
-        <div>{decryptedData.title || fallbackTitle}</div>
-        <div className="text-sm text-muted-foreground mt-1">{decryptedData.notes}</div>
+        <div>{displayTitle}</div>
+        {hasValidNotes && (
+          <div className="text-sm text-muted-foreground mt-1">
+            {decryptedData.notes}
+          </div>
+        )}
       </span>
     )
   }
   
-  return <span className={className}>{decryptedData?.title || fallbackTitle}</span>
+  // Safe title display with fallback
+  const displayTitle = decryptedData && isValidString(decryptedData.title) 
+    ? decryptedData.title 
+    : safeFallbackTitle
+    
+  return <span className={className}>{displayTitle}</span>
 }

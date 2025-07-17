@@ -38,13 +38,22 @@ export function CreateExpenseForm({
         // If group is encrypted, encrypt the expense data
         if (group.isEncrypted && group.encryptionSalt) {
           const password = PasswordSession.getPassword(groupId)
-          if (password) {
+          if (!password) {
+            throw new Error('Password is required for encrypted groups. Please unlock the group first.')
+          }
+          
+          try {
             const { encryptedData, iv } = await PasswordCrypto.encryptExpenseData(
               expenseFormValues.title,
               expenseFormValues.notes || '',
               password,
               group.encryptionSalt
             )
+            
+            // Validate encryption result
+            if (!encryptedData || !iv) {
+              throw new Error('Encryption failed - invalid result')
+            }
             
             processedExpenseFormValues = {
               ...expenseFormValues,
@@ -55,6 +64,9 @@ export function CreateExpenseForm({
               encryptedData,
               encryptionIv: iv
             }
+          } catch (error) {
+            console.error('Failed to encrypt expense data:', error)
+            throw new Error('Failed to encrypt expense data. Please try again.')
           }
         }
         
