@@ -51,7 +51,7 @@ export function EditExpenseForm({
           if (password) {
             const { encryptedData, iv } = await PasswordCrypto.encryptExpenseData(
               expenseFormValues.title,
-              expenseFormValues.notes,
+              expenseFormValues.notes ?? '',
               password,
               group.encryptionSalt
             )
