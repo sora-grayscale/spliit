@@ -1,8 +1,6 @@
 import { RecurrenceRule, SplitMode } from '@prisma/client'
 import * as z from 'zod'
-
-// Security constants
-const MIN_PASSWORD_LENGTH = 6
+import { SECURITY_CONSTANTS } from './security-constants'
 
 export const groupFormSchema = z
   .object({
@@ -39,7 +37,7 @@ export const groupFormSchema = z
 
     // Validate password requirement for encrypted groups
     // Only check password if encryption is enabled and no encryptionSalt exists (client-side)
-    if (isEncrypted && !encryptionSalt && (!password || password.length < MIN_PASSWORD_LENGTH)) {
+    if (isEncrypted && !encryptionSalt && (!password || password.length < SECURITY_CONSTANTS.MIN_PASSWORD_LENGTH)) {
       ctx.addIssue({
         code: 'custom',
         message: 'passwordRequired',

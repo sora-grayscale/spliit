@@ -5,6 +5,9 @@ import {
   getArchivedGroups,
   getRecentGroups,
   getStarredGroups,
+  deleteRecentGroup,
+  unstarGroup,
+  unarchiveGroup,
 } from '@/app/groups/recent-groups-helpers'
 import { Button } from '@/components/ui/button'
 import { getGroups } from '@/lib/api'
@@ -116,11 +119,9 @@ function RecentGroupList_({
       
       if (nonExistentGroups.length > 0) {
         nonExistentGroups.forEach(group => {
-          import('@/app/groups/recent-groups-helpers').then(({ deleteRecentGroup, unstarGroup, unarchiveGroup }) => {
-            deleteRecentGroup(group)
-            unstarGroup(group.id)
-            unarchiveGroup(group.id)
-          })
+          deleteRecentGroup(group)
+          unstarGroup(group.id)
+          unarchiveGroup(group.id)
         })
         // Refresh the groups from storage after cleanup
         setTimeout(() => refreshGroupsFromStorage(), 100)

@@ -674,18 +674,18 @@ export async function deleteGroup(groupId: string): Promise<void> {
 
   // Delete all related data in the correct order to avoid foreign key constraints
   await prisma.$transaction(async (tx) => {
-    // Delete expense documents first
-    for (const expense of group.expenses) {
-      if (expense.documents.length > 0) {
-        await tx.expenseDocument.deleteMany({
-          where: { expenseId: expense.id },
-        })
-      }
+    const expenseIds = group.expenses.map((e) => e.id)
+    
+    // Delete all expense documents in a single call
+    if (expenseIds.length > 0) {
+      await tx.expenseDocument.deleteMany({
+        where: { expenseId: { in: expenseIds } },
+      })
     }
 
     // Delete expense paid-for relationships
     await tx.expensePaidFor.deleteMany({
-      where: { expenseId: { in: group.expenses.map((e) => e.id) } },
+      where: { expenseId: { in: expenseIds } },
     })
 
     // Delete expenses

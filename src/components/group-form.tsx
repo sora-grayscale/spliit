@@ -50,6 +50,7 @@ import { useEffect, useState } from 'react'
 import { PasswordCrypto } from '@/lib/e2ee-crypto'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { Textarea } from './ui/textarea'
+import { PasswordStrengthIndicator } from '@/components/password-strength-indicator'
 
 export type Props = {
   group?: NonNullable<Awaited<ReturnType<typeof getGroup>>>
@@ -115,6 +116,8 @@ export function GroupForm({
   const [isVerifyingPassword, setIsVerifyingPassword] = useState(false)
   const [passwordVerified, setPasswordVerified] = useState<boolean | null>(null)
   const [isDeletingGroup, setIsDeletingGroup] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [currentPasswordConfirm, setCurrentPasswordConfirm] = useState('')
   useEffect(() => {
     if (activeUser === null) {
       const storedActiveUser = localStorage.getItem(`${group?.id}-activeUser`)
@@ -294,14 +297,14 @@ export function GroupForm({
               />
 
               {isEncrypted && group?.isEncrypted && (
-                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <div className="flex items-start gap-2 mb-3">
-                    <Lock className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <Lock className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-blue-800">
+                      <p className="text-sm font-medium text-blue-800 dark:text-blue-100">
                         Password Verification
                       </p>
-                      <p className="text-sm text-blue-700">
+                      <p className="text-sm text-blue-700 dark:text-blue-200">
                         Enter your group password to verify access to encrypted data.
                       </p>
                     </div>
@@ -317,7 +320,7 @@ export function GroupForm({
                           <div className="relative">
                             <Input
                               type={showPassword ? 'text' : 'password'}
-                              className="text-base pr-20"
+                              className="text-base pr-20 bg-background"
                               placeholder="Enter your group password"
                               {...field}
                               onChange={(e) => {
@@ -382,14 +385,14 @@ export function GroupForm({
               )}
 
               {isEncrypted && !group?.isEncrypted && (
-                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                   <div className="flex items-start gap-2 mb-3">
-                    <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-amber-800">
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-100">
                         Important Security Information
                       </p>
-                      <p className="text-sm text-amber-700">
+                      <p className="text-sm text-amber-700 dark:text-amber-200">
                         Choose a strong password. If lost, encrypted data cannot be recovered.
                       </p>
                     </div>
@@ -405,9 +408,13 @@ export function GroupForm({
                           <div className="relative">
                             <Input
                               type={showPassword ? 'text' : 'password'}
-                              className="text-base pr-10"
+                              className="text-base pr-10 bg-background"
                               placeholder="Enter a secure password (min 6 characters)"
                               {...field}
+                              onChange={(e) => {
+                                field.onChange(e)
+                                setCurrentPassword(e.target.value)
+                              }}
                             />
                             <Button
                               type="button"
@@ -424,7 +431,23 @@ export function GroupForm({
                             </Button>
                           </div>
                         </FormControl>
-                        <FormDescription>
+                        
+                        {/* Password Strength Indicator */}
+                        <div className="mt-3">
+                          <PasswordStrengthIndicator 
+                            password={currentPassword}
+                            showDetails={true}
+                            showGenerator={true}
+                            onPasswordGenerate={(newPassword) => {
+                              field.onChange(newPassword)
+                              setCurrentPassword(newPassword)
+                              form.setValue('passwordConfirm', newPassword)
+                              setCurrentPasswordConfirm(newPassword)
+                            }}
+                          />
+                        </div>
+                        
+                        <FormDescription className="mt-3">
                           Share this password securely with group members
                         </FormDescription>
                         <FormMessage>
@@ -438,15 +461,19 @@ export function GroupForm({
                     control={form.control}
                     name="passwordConfirm"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="mt-4">
                         <FormLabel>Confirm Password</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Input
                               type={showPasswordConfirm ? 'text' : 'password'}
-                              className="text-base pr-10"
+                              className="text-base pr-10 bg-background"
                               placeholder="Confirm your password"
                               {...field}
+                              onChange={(e) => {
+                                field.onChange(e)
+                                setCurrentPasswordConfirm(e.target.value)
+                              }}
                             />
                             <Button
                               type="button"
@@ -463,6 +490,24 @@ export function GroupForm({
                             </Button>
                           </div>
                         </FormControl>
+                        
+                        {/* Password Match Indicator */}
+                        {currentPasswordConfirm && (
+                          <div className="flex items-center gap-2 mt-2">
+                            {currentPassword === currentPasswordConfirm ? (
+                              <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                                <Check className="h-4 w-4" />
+                                <span className="text-sm">Passwords match</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                                <X className="h-4 w-4" />
+                                <span className="text-sm">Passwords do not match</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
                         <FormDescription>
                           Enter the same password to confirm
                         </FormDescription>

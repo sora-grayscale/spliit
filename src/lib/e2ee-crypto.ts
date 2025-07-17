@@ -26,7 +26,7 @@ export class PasswordCrypto {
   }
 
   /**
-   * Create test data for password verification
+   * @deprecated Use createPasswordTest() instead for consistent test data generation
    */
   static createTestData(): string {
     return this.TEST_DATA
@@ -231,6 +231,9 @@ export class PasswordSession {
       this.passwords.delete(groupId)
     }
     this.passwordTimestamps.delete(groupId)
+    
+    // Clean up event listeners
+    this.removePasswordCleanup(groupId)
   }
 
   static clearAllPasswords(): void {
@@ -246,25 +249,45 @@ export class PasswordSession {
     return this.getPassword(groupId) !== undefined
   }
 
+  private static cleanupListeners = new Map<string, Array<() => void>>() // groupId -> cleanup functions
+
   private static setupPasswordCleanup(groupId: string): void {
-    // Set up page unload cleanup
-    if (typeof window !== 'undefined') {
-      const cleanup = () => this.clearPassword(groupId)
-      
-      // Clean up on page unload
-      window.addEventListener('beforeunload', cleanup)
-      
-      // Clean up on visibility change (when tab becomes hidden)
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-          cleanup()
-        }
-      })
-      
-      // Set up timeout-based cleanup
-      setTimeout(() => {
-        this.clearPassword(groupId)
-      }, this.MAX_PASSWORD_AGE)
+    if (typeof window === 'undefined') return
+
+    // Remove existing listeners for this groupId
+    this.removePasswordCleanup(groupId)
+
+    const cleanupFunctions: Array<() => void> = []
+    
+    const cleanup = () => this.clearPassword(groupId)
+    
+    // Clean up on page unload
+    const beforeUnloadCleanup = () => cleanup()
+    window.addEventListener('beforeunload', beforeUnloadCleanup, { once: true })
+    cleanupFunctions.push(() => window.removeEventListener('beforeunload', beforeUnloadCleanup))
+    
+    // Clean up on visibility change (when tab becomes hidden)
+    const visibilityCleanup = () => {
+      if (document.hidden) cleanup()
+    }
+    document.addEventListener('visibilitychange', visibilityCleanup)
+    cleanupFunctions.push(() => document.removeEventListener('visibilitychange', visibilityCleanup))
+    
+    // Set up timeout-based cleanup
+    const timeoutId = setTimeout(() => {
+      this.clearPassword(groupId)
+    }, this.MAX_PASSWORD_AGE)
+    cleanupFunctions.push(() => clearTimeout(timeoutId))
+
+    // Store cleanup functions
+    this.cleanupListeners.set(groupId, cleanupFunctions)
+  }
+
+  private static removePasswordCleanup(groupId: string): void {
+    const cleanupFunctions = this.cleanupListeners.get(groupId)
+    if (cleanupFunctions) {
+      cleanupFunctions.forEach(cleanup => cleanup())
+      this.cleanupListeners.delete(groupId)
     }
   }
 }
