@@ -3,6 +3,7 @@ import { ActiveUserBalance } from '@/app/groups/[groupId]/expenses/active-user-b
 import { CategoryIcon } from '@/app/groups/[groupId]/expenses/category-icon'
 import { DocumentsCount } from '@/app/groups/[groupId]/expenses/documents-count'
 import { Button } from '@/components/ui/button'
+import { DecryptedExpenseContent } from '@/components/decrypted-expense-content'
 import { getGroupExpenses } from '@/lib/api'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { ChevronRight } from 'lucide-react'
@@ -35,9 +36,11 @@ type Props = {
   expense: Expense
   currency: string
   groupId: string
+  isGroupEncrypted?: boolean
+  encryptionSalt?: string | null
 }
 
-export function ExpenseCard({ expense, currency, groupId }: Props) {
+export function ExpenseCard({ expense, currency, groupId, isGroupEncrypted, encryptionSalt }: Props) {
   const router = useRouter()
   const locale = useLocale()
 
@@ -58,7 +61,17 @@ export function ExpenseCard({ expense, currency, groupId }: Props) {
       />
       <div className="flex-1">
         <div className={cn('mb-1', expense.isReimbursement && 'italic')}>
-          {expense.title}
+          {isGroupEncrypted && expense.encryptedData ? (
+            <DecryptedExpenseContent
+              encryptedData={expense.encryptedData}
+              encryptionIv={expense.encryptionIv}
+              encryptionSalt={encryptionSalt}
+              groupId={groupId}
+              fallbackTitle={expense.title}
+            />
+          ) : (
+            expense.title
+          )}
         </div>
         <div className="text-xs text-muted-foreground">
           <Participants expense={expense} />

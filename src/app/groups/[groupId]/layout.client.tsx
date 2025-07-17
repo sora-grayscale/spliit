@@ -3,10 +3,12 @@
 import { useToast } from '@/components/ui/use-toast'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
-import { PropsWithChildren, useEffect } from 'react'
+import { PropsWithChildren, useEffect, useState } from 'react'
 import { CurrentGroupProvider } from './current-group-context'
 import { GroupHeader } from './group-header'
 import { SaveGroupLocally } from './save-recent-group'
+import { PasswordUnlockDialog } from '@/components/password-unlock-dialog'
+import { PasswordSession } from '@/lib/e2ee-crypto'
 
 export function GroupLayoutClient({
   groupId,
@@ -15,6 +17,8 @@ export function GroupLayoutClient({
   const { data, isLoading } = trpc.groups.get.useQuery({ groupId })
   const t = useTranslations('Groups.NotFound')
   const { toast } = useToast()
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false)
+  const [isUnlocked, setIsUnlocked] = useState(false)
 
   useEffect(() => {
     if (data && !data.group) {
@@ -23,7 +27,17 @@ export function GroupLayoutClient({
         variant: 'destructive',
       })
     }
-  }, [data])
+    
+    // Check if group is encrypted and password is needed
+    if (data?.group?.isEncrypted && !isUnlocked) {
+      const hasPassword = PasswordSession.hasPassword(groupId)
+      if (!hasPassword) {
+        setShowPasswordDialog(true)
+      } else {
+        setIsUnlocked(true)
+      }
+    }
+  }, [data, groupId, isUnlocked])
 
   const props =
     isLoading || !data?.group
@@ -42,8 +56,24 @@ export function GroupLayoutClient({
   return (
     <CurrentGroupProvider {...props}>
       <GroupHeader />
-      {children}
+      {isUnlocked || !data?.group?.isEncrypted ? children : null}
       <SaveGroupLocally />
+      
+      {data?.group?.isEncrypted && (
+        <PasswordUnlockDialog
+          isOpen={showPasswordDialog}
+          onClose={() => setShowPasswordDialog(false)}
+          onUnlock={() => {
+            setIsUnlocked(true)
+            setShowPasswordDialog(false)
+          }}
+          groupName={data.group.name}
+          groupId={groupId}
+          encryptionSalt={data.group.encryptionSalt || ''}
+          testEncryptedData={data.group.testEncryptedData || undefined}
+          testIv={data.group.testIv || undefined}
+        />
+      )}
     </CurrentGroupProvider>
   )
 }

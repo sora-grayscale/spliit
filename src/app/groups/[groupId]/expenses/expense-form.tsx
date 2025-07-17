@@ -40,12 +40,18 @@ import {
   SplittingOptions,
   expenseFormSchema,
 } from '@/lib/schemas'
+import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto'
 import { calculateShare } from '@/lib/totals'
 import { cn } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RecurrenceRule } from '@prisma/client'
-import { Save } from 'lucide-react'
+import { Save, Lock } from 'lucide-react'
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -176,7 +182,7 @@ export function ExpenseForm({
     resolver: zodResolver(expenseFormSchema),
     defaultValues: expense
       ? {
-          title: expense.title,
+          title: expense.title || '',
           expenseDate: expense.expenseDate ?? new Date(),
           amount: String(expense.amount / 100) as unknown as number, // hack
           category: expense.categoryId,
@@ -247,6 +253,42 @@ export function ExpenseForm({
   })
   const [isCategoryLoading, setCategoryLoading] = useState(false)
   const activeUserId = useActiveUser(group.id)
+  const [decryptedTitle, setDecryptedTitle] = useState<string | null>(null)
+  const [decryptedNotes, setDecryptedNotes] = useState<string | null>(null)
+  
+  // Decrypt title and notes if the group is encrypted
+  useEffect(() => {
+    if (expense && group.isEncrypted && group.encryptionSalt && expense.encryptedData && expense.encryptionIv) {
+      const password = PasswordSession.getPassword(group.id)
+      if (password) {
+        PasswordCrypto.decryptExpenseData(
+          expense.encryptedData,
+          expense.encryptionIv,
+          password,
+          group.encryptionSalt
+        ).then(decrypted => {
+          setDecryptedTitle(decrypted.title)
+          setDecryptedNotes(decrypted.notes || '')
+          // Update form values with decrypted data
+          form.setValue('title', decrypted.title)
+          form.setValue('notes', decrypted.notes || '')
+        }).catch(error => {
+          console.error('Failed to decrypt expense data:', error)
+          // In case of decryption failure, keep the original encrypted values
+          setDecryptedTitle(expense.title || '')
+          setDecryptedNotes(expense.notes || '')
+        })
+      } else {
+        // If no password is available, show fallback
+        setDecryptedTitle(expense.title || '')
+        setDecryptedNotes(expense.notes || '')
+      }
+    } else if (expense) {
+      // For non-encrypted groups, use the original values
+      setDecryptedTitle(expense.title || '')
+      setDecryptedNotes(expense.notes || '')
+    }
+  }, [expense, group, form])
 
   const submit = async (values: ExpenseFormValues) => {
     await persistDefaultSplittingOptions(group.id, values)
@@ -323,7 +365,20 @@ export function ExpenseForm({
       <form onSubmit={form.handleSubmit(submit)}>
         <Card>
           <CardHeader>
-            <CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              {group.isEncrypted && (
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <Lock className="w-5 h-5 text-primary cursor-help" />
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80">
+                    <div className="text-sm">
+                      <p className="font-semibold mb-1">End-to-End Encrypted Expense</p>
+                      <p>This expense will be encrypted with E2EE. Only group members with the correct password can view the details.</p>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+              )}
               {t(`${sExpense}.${isCreate ? 'create' : 'edit'}`)}
             </CardTitle>
           </CardHeader>

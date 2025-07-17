@@ -100,9 +100,11 @@
       "protectedParticipant": "This participant is part of expenses, and can not be removed.",
       "new": "New",
       "add": "Add participant",
-      "John": "John",
-      "Jane": "Jane",
-      "Jack": "Jack"
+      "defaultNames": {
+        "participant1": "John",
+        "participant2": "Jane", 
+        "participant3": "Jack"
+      }
     },
     "Settings": {
       "title": "Local settings",
@@ -396,5 +398,32 @@
       "TV/Phone/Internet": "TV/Phone/Internet",
       "Water": "Water"
     }
+  },
+  "Validation": {
+    "passwordRequired": "Password is required for encrypted groups (minimum 6 characters)",
+    "passwordConfirmMismatch": "Passwords do not match"
+  },
+  "E2EE": {
+    "groupTooltipTitle": "End-to-End Encrypted Group",
+    "groupTooltipDescription": "This group is protected with E2EE. Only members with the correct password can view expense details.",
+    "expenseTooltipTitle": "End-to-End Encrypted Expense", 
+    "expenseTooltipDescription": "This expense will be encrypted with E2EE. Only group members with the correct password can view the details.",
+    "encryptedExpenseTooltipDescription": "This expense is encrypted with E2EE. Enter the correct password to view the details."
+  },
+  "GroupDeletion": {
+    "dangerZoneTitle": "Danger Zone",
+    "dangerZoneDescription": "Permanently delete this group and all associated data. This action cannot be undone.",
+    "deleteButtonText": "Delete Group Permanently",
+    "confirmTitle": "Are you absolutely sure?",
+    "confirmDescription": "This action cannot be undone. This will permanently delete the group \"{groupName}\" and remove all expenses, participants, and associated data from the database.",
+    "confirmButton": "Delete Permanently",
+    "cancelButton": "Cancel"
+  },
+  "PasswordVerification": {
+    "verifyButton": "Verify",
+    "verifyingText": "Verifying...",
+    "passwordVerified": "Password verified",
+    "incorrectPassword": "Incorrect password",
+    "cannotChangeAfterCreation": "(Cannot be changed after creation)"
   }
 }

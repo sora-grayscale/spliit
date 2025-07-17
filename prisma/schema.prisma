@@ -20,6 +20,12 @@ model Group {
   expenses     Expense[]
   activities   Activity[]
   createdAt    DateTime      @default(now())
+  
+  // E2EE fields
+  isEncrypted      Boolean     @default(false)
+  encryptionSalt   String?     // Salt for PBKDF2 key derivation
+  testEncryptedData String?    @db.Text // Encrypted test data for password verification
+  testIv           String?     // IV for test data encryption
 }
 
 model Participant {
@@ -59,6 +65,10 @@ model Expense {
   recurrenceRule  RecurrenceRule?    @default(NONE)
   recurringExpenseLink RecurringExpenseLink?
   recurringExpenseLinkId String?
+  
+  // E2EE fields
+  encryptedData   String?           @db.Text // Encrypted JSON of {title, notes}
+  encryptionIv    String?           // AES-GCM initialization vector
 }
 
 model ExpenseDocument {

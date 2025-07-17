@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { ExpenseFormValues, GroupFormValues } from '@/lib/schemas'
+import { PasswordCrypto } from '@/lib/e2ee-crypto'
 import {
   ActivityType,
   Expense,
@@ -19,6 +20,11 @@ export async function createGroup(groupFormValues: GroupFormValues) {
       name: groupFormValues.name,
       information: groupFormValues.information,
       currency: groupFormValues.currency,
+      // E2EE fields
+      isEncrypted: groupFormValues.isEncrypted ?? false,
+      encryptionSalt: groupFormValues.encryptionSalt || null,
+      testEncryptedData: groupFormValues.testEncryptedData || null,
+      testIv: groupFormValues.testIv || null,
       participants: {
         createMany: {
           data: groupFormValues.participants.map(({ name }) => ({
@@ -101,6 +107,9 @@ export async function createExpense(
         },
       },
       notes: expenseFormValues.notes,
+      // E2EE fields
+      encryptedData: expenseFormValues.encryptedData,
+      encryptionIv: expenseFormValues.encryptionIv,
     },
   })
 }
@@ -273,6 +282,9 @@ export async function updateExpense(
           })),
       },
       notes: expenseFormValues.notes,
+      // E2EE fields
+      encryptedData: expenseFormValues.encryptedData,
+      encryptionIv: expenseFormValues.encryptionIv,
     },
   })
 }
@@ -353,6 +365,9 @@ export async function getGroupExpenses(
       splitMode: true,
       recurrenceRule: true,
       title: true,
+      // E2EE fields
+      encryptedData: true,
+      encryptionIv: true,
       _count: { select: { documents: true } },
     },
     where: {
@@ -402,6 +417,14 @@ export async function getActivities(
     where: {
       groupId,
       id: { in: expenseIds },
+    },
+    include: {
+      paidBy: true,
+      paidFor: {
+        include: {
+          participant: true,
+        },
+      },
     },
   })
 
@@ -628,4 +651,61 @@ function isDateInNextMonth(
   }
 
   return true
+}
+
+export async function deleteGroup(groupId: string): Promise<void> {
+  // Verify that the group exists
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    include: {
+      participants: true,
+      expenses: {
+        include: {
+          paidFor: true,
+          documents: true,
+        },
+      },
+    },
+  })
+
+  if (!group) {
+    throw new Error('Group not found')
+  }
+
+  // Delete all related data in the correct order to avoid foreign key constraints
+  await prisma.$transaction(async (tx) => {
+    const expenseIds = group.expenses.map((e) => e.id)
+    
+    // Delete all expense documents in a single call
+    if (expenseIds.length > 0) {
+      await tx.expenseDocument.deleteMany({
+        where: { expenseId: { in: expenseIds } },
+      })
+    }
+
+    // Delete expense paid-for relationships
+    await tx.expensePaidFor.deleteMany({
+      where: { expenseId: { in: expenseIds } },
+    })
+
+    // Delete expenses
+    await tx.expense.deleteMany({
+      where: { groupId },
+    })
+
+    // Delete activities
+    await tx.activity.deleteMany({
+      where: { groupId },
+    })
+
+    // Delete participants
+    await tx.participant.deleteMany({
+      where: { groupId },
+    })
+
+    // Finally, delete the group itself
+    await tx.group.delete({
+      where: { id: groupId },
+    })
+  })
 }

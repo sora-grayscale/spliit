@@ -5,6 +5,9 @@ import {
   getArchivedGroups,
   getRecentGroups,
   getStarredGroups,
+  deleteRecentGroup,
+  unstarGroup,
+  unarchiveGroup,
 } from '@/app/groups/recent-groups-helpers'
 import { Button } from '@/components/ui/button'
 import { getGroups } from '@/lib/api'
@@ -107,6 +110,25 @@ function RecentGroupList_({
     groupIds: groups.map((group) => group.id),
   })
 
+  // Clean up localStorage by removing non-existent groups
+  useEffect(() => {
+    if (data && data.groups.length > 0) {
+      const nonExistentGroups = groups.filter(group => 
+        !data.groups.some(dbGroup => dbGroup.id === group.id)
+      )
+      
+      if (nonExistentGroups.length > 0) {
+        nonExistentGroups.forEach(group => {
+          deleteRecentGroup(group)
+          unstarGroup(group.id)
+          unarchiveGroup(group.id)
+        })
+        // Refresh the groups from storage after cleanup
+        setTimeout(() => refreshGroupsFromStorage(), 100)
+      }
+    }
+  }, [data, groups, refreshGroupsFromStorage])
+
   if (isLoading || !data) {
     return (
       <GroupsPage reload={refreshGroupsFromStorage}>
@@ -134,8 +156,13 @@ function RecentGroupList_({
     )
   }
 
+  // Filter out groups that no longer exist in the database
+  const existingGroups = groups.filter(group => 
+    data.groups.some(dbGroup => dbGroup.id === group.id)
+  )
+  
   const { starredGroupInfo, groupInfo, archivedGroupInfo } = sortGroups({
-    groups,
+    groups: existingGroups,
     starredGroups,
     archivedGroups,
   })

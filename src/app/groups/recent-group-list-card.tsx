@@ -17,7 +17,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { StarFilledIcon } from '@radix-ui/react-icons'
-import { Calendar, MoreHorizontal, Star, Users } from 'lucide-react'
+import { Calendar, MoreHorizontal, Star, Users, Lock } from 'lucide-react'
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -55,8 +60,21 @@ export function RecentGroupListCard({
             <div className="text-base flex gap-2 justify-between">
               <Link
                 href={`/groups/${group.id}`}
-                className="flex-1 overflow-hidden text-ellipsis"
+                className="flex-1 overflow-hidden text-ellipsis flex items-center gap-2"
               >
+                {groupDetail?.isEncrypted && (
+                  <HoverCard>
+                    <HoverCardTrigger asChild>
+                      <Lock className="w-4 h-4 text-primary flex-shrink-0 cursor-help" />
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80">
+                      <div className="text-sm">
+                        <p className="font-semibold mb-1">End-to-End Encrypted Group</p>
+                        <p>This group is protected with E2EE. Only members with the correct password can view expense details.</p>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
+                )}
                 {group.name}
               </Link>
               <span className="flex-shrink-0">

@@ -7,6 +7,8 @@ import { ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { DecryptedExpenseContent } from '@/components/decrypted-expense-content'
+import { Fragment } from 'react'
 
 export type Activity =
   AppRouterOutput['groups']['activities']['list']['activities'][number]
@@ -16,29 +18,106 @@ type Props = {
   activity: Activity
   participant?: Participant
   dateStyle: DateTimeStyle
+  isEncrypted?: boolean
+  encryptionSalt?: string | null
 }
 
-function useSummary(activity: Activity, participantName?: string) {
+function useSummary(activity: Activity, participantName?: string, isEncrypted?: boolean, encryptionSalt?: string | null, groupId?: string) {
   const t = useTranslations('Activity')
   const participant = participantName ?? t('someone')
-  const expense = activity.data ?? ''
+  
+  // Helper function to render participant details
+  const renderParticipantDetails = () => {
+    if (!activity.expense) return null
+    
+    const paidFor = activity.expense.paidFor?.map((paidFor, index) => (
+      <Fragment key={index}>
+        {index !== 0 && <>, </>}
+        <strong>{paidFor.participant.name}</strong>
+      </Fragment>
+    ))
+    
+    if (!paidFor || paidFor.length === 0) return null
+    
+    return (
+      <div className="text-xs text-muted-foreground mt-1">
+        Paid by <strong>{activity.expense.paidBy?.name}</strong> for {paidFor}
+      </div>
+    )
+  }
 
-  const tr = (key: string) =>
-    t.rich(key, {
-      expense,
-      participant,
-      em: (chunks) => <em>&ldquo;{chunks}&rdquo;</em>,
-      strong: (chunks) => <strong>{chunks}</strong>,
-    })
+  // Direct template construction - most reliable approach
+  const renderExpenseActivity = (templateKey: string) => {
+    const expenseTitle = isEncrypted && encryptionSalt ? (
+      // For encrypted groups, try to decrypt using expense data if available
+      activity.expense ? (
+        <DecryptedExpenseContent
+          encryptedData={activity.expense.encryptedData}
+          encryptionIv={activity.expense.encryptionIv}
+          encryptionSalt={encryptionSalt}
+          groupId={groupId || ''}
+          fallbackTitle={activity.data ?? ''}
+        />
+      ) : (
+        // For deleted expenses, data might be the only source of title
+        activity.data === '[Encrypted]' ? 'Encrypted Expense' : (activity.data ?? '')
+      )
+    ) : (
+      activity.data ?? ''
+    )
+
+    // Build the message manually based on the template structure
+    if (templateKey === 'expenseCreated') {
+      return (
+        <div>
+          <div>
+            Expense <em>{expenseTitle}</em> created by <strong>{participant}</strong>.
+          </div>
+          {renderParticipantDetails()}
+        </div>
+      )
+    } else if (templateKey === 'expenseUpdated') {
+      return (
+        <div>
+          <div>
+            Expense <em>{expenseTitle}</em> updated by <strong>{participant}</strong>.
+          </div>
+          {renderParticipantDetails()}
+        </div>
+      )
+    } else if (templateKey === 'expenseDeleted') {
+      return (
+        <div>
+          <div>
+            Expense <em>{expenseTitle}</em> deleted by <strong>{participant}</strong>.
+          </div>
+          {renderParticipantDetails()}
+        </div>
+      )
+    }
+    
+    // Fallback to basic display
+    return (
+      <div>
+        <div>
+          {t(templateKey)} {expenseTitle} by {participant}
+        </div>
+        {renderParticipantDetails()}
+      </div>
+    )
+  }
 
   if (activity.activityType == ActivityType.UPDATE_GROUP) {
-    return <>{tr('settingsModified')}</>
+    return <>{t.rich('settingsModified', {
+      participant,
+      strong: (chunks) => <strong>{chunks}</strong>,
+    })}</>
   } else if (activity.activityType == ActivityType.CREATE_EXPENSE) {
-    return <>{tr('expenseCreated')}</>
+    return renderExpenseActivity('expenseCreated')
   } else if (activity.activityType == ActivityType.UPDATE_EXPENSE) {
-    return <>{tr('expenseUpdated')}</>
+    return renderExpenseActivity('expenseUpdated')
   } else if (activity.activityType == ActivityType.DELETE_EXPENSE) {
-    return <>{tr('expenseDeleted')}</>
+    return renderExpenseActivity('expenseDeleted')
   }
 }
 
@@ -47,12 +126,14 @@ export function ActivityItem({
   activity,
   participant,
   dateStyle,
+  isEncrypted,
+  encryptionSalt,
 }: Props) {
   const router = useRouter()
   const locale = useLocale()
 
   const expenseExists = activity.expense !== undefined
-  const summary = useSummary(activity, participant?.name)
+  const summary = useSummary(activity, participant?.name, isEncrypted, encryptionSalt, groupId)
 
   return (
     <div
