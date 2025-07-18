@@ -158,12 +158,12 @@ export function DecryptedExpenseContent({
     // Use AbortController to prevent race conditions
     const abortController = new AbortController()
 
-    // Add a small delay to prevent rapid successive calls
+    // Add a small delay to prevent rapid successive calls (reduced for better UX)
     const timeoutId = setTimeout(() => {
       if (!abortController.signal.aborted) {
         decryptExpenseData(abortController, isMountedRef)
       }
-    }, 100)
+    }, 50)
 
     // Cleanup function to prevent race conditions
     return () => {

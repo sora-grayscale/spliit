@@ -243,23 +243,37 @@ export class PasswordSession {
 }
 
 /**
- * PasswordCrypto class - provides unified API for E2EE operations
+ * PasswordCrypto class - Stable Facade for E2EE Operations
  *
- * This class serves as a facade that delegates to modular services while maintaining
- * API compatibility. It provides a stable interface for E2EE operations across the application.
+ * CLASSIFICATION: Production-Ready Stable Interface
  *
- * Architecture:
- * - Delegates to KeyDerivation for key operations
- * - Delegates to EncryptionService for encryption/decryption
- * - Delegates to PasswordVerification for password validation
- * - Integrates with GroupRateLimiter for security
+ * This class serves as a stable facade that provides a unified API for E2EE operations
+ * while delegating to modular services. It maintains consistent behavior and API
+ * compatibility across application versions.
  *
- * Migration Path (Future):
- * When migrating to direct service usage, consider:
- * 1. KeyDerivation.deriveKeyFromPassword() for key derivation
- * 2. EncryptionService.encryptData() / decryptData() for data operations
- * 3. PasswordVerification.verifyPassword() for validation
- * 4. GroupRateLimiter.getGroupLimiter() for rate limiting
+ * Core Design Principles:
+ * - Facade Pattern: Simplifies complex subsystem interactions
+ * - Stability: Maintains consistent API contracts
+ * - Delegation: Leverages specialized services for implementation
+ * - Security: Integrates rate limiting and validation
+ *
+ * Architecture Overview:
+ * - KeyDerivation: Handles password-based key derivation (PBKDF2)
+ * - EncryptionService: Manages AES-GCM encryption/decryption
+ * - PasswordVerification: Validates passwords using test payloads
+ * - GroupRateLimiter: Provides per-group rate limiting protection
+ *
+ * API Stability Commitment:
+ * This facade provides long-term API stability for application components.
+ * Breaking changes to public methods will be avoided in favor of internal
+ * implementation improvements through the delegated services.
+ *
+ * Future Enhancement Path:
+ * Internal improvements can be made by enhancing the delegated services:
+ * - Enhanced key derivation algorithms via KeyDerivation
+ * - Improved encryption performance via EncryptionService
+ * - Advanced rate limiting strategies via GroupRateLimiter
+ * - Better password validation via PasswordVerification
  */
 export class PasswordCrypto {
   /**
