@@ -24,6 +24,11 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -33,25 +38,25 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { randomId } from '@/lib/api'
+import {
+  ApiIncompatibilityError,
+  isApiIncompatibilityError,
+} from '@/lib/crypto-errors'
+import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { useActiveUser } from '@/lib/hooks'
+import { hasModernSignature, toLegacyCrypto } from '@/lib/legacy-crypto-types'
 import {
   ExpenseFormValues,
   SplittingOptions,
   expenseFormSchema,
 } from '@/lib/schemas'
-import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
 import { calculateShare } from '@/lib/totals'
 import { cn } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RecurrenceRule } from '@prisma/client'
-import { Save, Lock } from 'lucide-react'
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '@/components/ui/hover-card'
+import { Lock, Save } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -255,7 +260,7 @@ export function ExpenseForm({
   const activeUserId = useActiveUser(group.id)
   const [decryptedTitle, setDecryptedTitle] = useState<string | null>(null)
   const [decryptedNotes, setDecryptedNotes] = useState<string | null>(null)
-  
+
   // Decrypt title and notes if the group is encrypted with enhanced error handling
   useEffect(() => {
     const decryptExpenseData = async () => {
@@ -272,7 +277,7 @@ export function ExpenseForm({
         const safeNotes = expense.notes ?? ''
         setDecryptedTitle(safeTitle)
         setDecryptedNotes(safeNotes)
-        
+
         // Update form values safely
         form.setValue('title', safeTitle)
         form.setValue('notes', safeNotes)
@@ -300,50 +305,66 @@ export function ExpenseForm({
       }
 
       try {
-        // API compatibility: Handle both new and legacy signatures
+        // Type-safe API compatibility handling
         let decrypted
         try {
+          // Try modern API first
           decrypted = await PasswordCrypto.decryptExpenseData(
             expense.encryptedData,
             expense.encryptionIv,
             password,
             group.encryptionSalt,
-            group.id
+            group.id,
           )
         } catch (apiError) {
-          // Fallback for backward compatibility
-          if (apiError instanceof Error && (apiError.message?.includes('groupId') || apiError.message?.includes('parameter'))) {
-            console.warn('Using legacy decryptExpenseData API without groupId')
-            decrypted = await (PasswordCrypto.decryptExpenseData as any)(
-              expense.encryptedData,
-              expense.encryptionIv,
-              password,
-              group.encryptionSalt
+          // Type-safe fallback for API compatibility
+          if (
+            isApiIncompatibilityError(apiError) ||
+            !hasModernSignature(PasswordCrypto)
+          ) {
+            console.warn(
+              'Using legacy API signature for backward compatibility',
             )
+
+            try {
+              const legacyCrypto = toLegacyCrypto(PasswordCrypto)
+              decrypted = await legacyCrypto.decryptExpenseData(
+                expense.encryptedData,
+                expense.encryptionIv,
+                password,
+                group.encryptionSalt,
+              )
+            } catch (legacyError) {
+              // If legacy API also fails, throw the original error
+              throw new ApiIncompatibilityError(
+                'Both modern and legacy API signatures failed',
+                apiError instanceof Error ? apiError : undefined,
+              )
+            }
           } else {
             throw apiError
           }
         }
-        
+
         // Validate decrypted data
         const safeTitle = decrypted.title ?? 'Decryption Error'
         const safeNotes = decrypted.notes ?? ''
-        
+
         setDecryptedTitle(safeTitle)
         setDecryptedNotes(safeNotes)
-        
+
         // Update form values with decrypted data
         form.setValue('title', safeTitle)
         form.setValue('notes', safeNotes)
       } catch (error) {
         console.error('Failed to decrypt expense data:', error)
-        
+
         // In case of decryption failure, use safe fallbacks
         const fallbackTitle = expense.title ?? 'Decryption Failed'
         const fallbackNotes = expense.notes ?? ''
         setDecryptedTitle(fallbackTitle)
         setDecryptedNotes(fallbackNotes)
-        
+
         // Update form with fallback values
         form.setValue('title', fallbackTitle)
         form.setValue('notes', fallbackNotes)
@@ -436,8 +457,13 @@ export function ExpenseForm({
                   </HoverCardTrigger>
                   <HoverCardContent className="w-80">
                     <div className="text-sm">
-                      <p className="font-semibold mb-1">End-to-End Encrypted Expense</p>
-                      <p>This expense will be encrypted with E2EE. Only group members with the correct password can view the details.</p>
+                      <p className="font-semibold mb-1">
+                        End-to-End Encrypted Expense
+                      </p>
+                      <p>
+                        This expense will be encrypted with E2EE. Only group
+                        members with the correct password can view the details.
+                      </p>
                     </div>
                   </HoverCardContent>
                 </HoverCard>

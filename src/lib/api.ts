@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma'
 import { ExpenseFormValues, GroupFormValues } from '@/lib/schemas'
-import { PasswordCrypto } from '@/lib/e2ee-crypto'
 import {
   ActivityType,
   Expense,
@@ -675,7 +674,7 @@ export async function deleteGroup(groupId: string): Promise<void> {
   // Delete all related data in the correct order to avoid foreign key constraints
   await prisma.$transaction(async (tx) => {
     const expenseIds = group.expenses.map((e) => e.id)
-    
+
     // Delete all expense documents in a single call
     if (expenseIds.length > 0) {
       await tx.expenseDocument.deleteMany({

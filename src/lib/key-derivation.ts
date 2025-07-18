@@ -2,8 +2,8 @@
  * Key derivation utilities for E2EE
  */
 
-import { SECURITY_CONSTANTS } from './security-constants'
 import { validateCryptoInputs } from './crypto-utils'
+import { SECURITY_CONSTANTS } from './security-constants'
 
 /**
  * Key derivation service using PBKDF2
@@ -17,10 +17,16 @@ export class KeyDerivation {
    */
   static generateSalt(): string {
     try {
-      const salt = crypto.getRandomValues(new Uint8Array(SECURITY_CONSTANTS.SALT_LENGTH))
+      const salt = crypto.getRandomValues(
+        new Uint8Array(SECURITY_CONSTANTS.SALT_LENGTH),
+      )
       return this.arrayBufferToBase64(salt)
     } catch (error) {
-      throw new Error(`Salt generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw new Error(
+        `Salt generation failed: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      )
     }
   }
 
@@ -30,16 +36,18 @@ export class KeyDerivation {
   static async deriveKeyFromPassword(
     password: string,
     salt: string,
-    iterations: number = this.ITERATIONS
+    iterations: number = this.ITERATIONS,
   ): Promise<CryptoKey> {
     validateCryptoInputs({ password, salt })
-    
+
     if (typeof iterations !== 'number' || iterations < 10000) {
       throw new Error('Iterations must be at least 10,000 for security')
     }
-    
+
     if (iterations > 1000000) {
-      throw new Error('Iterations cannot exceed 1,000,000 to prevent DoS attacks')
+      throw new Error(
+        'Iterations cannot exceed 1,000,000 to prevent DoS attacks',
+      )
     }
 
     try {
@@ -53,7 +61,7 @@ export class KeyDerivation {
         passwordBuffer,
         'PBKDF2',
         false,
-        ['deriveKey']
+        ['deriveKey'],
       )
 
       // Clear intermediate password buffer
@@ -73,12 +81,16 @@ export class KeyDerivation {
           length: this.KEY_LENGTH,
         },
         false,
-        ['encrypt', 'decrypt']
+        ['encrypt', 'decrypt'],
       )
 
       return derivedKey
     } catch (error) {
-      throw new Error(`Key derivation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw new Error(
+        `Key derivation failed: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      )
     }
   }
 
@@ -86,7 +98,9 @@ export class KeyDerivation {
   private static arrayBufferToBase64(buffer: ArrayBuffer): string {
     try {
       const bytes = new Uint8Array(buffer)
-      const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('')
+      const binary = Array.from(bytes, (byte) =>
+        String.fromCharCode(byte),
+      ).join('')
       return btoa(binary)
     } catch (error) {
       throw new Error('Failed to convert buffer to base64')

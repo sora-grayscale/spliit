@@ -1,4 +1,5 @@
 'use client'
+import { DecryptedExpenseContent } from '@/components/decrypted-expense-content'
 import { Button } from '@/components/ui/button'
 import { DateTimeStyle, cn, formatDate } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
@@ -7,7 +8,6 @@ import { ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { DecryptedExpenseContent } from '@/components/decrypted-expense-content'
 import { Fragment } from 'react'
 
 export type Activity =
@@ -22,23 +22,29 @@ type Props = {
   encryptionSalt?: string | null
 }
 
-function useSummary(activity: Activity, participantName?: string, isEncrypted?: boolean, encryptionSalt?: string | null, groupId?: string) {
+function useSummary(
+  activity: Activity,
+  participantName?: string,
+  isEncrypted?: boolean,
+  encryptionSalt?: string | null,
+  groupId?: string,
+) {
   const t = useTranslations('Activity')
   const participant = participantName ?? t('someone')
-  
+
   // Helper function to render participant details
   const renderParticipantDetails = () => {
     if (!activity.expense) return null
-    
+
     const paidFor = activity.expense.paidFor?.map((paidFor, index) => (
       <Fragment key={index}>
         {index !== 0 && <>, </>}
         <strong>{paidFor.participant.name}</strong>
       </Fragment>
     ))
-    
+
     if (!paidFor || paidFor.length === 0) return null
-    
+
     return (
       <div className="text-xs text-muted-foreground mt-1">
         Paid by <strong>{activity.expense.paidBy?.name}</strong> for {paidFor}
@@ -48,30 +54,34 @@ function useSummary(activity: Activity, participantName?: string, isEncrypted?: 
 
   // Direct template construction - most reliable approach
   const renderExpenseActivity = (templateKey: string) => {
-    const expenseTitle = isEncrypted && encryptionSalt ? (
-      // For encrypted groups, try to decrypt using expense data if available
-      activity.expense ? (
-        <DecryptedExpenseContent
-          encryptedData={activity.expense.encryptedData}
-          encryptionIv={activity.expense.encryptionIv}
-          encryptionSalt={encryptionSalt}
-          groupId={groupId || ''}
-          fallbackTitle={activity.data ?? ''}
-        />
+    const expenseTitle =
+      isEncrypted && encryptionSalt ? (
+        // For encrypted groups, try to decrypt using expense data if available
+        activity.expense ? (
+          <DecryptedExpenseContent
+            encryptedData={activity.expense.encryptedData}
+            encryptionIv={activity.expense.encryptionIv}
+            encryptionSalt={encryptionSalt}
+            groupId={groupId || ''}
+            fallbackTitle={activity.data ?? ''}
+          />
+        ) : // For deleted expenses, data might be the only source of title
+        activity.data === '[Encrypted]' ? (
+          'Encrypted Expense'
+        ) : (
+          activity.data ?? ''
+        )
       ) : (
-        // For deleted expenses, data might be the only source of title
-        activity.data === '[Encrypted]' ? 'Encrypted Expense' : (activity.data ?? '')
+        activity.data ?? ''
       )
-    ) : (
-      activity.data ?? ''
-    )
 
     // Build the message manually based on the template structure
     if (templateKey === 'expenseCreated') {
       return (
         <div>
           <div>
-            Expense <em>{expenseTitle}</em> created by <strong>{participant}</strong>.
+            Expense <em>{expenseTitle}</em> created by{' '}
+            <strong>{participant}</strong>.
           </div>
           {renderParticipantDetails()}
         </div>
@@ -80,7 +90,8 @@ function useSummary(activity: Activity, participantName?: string, isEncrypted?: 
       return (
         <div>
           <div>
-            Expense <em>{expenseTitle}</em> updated by <strong>{participant}</strong>.
+            Expense <em>{expenseTitle}</em> updated by{' '}
+            <strong>{participant}</strong>.
           </div>
           {renderParticipantDetails()}
         </div>
@@ -89,13 +100,14 @@ function useSummary(activity: Activity, participantName?: string, isEncrypted?: 
       return (
         <div>
           <div>
-            Expense <em>{expenseTitle}</em> deleted by <strong>{participant}</strong>.
+            Expense <em>{expenseTitle}</em> deleted by{' '}
+            <strong>{participant}</strong>.
           </div>
           {renderParticipantDetails()}
         </div>
       )
     }
-    
+
     // Fallback to basic display
     return (
       <div>
@@ -108,10 +120,14 @@ function useSummary(activity: Activity, participantName?: string, isEncrypted?: 
   }
 
   if (activity.activityType == ActivityType.UPDATE_GROUP) {
-    return <>{t.rich('settingsModified', {
-      participant,
-      strong: (chunks) => <strong>{chunks}</strong>,
-    })}</>
+    return (
+      <>
+        {t.rich('settingsModified', {
+          participant,
+          strong: (chunks) => <strong>{chunks}</strong>,
+        })}
+      </>
+    )
   } else if (activity.activityType == ActivityType.CREATE_EXPENSE) {
     return renderExpenseActivity('expenseCreated')
   } else if (activity.activityType == ActivityType.UPDATE_EXPENSE) {
@@ -133,7 +149,13 @@ export function ActivityItem({
   const locale = useLocale()
 
   const expenseExists = activity.expense !== undefined
-  const summary = useSummary(activity, participant?.name, isEncrypted, encryptionSalt, groupId)
+  const summary = useSummary(
+    activity,
+    participant?.name,
+    isEncrypted,
+    encryptionSalt,
+    groupId,
+  )
 
   return (
     <div

@@ -2,8 +2,8 @@
  * Per-group rate limiting for E2EE operations
  */
 
-import { SECURITY_CONSTANTS } from './security-constants'
 import { constantTimeDelay } from './crypto-utils'
+import { SECURITY_CONSTANTS } from './security-constants'
 
 interface RateLimitRecord {
   count: number
@@ -18,12 +18,12 @@ export class GroupRateLimiter {
   private static instances = new Map<string, GroupRateLimiter>()
   private attempts = new Map<string, RateLimitRecord>()
   private cleanupTimer?: ReturnType<typeof setInterval>
-  
+
   constructor(
     private groupId: string,
     private maxAttempts: number = SECURITY_CONSTANTS.MAX_LOGIN_ATTEMPTS,
     private windowMs: number = SECURITY_CONSTANTS.LOGIN_LOCKOUT_DURATION,
-    private enableExponentialBackoff: boolean = true
+    private enableExponentialBackoff: boolean = true,
   ) {
     // Cleanup expired entries every 5 minutes
     this.cleanupTimer = setInterval(() => this.cleanup(), 5 * 60 * 1000)
@@ -34,19 +34,23 @@ export class GroupRateLimiter {
    */
   static getGroupLimiter(
     groupId: string,
-    operationType: 'decryption' | 'verification' = 'decryption'
+    operationType: 'decryption' | 'verification' = 'decryption',
   ): GroupRateLimiter {
     const key = `${groupId}:${operationType}`
-    
+
     if (!this.instances.has(key)) {
       // Different limits for different operations
-      const limits = operationType === 'decryption' 
-        ? { maxAttempts: 5, windowMs: 60000 } // 5 attempts per minute for decryption
-        : { maxAttempts: 10, windowMs: 300000 } // 10 attempts per 5 minutes for verification
-      
-      this.instances.set(key, new GroupRateLimiter(groupId, limits.maxAttempts, limits.windowMs))
+      const limits =
+        operationType === 'decryption'
+          ? { maxAttempts: 5, windowMs: 60000 } // 5 attempts per minute for decryption
+          : { maxAttempts: 10, windowMs: 300000 } // 10 attempts per 5 minutes for verification
+
+      this.instances.set(
+        key,
+        new GroupRateLimiter(groupId, limits.maxAttempts, limits.windowMs),
+      )
     }
-    
+
     return this.instances.get(key)!
   }
 
@@ -56,17 +60,17 @@ export class GroupRateLimiter {
   isBlocked(identifier: string = 'default'): boolean {
     const record = this.attempts.get(identifier)
     if (!record) return false
-    
+
     const now = Date.now()
-    const effectiveWindow = this.enableExponentialBackoff 
+    const effectiveWindow = this.enableExponentialBackoff
       ? this.windowMs * record.backoffMultiplier
       : this.windowMs
-      
+
     if (now - record.lastAttempt > effectiveWindow) {
       this.attempts.delete(identifier)
       return false
     }
-    
+
     return record.count >= this.maxAttempts
   }
 
@@ -76,31 +80,31 @@ export class GroupRateLimiter {
   async recordAttempt(identifier: string = 'default'): Promise<boolean> {
     const now = Date.now()
     const record = this.attempts.get(identifier)
-    
+
     if (!record || now - record.lastAttempt > this.windowMs) {
-      this.attempts.set(identifier, { 
-        count: 1, 
+      this.attempts.set(identifier, {
+        count: 1,
         lastAttempt: now,
-        backoffMultiplier: 1
+        backoffMultiplier: 1,
       })
       return false
     }
-    
+
     record.count++
     record.lastAttempt = now
-    
+
     // Exponential backoff
     if (this.enableExponentialBackoff && record.count >= this.maxAttempts) {
       record.backoffMultiplier = Math.min(record.backoffMultiplier * 2, 16) // Max 16x backoff
     }
-    
+
     const isBlocked = record.count >= this.maxAttempts
-    
+
     // Add progressive delay for repeated attempts
     if (record.count > 1) {
       await constantTimeDelay(Math.min(record.count * 100, 2000)) // Max 2 second delay
     }
-    
+
     return isBlocked
   }
 
@@ -124,18 +128,19 @@ export class GroupRateLimiter {
   private cleanup(): void {
     const now = Date.now()
     const expiredKeys: string[] = []
-    
+
     this.attempts.forEach((record, key) => {
-      const effectiveWindow = this.enableExponentialBackoff 
+      const effectiveWindow = this.enableExponentialBackoff
         ? this.windowMs * record.backoffMultiplier
         : this.windowMs
-        
-      if (now - record.lastAttempt > effectiveWindow * 2) { // Keep for 2x window for safety
+
+      if (now - record.lastAttempt > effectiveWindow * 2) {
+        // Keep for 2x window for safety
         expiredKeys.push(key)
       }
     })
-    
-    expiredKeys.forEach(key => this.attempts.delete(key))
+
+    expiredKeys.forEach((key) => this.attempts.delete(key))
   }
 
   /**
@@ -147,7 +152,7 @@ export class GroupRateLimiter {
       this.cleanupTimer = undefined
     }
     this.attempts.clear()
-    
+
     // Remove from global instances
     GroupRateLimiter.instances.forEach((limiter, key) => {
       if (limiter === this) {
@@ -160,7 +165,7 @@ export class GroupRateLimiter {
    * Clean up all rate limiters (call on app shutdown)
    */
   static destroyAll(): void {
-    this.instances.forEach(limiter => limiter.destroy())
+    this.instances.forEach((limiter) => limiter.destroy())
     this.instances.clear()
   }
 }

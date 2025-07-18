@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,9 +11,9 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Lock, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
+import { AlertCircle, Eye, EyeOff, Lock } from 'lucide-react'
+import { useState } from 'react'
 
 interface PasswordUnlockDialogProps {
   isOpen: boolean
@@ -44,7 +44,7 @@ export function PasswordUnlockDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!password) {
       setError('Please enter the group password')
       return
@@ -61,7 +61,7 @@ export function PasswordUnlockDialog({
           testIv,
           password,
           encryptionSalt,
-          groupId
+          groupId,
         )
 
         if (!isValid) {
@@ -99,7 +99,8 @@ export function PasswordUnlockDialog({
             Password Required
           </DialogTitle>
           <DialogDescription>
-            This group is password-protected. Enter the password to view expense details for &ldquo;{groupName}&rdquo;.
+            This group is password-protected. Enter the password to view expense
+            details for &ldquo;{groupName}&rdquo;.
           </DialogDescription>
         </DialogHeader>
 
@@ -152,7 +153,8 @@ export function PasswordUnlockDialog({
         <div className="text-xs text-muted-foreground mt-4 p-3 bg-muted rounded-lg">
           <p className="font-medium mb-1">Security Note:</p>
           <p>
-            Your password is only used locally to decrypt data. It is never sent to the server.
+            Your password is only used locally to decrypt data. It is never sent
+            to the server.
           </p>
         </div>
       </DialogContent>

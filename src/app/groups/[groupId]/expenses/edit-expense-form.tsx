@@ -1,10 +1,10 @@
 'use client'
+import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
+import { ExpenseFormValues } from '@/lib/schemas'
 import { trpc } from '@/trpc/client'
 import { useRouter } from 'next/navigation'
 import { ExpenseForm } from './expense-form'
-import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
-import { ExpenseFormValues } from '@/lib/schemas'
 
 export function EditExpenseForm({
   groupId,
@@ -43,28 +43,33 @@ export function EditExpenseForm({
       expense={expense}
       categories={categories}
       onSubmit={async (expenseFormValues, participantId) => {
-        let processedExpenseFormValues: ExpenseFormValues = { ...expenseFormValues }
-        
+        let processedExpenseFormValues: ExpenseFormValues = {
+          ...expenseFormValues,
+        }
+
         // If group is encrypted, encrypt the expense data
         if (group.isEncrypted && group.encryptionSalt) {
           const password = PasswordSession.getPassword(groupId)
           if (!password) {
-            throw new Error('Password is required for encrypted groups. Please unlock the group first.')
-          }
-          
-          try {
-            const { encryptedData, iv } = await PasswordCrypto.encryptExpenseData(
-              expenseFormValues.title,
-              expenseFormValues.notes || '',
-              password,
-              group.encryptionSalt
+            throw new Error(
+              'Password is required for encrypted groups. Please unlock the group first.',
             )
-            
+          }
+
+          try {
+            const { encryptedData, iv } =
+              await PasswordCrypto.encryptExpenseData(
+                expenseFormValues.title,
+                expenseFormValues.notes || '',
+                password,
+                group.encryptionSalt,
+              )
+
             // Validate encryption result
             if (!encryptedData || !iv) {
               throw new Error('Encryption failed - invalid result')
             }
-            
+
             processedExpenseFormValues = {
               ...expenseFormValues,
               // Clear plaintext data for encrypted expenses
@@ -72,14 +77,14 @@ export function EditExpenseForm({
               notes: '[Encrypted]',
               // Add encrypted data
               encryptedData,
-              encryptionIv: iv
+              encryptionIv: iv,
             }
           } catch (error) {
             console.error('Failed to encrypt expense data:', error)
             throw new Error('Failed to encrypt expense data. Please try again.')
           }
         }
-        
+
         await updateExpenseMutateAsync({
           expenseId,
           groupId,

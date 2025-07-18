@@ -2,8 +2,8 @@
 import { ActiveUserBalance } from '@/app/groups/[groupId]/expenses/active-user-balance'
 import { CategoryIcon } from '@/app/groups/[groupId]/expenses/category-icon'
 import { DocumentsCount } from '@/app/groups/[groupId]/expenses/documents-count'
-import { Button } from '@/components/ui/button'
 import { DecryptedExpenseContent } from '@/components/decrypted-expense-content'
+import { Button } from '@/components/ui/button'
 import { getGroupExpenses } from '@/lib/api'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { ChevronRight } from 'lucide-react'
@@ -40,7 +40,13 @@ type Props = {
   encryptionSalt?: string | null
 }
 
-export function ExpenseCard({ expense, currency, groupId, isGroupEncrypted, encryptionSalt }: Props) {
+export function ExpenseCard({
+  expense,
+  currency,
+  groupId,
+  isGroupEncrypted,
+  encryptionSalt,
+}: Props) {
   const router = useRouter()
   const locale = useLocale()
 

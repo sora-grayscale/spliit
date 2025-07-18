@@ -1,13 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
-import { Lock } from 'lucide-react'
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card'
+import {
+  ApiIncompatibilityError,
+  isApiIncompatibilityError,
+} from '@/lib/crypto-errors'
+import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
+import { hasModernSignature, toLegacyCrypto } from '@/lib/legacy-crypto-types'
+import { Lock } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 interface DecryptedExpenseContentProps {
   encryptedData?: string | null
@@ -38,17 +43,22 @@ export function DecryptedExpenseContent({
   className,
   showNotes = false,
 }: DecryptedExpenseContentProps) {
-  const [decryptedData, setDecryptedData] = useState<DecryptedExpenseData | null>(null)
+  const [decryptedData, setDecryptedData] =
+    useState<DecryptedExpenseData | null>(null)
   const [isDecrypting, setIsDecrypting] = useState(false)
 
   useEffect(() => {
     // Use AbortController to prevent race conditions
     const abortController = new AbortController()
     let isMounted = true
-    
+
     const decryptExpenseData = async () => {
       // Enhanced input validation
-      if (!isValidString(encryptedData) || !isValidString(encryptionIv) || !isValidString(encryptionSalt)) {
+      if (
+        !isValidString(encryptedData) ||
+        !isValidString(encryptionIv) ||
+        !isValidString(encryptionSalt)
+      ) {
         if (isMounted) setDecryptedData(null)
         return
       }
@@ -70,44 +80,59 @@ export function DecryptedExpenseContent({
 
       try {
         if (isMounted) setIsDecrypting(true)
-        
+
         // API compatibility check: Handle both old and new API signatures
         let result: DecryptedExpenseData | null = null
-        
+
         try {
+          // Try modern API first
           result = await PasswordCrypto.decryptExpenseData(
             encryptedData,
             encryptionIv,
             password,
             encryptionSalt,
-            groupId
+            groupId,
           )
         } catch (apiError) {
-          // Fallback: Try without groupId for backward compatibility
-          if (apiError instanceof Error && (apiError.message?.includes('groupId') || apiError.message?.includes('parameter'))) {
-            console.warn('Falling back to legacy API without groupId parameter')
-            
-            result = await (PasswordCrypto.decryptExpenseData as any)(
-              encryptedData,
-              encryptionIv,
-              password,
-              encryptionSalt
+          // Type-safe fallback for API compatibility
+          if (
+            isApiIncompatibilityError(apiError) ||
+            !hasModernSignature(PasswordCrypto)
+          ) {
+            console.warn(
+              'Using legacy API signature for backward compatibility',
             )
+
+            try {
+              const legacyCrypto = toLegacyCrypto(PasswordCrypto)
+              result = await legacyCrypto.decryptExpenseData(
+                encryptedData,
+                encryptionIv,
+                password,
+                encryptionSalt,
+              )
+            } catch (legacyError) {
+              // If legacy API also fails, throw the original error
+              throw new ApiIncompatibilityError(
+                'Both modern and legacy API signatures failed',
+                apiError instanceof Error ? apiError : undefined,
+              )
+            }
           } else {
             throw apiError
           }
         }
-        
+
         // Check if operation was aborted after decryption
         if (abortController.signal.aborted || !isMounted) return
-        
+
         // Validate decryption result
         if (!result || !isValidString(result.title)) {
           console.warn('Decryption returned invalid data structure')
           if (isMounted) setDecryptedData(null)
           return
         }
-        
+
         if (isMounted) setDecryptedData(result)
       } catch (error) {
         // Don't log errors if the operation was aborted
@@ -121,7 +146,7 @@ export function DecryptedExpenseContent({
     }
 
     decryptExpenseData()
-    
+
     // Cleanup function to prevent race conditions
     return () => {
       isMounted = false
@@ -130,12 +155,15 @@ export function DecryptedExpenseContent({
   }, [encryptedData, encryptionIv, encryptionSalt, groupId])
 
   // Enhanced fallback title handling
-  const safeFallbackTitle = isValidString(fallbackTitle) ? fallbackTitle : 'Unknown Expense'
-  
+  const safeFallbackTitle = isValidString(fallbackTitle)
+    ? fallbackTitle
+    : 'Unknown Expense'
+
   // If we have encrypted data but no decryption available, show locked indicator
   if (isValidString(encryptedData) && !decryptedData && !isDecrypting) {
-    const displayTitle = fallbackTitle === '[Encrypted]' ? 'Encrypted Expense' : safeFallbackTitle
-    
+    const displayTitle =
+      fallbackTitle === '[Encrypted]' ? 'Encrypted Expense' : safeFallbackTitle
+
     return (
       <span className={className}>
         <HoverCard>
@@ -148,7 +176,10 @@ export function DecryptedExpenseContent({
           <HoverCardContent className="w-80">
             <div className="text-sm">
               <p className="font-semibold mb-1">End-to-End Encrypted Expense</p>
-              <p>This expense is encrypted with E2EE. Enter the correct password to view the details.</p>
+              <p>
+                This expense is encrypted with E2EE. Enter the correct password
+                to view the details.
+              </p>
             </div>
           </HoverCardContent>
         </HoverCard>
@@ -164,8 +195,10 @@ export function DecryptedExpenseContent({
   // Enhanced notes display logic with proper undefined checks
   if (showNotes && decryptedData) {
     const hasValidNotes = isValidString(decryptedData.notes)
-    const displayTitle = isValidString(decryptedData.title) ? decryptedData.title : safeFallbackTitle
-    
+    const displayTitle = isValidString(decryptedData.title)
+      ? decryptedData.title
+      : safeFallbackTitle
+
     return (
       <span className={className}>
         <span className="block">{displayTitle}</span>
@@ -177,11 +210,12 @@ export function DecryptedExpenseContent({
       </span>
     )
   }
-  
+
   // Safe title display with fallback
-  const displayTitle = decryptedData && isValidString(decryptedData.title) 
-    ? decryptedData.title 
-    : safeFallbackTitle
-    
+  const displayTitle =
+    decryptedData && isValidString(decryptedData.title)
+      ? decryptedData.title
+      : safeFallbackTitle
+
   return <span className={className}>{displayTitle}</span>
 }
