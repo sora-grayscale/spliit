@@ -300,13 +300,30 @@ export function ExpenseForm({
       }
 
       try {
-        const decrypted = await PasswordCrypto.decryptExpenseData(
-          expense.encryptedData,
-          expense.encryptionIv,
-          password,
-          group.encryptionSalt,
-          group.id
-        )
+        // API compatibility: Handle both new and legacy signatures
+        let decrypted
+        try {
+          decrypted = await PasswordCrypto.decryptExpenseData(
+            expense.encryptedData,
+            expense.encryptionIv,
+            password,
+            group.encryptionSalt,
+            group.id
+          )
+        } catch (apiError) {
+          // Fallback for backward compatibility
+          if (apiError instanceof Error && (apiError.message?.includes('groupId') || apiError.message?.includes('parameter'))) {
+            console.warn('Using legacy decryptExpenseData API without groupId')
+            decrypted = await (PasswordCrypto.decryptExpenseData as any)(
+              expense.encryptedData,
+              expense.encryptionIv,
+              password,
+              group.encryptionSalt
+            )
+          } else {
+            throw apiError
+          }
+        }
         
         // Validate decrypted data
         const safeTitle = decrypted.title ?? 'Decryption Error'

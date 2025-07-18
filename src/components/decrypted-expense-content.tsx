@@ -71,15 +71,34 @@ export function DecryptedExpenseContent({
       try {
         if (isMounted) setIsDecrypting(true)
         
-        const result = await PasswordCrypto.decryptExpenseData(
-          encryptedData,
-          encryptionIv,
-          password,
-          encryptionSalt,
-          groupId
-        )
+        // API compatibility check: Handle both old and new API signatures
+        let result: DecryptedExpenseData | null = null
         
-        // Check again if component is still mounted and operation wasn't aborted
+        try {
+          result = await PasswordCrypto.decryptExpenseData(
+            encryptedData,
+            encryptionIv,
+            password,
+            encryptionSalt,
+            groupId
+          )
+        } catch (apiError) {
+          // Fallback: Try without groupId for backward compatibility
+          if (apiError instanceof Error && (apiError.message?.includes('groupId') || apiError.message?.includes('parameter'))) {
+            console.warn('Falling back to legacy API without groupId parameter')
+            
+            result = await (PasswordCrypto.decryptExpenseData as any)(
+              encryptedData,
+              encryptionIv,
+              password,
+              encryptionSalt
+            )
+          } else {
+            throw apiError
+          }
+        }
+        
+        // Check if operation was aborted after decryption
         if (abortController.signal.aborted || !isMounted) return
         
         // Validate decryption result
@@ -149,11 +168,11 @@ export function DecryptedExpenseContent({
     
     return (
       <span className={className}>
-        <div>{displayTitle}</div>
+        <span className="block">{displayTitle}</span>
         {hasValidNotes && (
-          <div className="text-sm text-muted-foreground mt-1">
+          <span className="block text-sm text-muted-foreground mt-1">
             {decryptedData.notes}
-          </div>
+          </span>
         )}
       </span>
     )
