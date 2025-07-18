@@ -34,7 +34,9 @@ describe('PasswordCrypto', () => {
 
       const salt = PasswordCrypto.generateSalt()
 
-      expect(mockCrypto.getRandomValues).toHaveBeenCalledWith(expect.any(Uint8Array))
+      expect(mockCrypto.getRandomValues).toHaveBeenCalledWith(
+        expect.any(Uint8Array),
+      )
       expect(typeof salt).toBe('string')
       expect(salt.length).toBeGreaterThan(0)
     })
@@ -48,14 +50,17 @@ describe('PasswordCrypto', () => {
       mockCrypto.subtle.importKey.mockResolvedValue(mockKeyMaterial)
       mockCrypto.subtle.deriveKey.mockResolvedValue(mockDerivedKey)
 
-      const result = await PasswordCrypto.deriveKeyFromPassword(testPassword, testSalt)
+      const result = await PasswordCrypto.deriveKeyFromPassword(
+        testPassword,
+        testSalt,
+      )
 
       expect(mockCrypto.subtle.importKey).toHaveBeenCalledWith(
         'raw',
         expect.any(Uint8Array),
         'PBKDF2',
         false,
-        ['deriveKey']
+        ['deriveKey'],
       )
 
       expect(mockCrypto.subtle.deriveKey).toHaveBeenCalledWith(
@@ -71,7 +76,7 @@ describe('PasswordCrypto', () => {
           length: 256,
         },
         false,
-        ['encrypt', 'decrypt']
+        ['encrypt', 'decrypt'],
       )
 
       expect(result).toBe(mockDerivedKey)
@@ -87,16 +92,21 @@ describe('PasswordCrypto', () => {
       mockCrypto.getRandomValues.mockReturnValue(mockIv)
       mockCrypto.subtle.encrypt.mockResolvedValue(mockEncryptedBuffer)
 
-      const result = await PasswordCrypto.encryptData(testData, mockKey as CryptoKey)
+      const result = await PasswordCrypto.encryptData(
+        testData,
+        mockKey as CryptoKey,
+      )
 
-      expect(mockCrypto.getRandomValues).toHaveBeenCalledWith(expect.any(Uint8Array))
+      expect(mockCrypto.getRandomValues).toHaveBeenCalledWith(
+        expect.any(Uint8Array),
+      )
       expect(mockCrypto.subtle.encrypt).toHaveBeenCalledWith(
         {
           name: 'AES-GCM',
           iv: mockIv,
         },
         mockKey,
-        expect.any(Uint8Array)
+        expect.any(Uint8Array),
       )
 
       expect(result).toHaveProperty('encryptedData')
@@ -115,7 +125,11 @@ describe('PasswordCrypto', () => {
 
       mockCrypto.subtle.decrypt.mockResolvedValue(mockDecryptedBuffer)
 
-      const result = await PasswordCrypto.decryptData(testEncryptedData, testIv, mockKey as CryptoKey)
+      const result = await PasswordCrypto.decryptData(
+        testEncryptedData,
+        testIv,
+        mockKey as CryptoKey,
+      )
 
       expect(mockCrypto.subtle.decrypt).toHaveBeenCalledWith(
         {
@@ -123,7 +137,7 @@ describe('PasswordCrypto', () => {
           iv: expect.any(ArrayBuffer),
         },
         mockKey,
-        expect.any(ArrayBuffer)
+        expect.any(ArrayBuffer),
       )
 
       expect(result).toBe(testData)
@@ -135,7 +149,7 @@ describe('PasswordCrypto', () => {
       const mockKey = {}
       const mockEncryptedResult = {
         encryptedData: 'encrypted',
-        iv: 'iv'
+        iv: 'iv',
       }
 
       mockCrypto.subtle.importKey.mockResolvedValue({})
@@ -147,7 +161,7 @@ describe('PasswordCrypto', () => {
         'Test Title',
         'Test Notes',
         testPassword,
-        testSalt
+        testSalt,
       )
 
       expect(result).toHaveProperty('encryptedData')
@@ -180,9 +194,9 @@ describe('PasswordSession', () => {
   it('should clear all passwords', () => {
     PasswordSession.setPassword('group1', 'pass1')
     PasswordSession.setPassword('group2', 'pass2')
-    
+
     PasswordSession.clearAllPasswords()
-    
+
     expect(PasswordSession.getPassword('group1')).toBeUndefined()
     expect(PasswordSession.getPassword('group2')).toBeUndefined()
   })

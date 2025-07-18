@@ -22,38 +22,53 @@ export const groupFormSchema = z
       )
       .min(1),
   })
-  .superRefine(({ participants, isEncrypted, password, passwordConfirm, encryptionSalt }, ctx) => {
-    participants.forEach((participant, i) => {
-      participants.slice(0, i).forEach((otherParticipant) => {
-        if (otherParticipant.name === participant.name) {
-          ctx.addIssue({
-            code: 'custom',
-            message: 'duplicateParticipantName',
-            path: ['participants', i, 'name'],
-          })
-        }
+  .superRefine(
+    (
+      { participants, isEncrypted, password, passwordConfirm, encryptionSalt },
+      ctx,
+    ) => {
+      participants.forEach((participant, i) => {
+        participants.slice(0, i).forEach((otherParticipant) => {
+          if (otherParticipant.name === participant.name) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'duplicateParticipantName',
+              path: ['participants', i, 'name'],
+            })
+          }
+        })
       })
-    })
 
-    // Validate password requirement for encrypted groups
-    // Only check password if encryption is enabled and no encryptionSalt exists (client-side)
-    if (isEncrypted && !encryptionSalt && (!password || password.length < SECURITY_CONSTANTS.MIN_PASSWORD_LENGTH)) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'passwordRequired',
-        path: ['password'],
-      })
-    }
+      // Validate password requirement for encrypted groups
+      // Only check password if encryption is enabled and no encryptionSalt exists (client-side)
+      if (
+        isEncrypted &&
+        !encryptionSalt &&
+        (!password || password.length < SECURITY_CONSTANTS.MIN_PASSWORD_LENGTH)
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'passwordRequired',
+          path: ['password'],
+        })
+      }
 
-    // Validate password confirmation match
-    if (isEncrypted && !encryptionSalt && password && passwordConfirm && password !== passwordConfirm) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'passwordConfirmMismatch',
-        path: ['passwordConfirm'],
-      })
-    }
-  })
+      // Validate password confirmation match
+      if (
+        isEncrypted &&
+        !encryptionSalt &&
+        password &&
+        passwordConfirm &&
+        password !== passwordConfirm
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'passwordConfirmMismatch',
+          path: ['passwordConfirm'],
+        })
+      }
+    },
+  )
 
 export type GroupFormValues = z.infer<typeof groupFormSchema>
 

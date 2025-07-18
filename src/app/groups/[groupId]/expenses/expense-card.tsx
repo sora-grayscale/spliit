@@ -2,8 +2,8 @@
 import { ActiveUserBalance } from '@/app/groups/[groupId]/expenses/active-user-balance'
 import { CategoryIcon } from '@/app/groups/[groupId]/expenses/category-icon'
 import { DocumentsCount } from '@/app/groups/[groupId]/expenses/documents-count'
-import { Button } from '@/components/ui/button'
 import { DecryptedExpenseContent } from '@/components/decrypted-expense-content'
+import { Button } from '@/components/ui/button'
 import { getGroupExpenses } from '@/lib/api'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { ChevronRight } from 'lucide-react'
@@ -40,7 +40,13 @@ type Props = {
   encryptionSalt?: string | null
 }
 
-export function ExpenseCard({ expense, currency, groupId, isGroupEncrypted, encryptionSalt }: Props) {
+export function ExpenseCard({
+  expense,
+  currency,
+  groupId,
+  isGroupEncrypted,
+  encryptionSalt,
+}: Props) {
   const router = useRouter()
   const locale = useLocale()
 
@@ -61,16 +67,16 @@ export function ExpenseCard({ expense, currency, groupId, isGroupEncrypted, encr
       />
       <div className="flex-1">
         <div className={cn('mb-1', expense.isReimbursement && 'italic')}>
-          {isGroupEncrypted && expense.encryptedData ? (
+          {isGroupEncrypted ? (
             <DecryptedExpenseContent
               encryptedData={expense.encryptedData}
               encryptionIv={expense.encryptionIv}
               encryptionSalt={encryptionSalt}
               groupId={groupId}
-              fallbackTitle={expense.title}
+              fallbackTitle={expense.title || 'Untitled Expense'}
             />
           ) : (
-            expense.title
+            expense.title || 'Untitled Expense'
           )}
         </div>
         <div className="text-xs text-muted-foreground">

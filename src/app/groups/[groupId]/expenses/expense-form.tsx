@@ -24,6 +24,11 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -33,6 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { randomId } from '@/lib/api'
+import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { useActiveUser } from '@/lib/hooks'
 import {
@@ -40,22 +46,16 @@ import {
   SplittingOptions,
   expenseFormSchema,
 } from '@/lib/schemas'
-import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto'
 import { calculateShare } from '@/lib/totals'
 import { cn } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RecurrenceRule } from '@prisma/client'
-import { Save, Lock } from 'lucide-react'
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '@/components/ui/hover-card'
+import { Lock, Save } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { match } from 'ts-pattern'
 import { DeletePopup } from '../../../../components/delete-popup'
@@ -255,40 +255,125 @@ export function ExpenseForm({
   const activeUserId = useActiveUser(group.id)
   const [decryptedTitle, setDecryptedTitle] = useState<string | null>(null)
   const [decryptedNotes, setDecryptedNotes] = useState<string | null>(null)
-  
-  // Decrypt title and notes if the group is encrypted
-  useEffect(() => {
-    if (expense && group.isEncrypted && group.encryptionSalt && expense.encryptedData && expense.encryptionIv) {
-      const password = PasswordSession.getPassword(group.id)
-      if (password) {
-        PasswordCrypto.decryptExpenseData(
+  const lastProcessedExpenseId = useRef<string | null>(null)
+  const formInitializedRef = useRef(false)
+
+  // Memoized decryption function that only changes when necessary dependencies change
+  const decryptExpenseData = useCallback(async () => {
+    if (!expense) {
+      // Clear state if no expense
+      setDecryptedTitle(null)
+      setDecryptedNotes(null)
+      return { title: '', notes: '' }
+    }
+
+    // For non-encrypted groups, use the original values
+    if (!group.isEncrypted || !group.encryptionSalt) {
+      const safeTitle = expense.title ?? ''
+      const safeNotes = expense.notes ?? ''
+      setDecryptedTitle(safeTitle)
+      setDecryptedNotes(safeNotes)
+      return { title: safeTitle, notes: safeNotes }
+    }
+
+    // For encrypted groups, attempt decryption
+    if (!expense.encryptedData || !expense.encryptionIv) {
+      console.warn('Encrypted group but missing encrypted data')
+      const fallbackTitle = expense.title ?? 'Encrypted Expense'
+      const fallbackNotes = expense.notes ?? ''
+      setDecryptedTitle(fallbackTitle)
+      setDecryptedNotes(fallbackNotes)
+      return { title: fallbackTitle, notes: fallbackNotes }
+    }
+
+    const password = PasswordSession.getPassword(group.id)
+    if (!password) {
+      // If no password is available, show fallback
+      const fallbackTitle = expense.title ?? 'Encrypted Expense'
+      const fallbackNotes = expense.notes ?? ''
+      setDecryptedTitle(fallbackTitle)
+      setDecryptedNotes(fallbackNotes)
+      return { title: fallbackTitle, notes: fallbackNotes }
+    }
+
+    try {
+      // Enhanced API compatibility handling using version detection
+      let decrypted
+
+      // Use modern API directly - PasswordCrypto always supports modern signature
+      try {
+        decrypted = await PasswordCrypto.decryptExpenseData(
           expense.encryptedData,
           expense.encryptionIv,
           password,
-          group.encryptionSalt
-        ).then(decrypted => {
-          setDecryptedTitle(decrypted.title)
-          setDecryptedNotes(decrypted.notes || '')
-          // Update form values with decrypted data
-          form.setValue('title', decrypted.title)
-          form.setValue('notes', decrypted.notes || '')
-        }).catch(error => {
-          console.error('Failed to decrypt expense data:', error)
-          // In case of decryption failure, keep the original encrypted values
-          setDecryptedTitle(expense.title || '')
-          setDecryptedNotes(expense.notes || '')
-        })
-      } else {
-        // If no password is available, show fallback
-        setDecryptedTitle(expense.title || '')
-        setDecryptedNotes(expense.notes || '')
+          group.encryptionSalt,
+          group.id,
+        )
+      } catch (error) {
+        console.error('🚨 Failed to decrypt expense data in form:', error)
+        throw error
       }
-    } else if (expense) {
-      // For non-encrypted groups, use the original values
-      setDecryptedTitle(expense.title || '')
-      setDecryptedNotes(expense.notes || '')
+
+      // Validate decrypted data
+      const safeTitle = decrypted.title ?? 'Decryption Error'
+      const safeNotes = decrypted.notes ?? ''
+
+      setDecryptedTitle(safeTitle)
+      setDecryptedNotes(safeNotes)
+      return { title: safeTitle, notes: safeNotes }
+    } catch (error) {
+      console.error('Failed to decrypt expense data:', error)
+
+      // In case of decryption failure, use safe fallbacks
+      const fallbackTitle = expense.title ?? 'Decryption Failed'
+      const fallbackNotes = expense.notes ?? ''
+      setDecryptedTitle(fallbackTitle)
+      setDecryptedNotes(fallbackNotes)
+      return { title: fallbackTitle, notes: fallbackNotes }
     }
-  }, [expense, group, form])
+  }, [expense, group.isEncrypted, group.encryptionSalt, group.id])
+
+  // Memoized form initialization function
+  const initializeFormWithExpenseData = useCallback(async () => {
+    const currentExpenseId = expense?.id ?? null
+
+    // Only initialize if expense has changed or this is the first initialization
+    if (
+      currentExpenseId === lastProcessedExpenseId.current &&
+      formInitializedRef.current
+    ) {
+      return
+    }
+
+    // Reset form initialization state for new expense
+    if (currentExpenseId !== lastProcessedExpenseId.current) {
+      formInitializedRef.current = false
+      lastProcessedExpenseId.current = currentExpenseId
+    }
+
+    try {
+      const { title, notes } = await decryptExpenseData()
+
+      // Update form once after decryption is complete
+      if (title || notes) {
+        form.reset({
+          ...form.getValues(),
+          title: title || '',
+          notes: notes || '',
+        })
+      }
+
+      formInitializedRef.current = true
+    } catch (error) {
+      console.error('Failed to initialize form with expense data:', error)
+      formInitializedRef.current = true // Mark as attempted to prevent infinite retries
+    }
+  }, [expense?.id, decryptExpenseData, form])
+
+  // Single useEffect that handles expense changes and form initialization
+  useEffect(() => {
+    initializeFormWithExpenseData()
+  }, [initializeFormWithExpenseData])
 
   const submit = async (values: ExpenseFormValues) => {
     await persistDefaultSplittingOptions(group.id, values)
@@ -373,8 +458,13 @@ export function ExpenseForm({
                   </HoverCardTrigger>
                   <HoverCardContent className="w-80">
                     <div className="text-sm">
-                      <p className="font-semibold mb-1">End-to-End Encrypted Expense</p>
-                      <p>This expense will be encrypted with E2EE. Only group members with the correct password can view the details.</p>
+                      <p className="font-semibold mb-1">
+                        End-to-End Encrypted Expense
+                      </p>
+                      <p>
+                        This expense will be encrypted with E2EE. Only group
+                        members with the correct password can view the details.
+                      </p>
                     </div>
                   </HoverCardContent>
                 </HoverCard>
@@ -401,7 +491,9 @@ export function ExpenseForm({
                           const { categoryId } = await extractCategoryFromTitle(
                             field.value,
                           )
-                          form.setValue('category', categoryId)
+                          form.setValue('category', categoryId, {
+                            shouldValidate: true,
+                          })
                           setCategoryLoading(false)
                         }
                       }}
@@ -457,7 +549,10 @@ export function ExpenseForm({
                           const v = enforceCurrencyPattern(event.target.value)
                           const income = Number(v) < 0
                           setIsIncome(income)
-                          if (income) form.setValue('isReimbursement', false)
+                          if (income)
+                            form.setValue('isReimbursement', false, {
+                              shouldValidate: true,
+                            })
                           onChange(v)
                         }}
                         onFocus={(e) => {
@@ -566,7 +661,9 @@ export function ExpenseForm({
                   <FormLabel>{t(`${sExpense}.recurrenceRule.label`)}</FormLabel>
                   <Select
                     onValueChange={(value) => {
-                      form.setValue('recurrenceRule', value as RecurrenceRule)
+                      form.setValue('recurrenceRule', value as RecurrenceRule, {
+                        shouldValidate: true,
+                      })
                     }}
                     defaultValue={getSelectedRecurrenceRule(field)}
                   >

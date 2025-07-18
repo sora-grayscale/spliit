@@ -2,15 +2,15 @@
 
 import { GroupTabs } from '@/app/groups/[groupId]/group-tabs'
 import { ShareButton } from '@/app/groups/[groupId]/share-button'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Lock } from 'lucide-react'
-import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 import { useCurrentGroup } from './current-group-context'
 
 export const GroupHeader = () => {
@@ -32,7 +32,9 @@ export const GroupHeader = () => {
                   </HoverCardTrigger>
                   <HoverCardContent className="w-80">
                     <div className="text-sm">
-                      <p className="font-semibold mb-1">{tE2EE('groupTooltipTitle')}</p>
+                      <p className="font-semibold mb-1">
+                        {tE2EE('groupTooltipTitle')}
+                      </p>
                       <p>{tE2EE('groupTooltipDescription')}</p>
                     </div>
                   </HoverCardContent>

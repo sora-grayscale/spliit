@@ -1,3 +1,4 @@
+import { PasswordStrengthIndicator } from '@/components/password-strength-indicator'
 import { SubmitButton } from '@/components/submit-button'
 import { Button } from '@/components/ui/button'
 import {
@@ -9,6 +10,15 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import {
   Form,
   FormControl,
@@ -25,15 +35,6 @@ import {
 } from '@/components/ui/hover-card'
 import { Input } from '@/components/ui/input'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -41,16 +42,25 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { getGroup } from '@/lib/api'
+import { PasswordCrypto } from '@/lib/e2ee-crypto'
 import { GroupFormValues, groupFormSchema } from '@/lib/schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Save, Trash2, Lock, AlertTriangle, Eye, EyeOff, Trash, Check, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  Check,
+  Eye,
+  EyeOff,
+  Lock,
+  Save,
+  Trash,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { PasswordCrypto } from '@/lib/e2ee-crypto'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { Textarea } from './ui/textarea'
-import { PasswordStrengthIndicator } from '@/components/password-strength-indicator'
 
 export type Props = {
   group?: NonNullable<Awaited<ReturnType<typeof getGroup>>>
@@ -122,7 +132,7 @@ export function GroupForm({
     if (activeUser === null) {
       const storedActiveUser = localStorage.getItem(`${group?.id}-activeUser`)
       let currentActiveUser: string
-      
+
       if (storedActiveUser === 'None' || !storedActiveUser) {
         currentActiveUser = t('Settings.ActiveUserField.none')
       } else {
@@ -131,18 +141,26 @@ export function GroupForm({
         if (participantById) {
           currentActiveUser = participantById.name
         } else {
-          const participantByName = fields.find((f) => f.name === storedActiveUser)
-          currentActiveUser = participantByName?.name || t('Settings.ActiveUserField.none')
+          const participantByName = fields.find(
+            (f) => f.name === storedActiveUser,
+          )
+          currentActiveUser =
+            participantByName?.name || t('Settings.ActiveUserField.none')
         }
       }
-      
+
       setActiveUser(currentActiveUser)
     }
   }, [t, activeUser, fields, group?.id])
 
   const verifyPassword = async () => {
     const password = form.getValues('password')
-    if (!password || !group?.encryptionSalt || !group?.testEncryptedData || !group?.testIv) {
+    if (
+      !password ||
+      !group?.encryptionSalt ||
+      !group?.testEncryptedData ||
+      !group?.testIv
+    ) {
       setPasswordVerified(false)
       return
     }
@@ -153,7 +171,7 @@ export function GroupForm({
         group.testEncryptedData,
         group.testIv,
         password,
-        group.encryptionSalt
+        group.encryptionSalt,
       )
       setPasswordVerified(isValid)
     } catch (error) {
@@ -165,7 +183,7 @@ export function GroupForm({
 
   const updateActiveUser = () => {
     if (!activeUser) return
-    
+
     // If activeUser is the "None" option, store 'None' as a special value
     if (activeUser === t('Settings.ActiveUserField.none')) {
       if (group?.id) {
@@ -175,7 +193,7 @@ export function GroupForm({
       }
       return
     }
-    
+
     if (group?.id) {
       const participant = group.participants.find((p) => p.name === activeUser)
       if (participant?.id) {
@@ -193,9 +211,10 @@ export function GroupForm({
       <form
         onSubmit={form.handleSubmit(async (values) => {
           // Only pass participantId if activeUser is not the "None" option
-          const participantId = activeUser && activeUser !== t('Settings.ActiveUserField.none') 
-            ? group?.participants.find((p) => p.name === activeUser)?.id
-            : undefined
+          const participantId =
+            activeUser && activeUser !== t('Settings.ActiveUserField.none')
+              ? group?.participants.find((p) => p.name === activeUser)?.id
+              : undefined
           await onSubmit(values, participantId)
         })}
       >
@@ -283,13 +302,22 @@ export function GroupForm({
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel className={`flex items-center gap-2 ${group ? 'opacity-60' : ''}`}>
+                      <FormLabel
+                        className={`flex items-center gap-2 ${
+                          group ? 'opacity-60' : ''
+                        }`}
+                      >
                         <Lock className="w-4 h-4" />
                         Enable Password Protection
-                        {group && <span className="text-xs text-muted-foreground ml-2">{tVerification('cannotChangeAfterCreation')}</span>}
+                        {group && (
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {tVerification('cannotChangeAfterCreation')}
+                          </span>
+                        )}
                       </FormLabel>
                       <FormDescription className={group ? 'opacity-60' : ''}>
-                        Encrypt expense data so only group members with the password can view details
+                        Encrypt expense data so only group members with the
+                        password can view details
                       </FormDescription>
                     </div>
                   </FormItem>
@@ -305,11 +333,12 @@ export function GroupForm({
                         Password Verification
                       </p>
                       <p className="text-sm text-blue-700 dark:text-blue-200">
-                        Enter your group password to verify access to encrypted data.
+                        Enter your group password to verify access to encrypted
+                        data.
                       </p>
                     </div>
                   </div>
-                  
+
                   <FormField
                     control={form.control}
                     name="password"
@@ -362,13 +391,17 @@ export function GroupForm({
                           {passwordVerified === true && (
                             <div className="flex items-center gap-1 text-green-600">
                               <Check className="h-4 w-4" />
-                              <span className="text-sm">{tVerification('passwordVerified')}</span>
+                              <span className="text-sm">
+                                {tVerification('passwordVerified')}
+                              </span>
                             </div>
                           )}
                           {passwordVerified === false && (
                             <div className="flex items-center gap-1 text-red-600">
                               <X className="h-4 w-4" />
-                              <span className="text-sm">{tVerification('incorrectPassword')}</span>
+                              <span className="text-sm">
+                                {tVerification('incorrectPassword')}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -376,7 +409,9 @@ export function GroupForm({
                           Required to access encrypted group data
                         </FormDescription>
                         <FormMessage>
-                          {form.formState.errors.password?.message === 'passwordRequired' && tValidation('passwordRequired')}
+                          {form.formState.errors.password?.message ===
+                            'passwordRequired' &&
+                            tValidation('passwordRequired')}
                         </FormMessage>
                       </FormItem>
                     )}
@@ -393,11 +428,12 @@ export function GroupForm({
                         Important Security Information
                       </p>
                       <p className="text-sm text-amber-700 dark:text-amber-200">
-                        Choose a strong password. If lost, encrypted data cannot be recovered.
+                        Choose a strong password. If lost, encrypted data cannot
+                        be recovered.
                       </p>
                     </div>
                   </div>
-                  
+
                   <FormField
                     control={form.control}
                     name="password"
@@ -431,10 +467,10 @@ export function GroupForm({
                             </Button>
                           </div>
                         </FormControl>
-                        
+
                         {/* Password Strength Indicator */}
                         <div className="mt-3">
-                          <PasswordStrengthIndicator 
+                          <PasswordStrengthIndicator
                             password={currentPassword}
                             showDetails={true}
                             showGenerator={true}
@@ -446,26 +482,35 @@ export function GroupForm({
                             }}
                           />
                         </div>
-                        
-                        <FormDescription className="mt-3">
-                          <div className="space-y-2">
-                            <p>Share this password securely with group members</p>
-                            <div className="flex items-start space-x-2 p-2 bg-amber-50 dark:bg-amber-950/20 rounded-md border border-amber-200 dark:border-amber-800">
-                              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                              <div className="text-xs text-amber-700 dark:text-amber-300">
-                                <p className="font-medium mb-1">Security Note:</p>
-                                <p>Password memory clearing uses browser best-effort techniques. For maximum security, avoid entering passwords on shared or compromised devices.</p>
+
+                        <div className="mt-3 space-y-2">
+                          <FormDescription>
+                            Share this password securely with group members
+                          </FormDescription>
+                          <div className="flex items-start space-x-2 p-2 bg-amber-50 dark:bg-amber-950/20 rounded-md border border-amber-200 dark:border-amber-800">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                            <div className="text-xs text-amber-700 dark:text-amber-300">
+                              <div className="font-medium mb-1">
+                                Security Note:
+                              </div>
+                              <div>
+                                Password memory clearing uses browser
+                                best-effort techniques. For maximum security,
+                                avoid entering passwords on shared or
+                                compromised devices.
                               </div>
                             </div>
                           </div>
-                        </FormDescription>
+                        </div>
                         <FormMessage>
-                          {form.formState.errors.password?.message === 'passwordRequired' && tValidation('passwordRequired')}
+                          {form.formState.errors.password?.message ===
+                            'passwordRequired' &&
+                            tValidation('passwordRequired')}
                         </FormMessage>
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="passwordConfirm"
@@ -489,7 +534,9 @@ export function GroupForm({
                               variant="ghost"
                               size="sm"
                               className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                              onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                              onClick={() =>
+                                setShowPasswordConfirm(!showPasswordConfirm)
+                              }
                             >
                               {showPasswordConfirm ? (
                                 <EyeOff className="h-4 w-4" />
@@ -499,7 +546,7 @@ export function GroupForm({
                             </Button>
                           </div>
                         </FormControl>
-                        
+
                         {/* Password Match Indicator */}
                         {currentPasswordConfirm && (
                           <div className="flex items-center gap-2 mt-2">
@@ -511,17 +558,21 @@ export function GroupForm({
                             ) : (
                               <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
                                 <X className="h-4 w-4" />
-                                <span className="text-sm">Passwords do not match</span>
+                                <span className="text-sm">
+                                  Passwords do not match
+                                </span>
                               </div>
                             )}
                           </div>
                         )}
-                        
+
                         <FormDescription>
                           Enter the same password to confirm
                         </FormDescription>
                         <FormMessage>
-                          {form.formState.errors.passwordConfirm?.message === 'passwordConfirmMismatch' && tValidation('passwordConfirmMismatch')}
+                          {form.formState.errors.passwordConfirm?.message ===
+                            'passwordConfirmMismatch' &&
+                            tValidation('passwordConfirmMismatch')}
                         </FormMessage>
                       </FormItem>
                     )}
@@ -681,11 +732,15 @@ export function GroupForm({
                   <DialogHeader>
                     <DialogTitle>{tDeletion('confirmTitle')}</DialogTitle>
                     <DialogDescription>
-                      {tDeletion('confirmDescription').replace('{groupName}', group.name)}
+                      {tDeletion('confirmDescription', {
+                        groupName: group.name,
+                      })}
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
-                    <Button variant="outline">{tDeletion('cancelButton')}</Button>
+                    <Button variant="outline">
+                      {tDeletion('cancelButton')}
+                    </Button>
                     <Button
                       onClick={async () => {
                         setIsDeletingGroup(true)

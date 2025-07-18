@@ -1,14 +1,14 @@
 'use client'
 
+import { PasswordUnlockDialog } from '@/components/password-unlock-dialog'
 import { useToast } from '@/components/ui/use-toast'
+import { PasswordSession } from '@/lib/e2ee-crypto'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
 import { PropsWithChildren, useEffect, useState } from 'react'
 import { CurrentGroupProvider } from './current-group-context'
 import { GroupHeader } from './group-header'
 import { SaveGroupLocally } from './save-recent-group'
-import { PasswordUnlockDialog } from '@/components/password-unlock-dialog'
-import { PasswordSession } from '@/lib/e2ee-crypto'
 
 export function GroupLayoutClient({
   groupId,
@@ -27,7 +27,7 @@ export function GroupLayoutClient({
         variant: 'destructive',
       })
     }
-    
+
     // Check if group is encrypted and password is needed
     if (data?.group?.isEncrypted && !isUnlocked) {
       const hasPassword = PasswordSession.hasPassword(groupId)
@@ -58,7 +58,7 @@ export function GroupLayoutClient({
       <GroupHeader />
       {isUnlocked || !data?.group?.isEncrypted ? children : null}
       <SaveGroupLocally />
-      
+
       {data?.group?.isEncrypted && (
         <PasswordUnlockDialog
           isOpen={showPasswordDialog}

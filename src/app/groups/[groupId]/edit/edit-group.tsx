@@ -1,10 +1,14 @@
 'use client'
 
+import {
+  deleteRecentGroup,
+  unarchiveGroup,
+  unstarGroup,
+} from '@/app/groups/recent-groups-helpers'
 import { GroupForm } from '@/components/group-form'
 import { trpc } from '@/trpc/client'
-import { useCurrentGroup } from '../current-group-context'
 import { useRouter } from 'next/navigation'
-import { deleteRecentGroup, unstarGroup, unarchiveGroup } from '@/app/groups/recent-groups-helpers'
+import { useCurrentGroup } from '../current-group-context'
 
 export const EditGroup = () => {
   const { groupId } = useCurrentGroup()
