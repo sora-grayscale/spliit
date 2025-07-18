@@ -40,12 +40,8 @@ export function getUnbiasedRandomInt(max: number): number {
     throw new Error('Invalid max value for random int generation')
   }
 
-  // Use the provided max value directly since we've validated it's within range
-  const effectiveMax = max
-
-  // Calculate the largest multiple of effectiveMax that fits in a 32-bit unsigned integer
-  const limit =
-    Math.floor(SECURITY_CONSTANTS.MAX_UINT32 / effectiveMax) * effectiveMax
+  // Calculate the largest multiple of max that fits in a 32-bit unsigned integer
+  const limit = Math.floor(SECURITY_CONSTANTS.MAX_UINT32 / max) * max
 
   let value: number
   let attempts = 0
@@ -69,7 +65,7 @@ export function getUnbiasedRandomInt(max: number): number {
     attempts++
   } while (value >= limit) // Rejection sampling to avoid bias
 
-  return value % effectiveMax
+  return value % max
 }
 
 /**

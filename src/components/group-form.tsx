@@ -93,6 +93,7 @@ export function GroupForm({
           password: '', // Never populate existing password
           passwordConfirm: '', // Never populate existing password
           participants: group.participants,
+          encryptionSalt: group.encryptionSalt ?? undefined, // Pass encryptionSalt to schema
         }
       : {
           name: '',
@@ -773,10 +774,7 @@ export function GroupForm({
           <SubmitButton
             loadingContent={t(group ? 'Settings.saving' : 'Settings.creating')}
             onClick={updateActiveUser}
-            disabled={
-              (group?.isEncrypted && passwordVerified === false) ||
-              isDeletingGroup
-            }
+            disabled={isDeletingGroup}
           >
             <Save className="w-4 h-4 mr-2" />{' '}
             {t(group ? 'Settings.save' : 'Settings.create')}

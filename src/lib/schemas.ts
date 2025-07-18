@@ -40,7 +40,8 @@ export const groupFormSchema = z
       })
 
       // Validate password requirement for encrypted groups
-      // Only check password if encryption is enabled and no encryptionSalt exists (client-side)
+      // Only check password if encryption is enabled and no encryptionSalt exists (new group creation)
+      // For existing groups (encryptionSalt exists), password validation is optional
       if (
         isEncrypted &&
         !encryptionSalt &&
