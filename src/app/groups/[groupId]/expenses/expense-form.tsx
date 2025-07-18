@@ -55,7 +55,7 @@ import { Lock, Save } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { match } from 'ts-pattern'
 import { DeletePopup } from '../../../../components/delete-popup'
@@ -255,103 +255,125 @@ export function ExpenseForm({
   const activeUserId = useActiveUser(group.id)
   const [decryptedTitle, setDecryptedTitle] = useState<string | null>(null)
   const [decryptedNotes, setDecryptedNotes] = useState<string | null>(null)
-  const [initialFormSetup, setInitialFormSetup] = useState(false)
+  const lastProcessedExpenseId = useRef<string | null>(null)
+  const formInitializedRef = useRef(false)
 
-  // Reset form setup flag when expense changes
-  useEffect(() => {
-    setInitialFormSetup(false)
-  }, [expense?.id])
+  // Memoized decryption function that only changes when necessary dependencies change
+  const decryptExpenseData = useCallback(async () => {
+    if (!expense) {
+      // Clear state if no expense
+      setDecryptedTitle(null)
+      setDecryptedNotes(null)
+      return { title: '', notes: '' }
+    }
 
-  // Decrypt title and notes if the group is encrypted with enhanced error handling
-  useEffect(() => {
-    const decryptExpenseData = async () => {
-      if (!expense) {
-        // Clear state if no expense
-        setDecryptedTitle(null)
-        setDecryptedNotes(null)
-        return { title: '', notes: '' }
-      }
+    // For non-encrypted groups, use the original values
+    if (!group.isEncrypted || !group.encryptionSalt) {
+      const safeTitle = expense.title ?? ''
+      const safeNotes = expense.notes ?? ''
+      setDecryptedTitle(safeTitle)
+      setDecryptedNotes(safeNotes)
+      return { title: safeTitle, notes: safeNotes }
+    }
 
-      // For non-encrypted groups, use the original values
-      if (!group.isEncrypted || !group.encryptionSalt) {
-        const safeTitle = expense.title ?? ''
-        const safeNotes = expense.notes ?? ''
-        setDecryptedTitle(safeTitle)
-        setDecryptedNotes(safeNotes)
-        return { title: safeTitle, notes: safeNotes }
-      }
+    // For encrypted groups, attempt decryption
+    if (!expense.encryptedData || !expense.encryptionIv) {
+      console.warn('Encrypted group but missing encrypted data')
+      const fallbackTitle = expense.title ?? 'Encrypted Expense'
+      const fallbackNotes = expense.notes ?? ''
+      setDecryptedTitle(fallbackTitle)
+      setDecryptedNotes(fallbackNotes)
+      return { title: fallbackTitle, notes: fallbackNotes }
+    }
 
-      // For encrypted groups, attempt decryption
-      if (!expense.encryptedData || !expense.encryptionIv) {
-        console.warn('Encrypted group but missing encrypted data')
-        const fallbackTitle = expense.title ?? 'Encrypted Expense'
-        const fallbackNotes = expense.notes ?? ''
-        setDecryptedTitle(fallbackTitle)
-        setDecryptedNotes(fallbackNotes)
-        return { title: fallbackTitle, notes: fallbackNotes }
-      }
+    const password = PasswordSession.getPassword(group.id)
+    if (!password) {
+      // If no password is available, show fallback
+      const fallbackTitle = expense.title ?? 'Encrypted Expense'
+      const fallbackNotes = expense.notes ?? ''
+      setDecryptedTitle(fallbackTitle)
+      setDecryptedNotes(fallbackNotes)
+      return { title: fallbackTitle, notes: fallbackNotes }
+    }
 
-      const password = PasswordSession.getPassword(group.id)
-      if (!password) {
-        // If no password is available, show fallback
-        const fallbackTitle = expense.title ?? 'Encrypted Expense'
-        const fallbackNotes = expense.notes ?? ''
-        setDecryptedTitle(fallbackTitle)
-        setDecryptedNotes(fallbackNotes)
-        return { title: fallbackTitle, notes: fallbackNotes }
-      }
+    try {
+      // Enhanced API compatibility handling using version detection
+      let decrypted
 
+      // Use modern API directly - PasswordCrypto always supports modern signature
       try {
-        // Enhanced API compatibility handling using version detection
-        let decrypted
-
-        // Use modern API directly - PasswordCrypto always supports modern signature
-        try {
-          decrypted = await PasswordCrypto.decryptExpenseData(
-            expense.encryptedData,
-            expense.encryptionIv,
-            password,
-            group.encryptionSalt,
-            group.id,
-          )
-        } catch (error) {
-          console.error('🚨 Failed to decrypt expense data in form:', error)
-          throw error
-        }
-
-        // Validate decrypted data
-        const safeTitle = decrypted.title ?? 'Decryption Error'
-        const safeNotes = decrypted.notes ?? ''
-
-        setDecryptedTitle(safeTitle)
-        setDecryptedNotes(safeNotes)
-        return { title: safeTitle, notes: safeNotes }
+        decrypted = await PasswordCrypto.decryptExpenseData(
+          expense.encryptedData,
+          expense.encryptionIv,
+          password,
+          group.encryptionSalt,
+          group.id,
+        )
       } catch (error) {
-        console.error('Failed to decrypt expense data:', error)
-
-        // In case of decryption failure, use safe fallbacks
-        const fallbackTitle = expense.title ?? 'Decryption Failed'
-        const fallbackNotes = expense.notes ?? ''
-        setDecryptedTitle(fallbackTitle)
-        setDecryptedNotes(fallbackNotes)
-        return { title: fallbackTitle, notes: fallbackNotes }
+        console.error('🚨 Failed to decrypt expense data in form:', error)
+        throw error
       }
+
+      // Validate decrypted data
+      const safeTitle = decrypted.title ?? 'Decryption Error'
+      const safeNotes = decrypted.notes ?? ''
+
+      setDecryptedTitle(safeTitle)
+      setDecryptedNotes(safeNotes)
+      return { title: safeTitle, notes: safeNotes }
+    } catch (error) {
+      console.error('Failed to decrypt expense data:', error)
+
+      // In case of decryption failure, use safe fallbacks
+      const fallbackTitle = expense.title ?? 'Decryption Failed'
+      const fallbackNotes = expense.notes ?? ''
+      setDecryptedTitle(fallbackTitle)
+      setDecryptedNotes(fallbackNotes)
+      return { title: fallbackTitle, notes: fallbackNotes }
+    }
+  }, [expense, group.isEncrypted, group.encryptionSalt, group.id])
+
+  // Memoized form initialization function
+  const initializeFormWithExpenseData = useCallback(async () => {
+    const currentExpenseId = expense?.id ?? null
+
+    // Only initialize if expense has changed or this is the first initialization
+    if (
+      currentExpenseId === lastProcessedExpenseId.current &&
+      formInitializedRef.current
+    ) {
+      return
     }
 
-    if (!initialFormSetup) {
-      decryptExpenseData().then(({ title, notes }) => {
-        // Update form once after decryption is complete to prevent infinite loops
-        if (title || notes) {
-          form.reset({
-            ...form.getValues(),
-            title: title || '',
-            notes: notes || '',
-          })
-        }
-        setInitialFormSetup(true)
-      })
+    // Reset form initialization state for new expense
+    if (currentExpenseId !== lastProcessedExpenseId.current) {
+      formInitializedRef.current = false
+      lastProcessedExpenseId.current = currentExpenseId
     }
-  }, [expense, group, form, initialFormSetup])
+
+    try {
+      const { title, notes } = await decryptExpenseData()
+
+      // Update form once after decryption is complete
+      if (title || notes) {
+        form.reset({
+          ...form.getValues(),
+          title: title || '',
+          notes: notes || '',
+        })
+      }
+
+      formInitializedRef.current = true
+    } catch (error) {
+      console.error('Failed to initialize form with expense data:', error)
+      formInitializedRef.current = true // Mark as attempted to prevent infinite retries
+    }
+  }, [expense?.id, decryptExpenseData, form])
+
+  // Single useEffect that handles expense changes and form initialization
+  useEffect(() => {
+    initializeFormWithExpenseData()
+  }, [initializeFormWithExpenseData])
 
   const submit = async (values: ExpenseFormValues) => {
     await persistDefaultSplittingOptions(group.id, values)
