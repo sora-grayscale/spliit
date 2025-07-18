@@ -7,29 +7,76 @@ import {
   RecurringExpenseLink,
 } from '@prisma/client'
 import { nanoid } from 'nanoid'
+import { ComprehensiveEncryptionService } from './comprehensive-encryption'
 
 export function randomId() {
   return nanoid()
 }
 
 export async function createGroup(groupFormValues: GroupFormValues) {
+  const isComprehensivelyEncrypted =
+    groupFormValues.isEncrypted &&
+    groupFormValues.password &&
+    groupFormValues.encryptionSalt
+
+  // Prepare comprehensive encryption if enabled
+  let encryptedGroupData = null
+  let encryptedParticipantData: Awaited<
+    ReturnType<typeof ComprehensiveEncryptionService.encryptParticipantData>
+  > | null = null
+
+  if (isComprehensivelyEncrypted) {
+    // Encrypt group basic data
+    encryptedGroupData =
+      await ComprehensiveEncryptionService.encryptGroupBasicData(
+        groupFormValues.name,
+        groupFormValues.information || null,
+        groupFormValues.password!,
+        groupFormValues.encryptionSalt!,
+      )
+
+    // Encrypt participant data
+    encryptedParticipantData =
+      await ComprehensiveEncryptionService.encryptParticipantData(
+        groupFormValues.participants,
+        groupFormValues.password!,
+        groupFormValues.encryptionSalt!,
+      )
+  }
+
   return prisma.group.create({
     data: {
       id: randomId(),
-      name: groupFormValues.name,
-      information: groupFormValues.information,
+      name: isComprehensivelyEncrypted ? '' : groupFormValues.name,
+      information: isComprehensivelyEncrypted
+        ? ''
+        : groupFormValues.information || null,
       currency: groupFormValues.currency,
       // E2EE fields
       isEncrypted: groupFormValues.isEncrypted ?? false,
       encryptionSalt: groupFormValues.encryptionSalt || null,
       testEncryptedData: groupFormValues.testEncryptedData || null,
       testIv: groupFormValues.testIv || null,
+      // Comprehensive encryption fields
+      encryptedName: encryptedGroupData?.encryptedName,
+      nameIv: encryptedGroupData?.nameIv,
+      encryptedInformation: encryptedGroupData?.encryptedInformation,
+      informationIv: encryptedGroupData?.informationIv,
+      encryptionVersion: encryptedGroupData?.encryptionVersion,
+      encryptionFields: encryptedGroupData?.encryptionFields || [],
       participants: {
         createMany: {
-          data: groupFormValues.participants.map(({ name }) => ({
-            id: randomId(),
-            name,
-          })),
+          data: groupFormValues.participants.map((participant, index) => {
+            const encryptedParticipant = encryptedParticipantData?.[index]
+            return {
+              id: randomId(),
+              name: isComprehensivelyEncrypted ? '' : participant.name,
+              // Comprehensive encryption fields for participants
+              encryptedName: encryptedParticipant?.encryptedName,
+              nameIv: encryptedParticipant?.nameIv,
+              encryptionVersion: encryptedParticipant?.encryptionVersion,
+            }
+          }),
         },
       },
     },
@@ -57,6 +104,30 @@ export async function createExpense(
   const isEncryptedExpense = !!(
     expenseFormValues.encryptedData && expenseFormValues.encryptionIv
   )
+
+  // Check if group has comprehensive encryption enabled
+  const isComprehensivelyEncrypted = group.isEncrypted && group.encryptionSalt
+
+  let comprehensiveEncryptionData = null
+  if (isComprehensivelyEncrypted && isEncryptedExpense) {
+    // Get category name for encryption
+    const categories = await getCategories()
+    const category = categories.find((c) => c.id === expenseFormValues.category)
+
+    // Prepare share data for encryption
+    const shareData = expenseFormValues.paidFor.reduce(
+      (acc, paidFor) => {
+        acc[paidFor.participant] = paidFor.shares
+        return acc
+      },
+      {} as Record<string, number>,
+    )
+
+    // We would need the password here - this is a limitation
+    // In a real implementation, the password should be passed from the client
+    // For now, we'll only encrypt if password is available in the session
+    // This would need to be handled at the API layer
+  }
 
   const expenseId = randomId()
   await logActivity(groupId, ActivityType.CREATE_EXPENSE, {
@@ -114,6 +185,13 @@ export async function createExpense(
       // E2EE fields
       encryptedData: expenseFormValues.encryptedData,
       encryptionIv: expenseFormValues.encryptionIv,
+      // Comprehensive encryption fields (placeholders for now)
+      encryptedCategory: null,
+      categoryIv: null,
+      encryptedShares: null,
+      sharesIv: null,
+      encryptionVersion: isComprehensivelyEncrypted ? 1 : null,
+      encryptionFields: [],
     },
   })
 }
@@ -184,6 +262,9 @@ export async function updateExpense(
   const isEncryptedExpense = !!(
     expenseFormValues.encryptedData && expenseFormValues.encryptionIv
   )
+
+  // Check if group has comprehensive encryption enabled
+  const isComprehensivelyEncrypted = group.isEncrypted && group.encryptionSalt
 
   await logActivity(groupId, ActivityType.UPDATE_EXPENSE, {
     participantId,
@@ -294,6 +375,13 @@ export async function updateExpense(
       // E2EE fields
       encryptedData: expenseFormValues.encryptedData,
       encryptionIv: expenseFormValues.encryptionIv,
+      // Comprehensive encryption fields (placeholders for now)
+      encryptedCategory: null,
+      categoryIv: null,
+      encryptedShares: null,
+      sharesIv: null,
+      encryptionVersion: isComprehensivelyEncrypted ? 1 : null,
+      encryptionFields: [],
     },
   })
 }
@@ -308,31 +396,97 @@ export async function updateGroup(
 
   await logActivity(groupId, ActivityType.UPDATE_GROUP, { participantId })
 
+  const isComprehensivelyEncrypted =
+    existingGroup.isEncrypted &&
+    existingGroup.encryptionSalt &&
+    groupFormValues.password
+
+  // Prepare comprehensive encryption if enabled and password provided
+  let encryptedGroupData = null
+  let encryptedParticipantData: Awaited<
+    ReturnType<typeof ComprehensiveEncryptionService.encryptParticipantData>
+  > | null = null
+
+  if (isComprehensivelyEncrypted) {
+    // Encrypt group basic data
+    encryptedGroupData =
+      await ComprehensiveEncryptionService.encryptGroupBasicData(
+        groupFormValues.name,
+        groupFormValues.information || null,
+        groupFormValues.password!,
+        existingGroup.encryptionSalt!,
+      )
+
+    // Encrypt participant data for all participants (new and existing)
+    encryptedParticipantData =
+      await ComprehensiveEncryptionService.encryptParticipantData(
+        groupFormValues.participants,
+        groupFormValues.password!,
+        existingGroup.encryptionSalt!,
+      )
+  }
+
   return prisma.group.update({
     where: { id: groupId },
     data: {
-      name: groupFormValues.name,
-      information: groupFormValues.information,
+      name: isComprehensivelyEncrypted ? '' : groupFormValues.name,
+      information: isComprehensivelyEncrypted
+        ? ''
+        : groupFormValues.information || null,
       currency: groupFormValues.currency,
+      // Update comprehensive encryption fields if encrypted
+      ...(isComprehensivelyEncrypted && encryptedGroupData
+        ? {
+            encryptedName: encryptedGroupData.encryptedName,
+            nameIv: encryptedGroupData.nameIv,
+            encryptedInformation: encryptedGroupData.encryptedInformation,
+            informationIv: encryptedGroupData.informationIv,
+            encryptionVersion: encryptedGroupData.encryptionVersion,
+            encryptionFields: encryptedGroupData.encryptionFields,
+          }
+        : {}),
       participants: {
         deleteMany: existingGroup.participants.filter(
           (p) => !groupFormValues.participants.some((p2) => p2.id === p.id),
         ),
         updateMany: groupFormValues.participants
           .filter((participant) => participant.id !== undefined)
-          .map((participant) => ({
-            where: { id: participant.id },
-            data: {
-              name: participant.name,
-            },
-          })),
+          .map((participant, index) => {
+            const encryptedParticipant = encryptedParticipantData?.[index]
+            return {
+              where: { id: participant.id },
+              data: {
+                name: isComprehensivelyEncrypted ? '' : participant.name,
+                // Update comprehensive encryption fields for participants
+                ...(isComprehensivelyEncrypted && encryptedParticipant
+                  ? {
+                      encryptedName: encryptedParticipant.encryptedName,
+                      nameIv: encryptedParticipant.nameIv,
+                      encryptionVersion: encryptedParticipant.encryptionVersion,
+                    }
+                  : {}),
+              },
+            }
+          }),
         createMany: {
           data: groupFormValues.participants
             .filter((participant) => participant.id === undefined)
-            .map((participant) => ({
-              id: randomId(),
-              name: participant.name,
-            })),
+            .map((participant) => {
+              // Find the encrypted data for new participants
+              const participantIndex =
+                groupFormValues.participants.indexOf(participant)
+              const encryptedParticipant =
+                encryptedParticipantData?.[participantIndex]
+
+              return {
+                id: randomId(),
+                name: isComprehensivelyEncrypted ? '' : participant.name,
+                // Comprehensive encryption fields for new participants
+                encryptedName: encryptedParticipant?.encryptedName,
+                nameIv: encryptedParticipant?.nameIv,
+                encryptionVersion: encryptedParticipant?.encryptionVersion,
+              }
+            }),
         },
       },
     },

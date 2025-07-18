@@ -26,6 +26,14 @@ model Group {
   encryptionSalt   String?     // Salt for PBKDF2 key derivation
   testEncryptedData String?    @db.Text // Encrypted test data for password verification
   testIv           String?     // IV for test data encryption
+  
+  // Comprehensive encryption fields
+  encryptedName        String?  @db.Text // Encrypted group name
+  nameIv              String?  // IV for name encryption
+  encryptedInformation String?  @db.Text // Encrypted group information
+  informationIv       String?  // IV for information encryption
+  encryptionVersion   Int?     @default(1) // Version of encryption scheme
+  encryptionFields    String[] // List of encrypted field names
 }
 
 model Participant {
@@ -35,6 +43,11 @@ model Participant {
   groupId         String
   expensesPaidBy  Expense[]
   expensesPaidFor ExpensePaidFor[]
+  
+  // Comprehensive encryption fields
+  encryptedName   String?          @db.Text // Encrypted participant name
+  nameIv         String?          // IV for name encryption
+  encryptionVersion Int?           @default(1) // Version of encryption scheme
 }
 
 model Category {
@@ -69,6 +82,14 @@ model Expense {
   // E2EE fields
   encryptedData   String?           @db.Text // Encrypted JSON of {title, notes}
   encryptionIv    String?           // AES-GCM initialization vector
+  
+  // Comprehensive encryption fields
+  encryptedCategory String?         @db.Text // Encrypted category name
+  categoryIv       String?          // IV for category encryption
+  encryptedShares  String?          @db.Text // Encrypted share distribution data
+  sharesIv        String?          // IV for shares encryption
+  encryptionVersion Int?            @default(1) // Version of encryption scheme
+  encryptionFields String[]         // List of encrypted field names
 }
 
 model ExpenseDocument {
