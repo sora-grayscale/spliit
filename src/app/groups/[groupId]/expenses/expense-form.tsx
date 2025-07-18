@@ -257,6 +257,11 @@ export function ExpenseForm({
   const [decryptedNotes, setDecryptedNotes] = useState<string | null>(null)
   const [initialFormSetup, setInitialFormSetup] = useState(false)
 
+  // Reset form setup flag when expense changes
+  useEffect(() => {
+    setInitialFormSetup(false)
+  }, [expense?.id])
+
   // Decrypt title and notes if the group is encrypted with enhanced error handling
   useEffect(() => {
     const decryptExpenseData = async () => {

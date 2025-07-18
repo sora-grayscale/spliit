@@ -105,22 +105,10 @@ export function hasModernSignature(api: unknown): api is VersionedCryptoApi {
     return caps.modernDecryptSignature === true
   }
 
-  // Tertiary check: Function length inspection (fallback only)
-  // IMPORTANT: This is unreliable due to minification and default parameters
-  // Only use as a last resort when apiVersion and capabilities are unavailable
-  if (typeof cryptoApi.decryptExpenseData === 'function') {
-    try {
-      // Modern signature has 5 parameters: (encryptedData, iv, password, salt, groupId)
-      // Legacy signature has 4 parameters: (encryptedData, iv, password, salt)
-      // WARNING: This may fail in production builds due to minification
-      const paramCount = cryptoApi.decryptExpenseData.length
-      // Conservative approach: only consider it modern if exactly 5 parameters
-      return paramCount === 5
-    } catch {
-      // If length check fails, assume legacy for safety
-      return false
-    }
-  }
+  // Final check: Assume legacy API for safety
+  // Since apiVersion and capabilities are not available, and function.length
+  // is unreliable in production builds, we default to legacy behavior
+  // This ensures compatibility and prevents runtime errors
 
   return false
 }

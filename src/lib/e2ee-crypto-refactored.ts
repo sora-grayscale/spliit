@@ -243,8 +243,23 @@ export class PasswordSession {
 }
 
 /**
- * Legacy PasswordCrypto class - delegates to new modular services
- * @deprecated Use KeyDerivation, EncryptionService, and PasswordVerification directly
+ * PasswordCrypto class - provides unified API for E2EE operations
+ *
+ * This class serves as a facade that delegates to modular services while maintaining
+ * API compatibility. It provides a stable interface for E2EE operations across the application.
+ *
+ * Architecture:
+ * - Delegates to KeyDerivation for key operations
+ * - Delegates to EncryptionService for encryption/decryption
+ * - Delegates to PasswordVerification for password validation
+ * - Integrates with GroupRateLimiter for security
+ *
+ * Migration Path (Future):
+ * When migrating to direct service usage, consider:
+ * 1. KeyDerivation.deriveKeyFromPassword() for key derivation
+ * 2. EncryptionService.encryptData() / decryptData() for data operations
+ * 3. PasswordVerification.verifyPassword() for validation
+ * 4. GroupRateLimiter.getGroupLimiter() for rate limiting
  */
 export class PasswordCrypto {
   /**
