@@ -42,14 +42,6 @@ export function DecryptedExpenseContent({
     useState<DecryptedExpenseData | null>(null)
   const [isDecrypting, setIsDecrypting] = useState(false)
 
-  // Debug the initial props - only once per component instance
-  console.debug('🔧 DecryptedExpenseContent mounted with props:', {
-    encryptedData: encryptedData || 'null/empty',
-    encryptionIv: encryptionIv || 'null/empty',
-    fallbackTitle: fallbackTitle || 'null/empty',
-    groupId,
-  })
-
   useEffect(() => {
     // Reset state when props change
     setDecryptedData(null)
@@ -60,13 +52,6 @@ export function DecryptedExpenseContent({
     let isMounted = true
 
     const decryptExpenseData = async () => {
-      console.debug('🔄 DecryptedExpenseContent useEffect executing:', {
-        encryptedData: encryptedData ? 'present' : 'missing',
-        encryptionIv: encryptionIv ? 'present' : 'missing',
-        fallbackTitle,
-        groupId,
-      })
-
       // Check if this is a non-encrypted expense first
       if (!isValidString(encryptedData) || !isValidString(encryptionIv)) {
         // Non-encrypted expense: use fallback title immediately
@@ -75,7 +60,6 @@ export function DecryptedExpenseContent({
             ? fallbackTitle
             : 'Untitled Expense'
 
-          console.debug('📝 Setting non-encrypted expense title:', displayTitle)
           setDecryptedData({
             title: displayTitle,
             notes: undefined,
@@ -86,39 +70,23 @@ export function DecryptedExpenseContent({
 
       // For encrypted expenses, we need encryption salt
       if (!isValidString(encryptionSalt)) {
-        console.error('Encrypted expense missing encryption salt')
         if (isMounted) setDecryptedData(null)
         return
       }
 
       if (!isValidString(groupId)) {
-        console.error('Invalid groupId provided to DecryptedExpenseContent')
         if (isMounted) setDecryptedData(null)
         return
       }
 
       const password = PasswordSession.getPassword(groupId)
       if (!isValidString(password)) {
-        console.debug(
-          '🔒 No password available for groupId:',
-          groupId,
-          'PasswordSession state:',
-          {
-            hasPassword: PasswordSession.hasPassword(groupId),
-          },
-        )
         if (isMounted) {
           // No password available - leave as null to show locked indicator
           setDecryptedData(null)
         }
         return
       }
-
-      console.debug(
-        '🔑 Password found for groupId:',
-        groupId,
-        'proceeding with decryption',
-      )
 
       // Check if operation was aborted
       if (abortController.signal.aborted) return
@@ -129,16 +97,7 @@ export function DecryptedExpenseContent({
         // Use modern API directly for reliable decryption
         let result: DecryptedExpenseData | null = null
 
-        console.debug('🔐 Starting decryption with params:', {
-          encryptedDataLength: encryptedData?.length || 0,
-          ivLength: encryptionIv?.length || 0,
-          saltLength: encryptionSalt?.length || 0,
-          hasPassword: !!password,
-          groupId: groupId,
-        })
-
         try {
-          console.debug('🚀 Using modern API for decryption')
           result = await PasswordCrypto.decryptExpenseData(
             encryptedData,
             encryptionIv,
@@ -147,7 +106,6 @@ export function DecryptedExpenseContent({
             groupId,
           )
         } catch (error) {
-          console.error('🚨 Decryption failed:', error)
           throw error
         }
 
@@ -156,9 +114,6 @@ export function DecryptedExpenseContent({
 
         // Validate decryption result
         if (!result || !isValidString(result.title)) {
-          console.warn(
-            'Decryption returned invalid data structure, using fallback',
-          )
           if (isMounted) {
             const fallback = isValidString(fallbackTitle)
               ? fallbackTitle
@@ -171,10 +126,8 @@ export function DecryptedExpenseContent({
           return
         }
 
-        console.debug('Decryption successful, setting result:', result)
         if (isMounted) {
           setDecryptedData(result)
-          console.debug('✅ Decrypted data set:', result)
         }
       } catch (error) {
         // Don't log errors if the operation was aborted
@@ -186,7 +139,6 @@ export function DecryptedExpenseContent({
           const fallback = isValidString(fallbackTitle)
             ? fallbackTitle
             : 'Untitled Expense'
-          console.debug('Decryption failed, using fallback:', fallback)
           setDecryptedData({
             title: fallback,
             notes: undefined,
@@ -217,14 +169,6 @@ export function DecryptedExpenseContent({
   const hasPassword = PasswordSession.hasPassword(groupId)
   const shouldShowLocked =
     isEncryptedExpense && !decryptedData && !isDecrypting && !hasPassword
-
-  console.debug('Lock indicator logic:', {
-    isEncryptedExpense,
-    hasPassword,
-    hasDecryptedData: !!decryptedData,
-    isDecrypting,
-    shouldShowLocked,
-  })
 
   if (shouldShowLocked) {
     const displayTitle =
@@ -286,14 +230,6 @@ export function DecryptedExpenseContent({
     decryptedData && isValidString(decryptedData.title)
       ? decryptedData.title
       : safeFallbackTitle
-
-  console.debug('Final display logic:', {
-    decryptedData,
-    displayTitle,
-    safeFallbackTitle,
-    hasDecryptedData: !!decryptedData,
-    hasDecryptedTitle: decryptedData && isValidString(decryptedData.title),
-  })
 
   return <span className={className}>{displayTitle}</span>
 }

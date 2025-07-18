@@ -304,7 +304,6 @@ export function ExpenseForm({
         let decrypted
 
         // Use modern API directly - PasswordCrypto always supports modern signature
-        console.debug('🔄 Expense form using modern API for decryption')
         try {
           decrypted = await PasswordCrypto.decryptExpenseData(
             expense.encryptedData,
