@@ -122,10 +122,14 @@ export class PasswordSessionManager {
    * CRITICAL SECURITY: Clear all sessions for a group
    */
   static clearGroupSessions(groupId: string): void {
-    for (const [token, session] of this.SESSIONS.entries()) {
+    const sessionsToDelete: string[] = []
+    this.SESSIONS.forEach((session, token) => {
       if (session.groupId === groupId) {
-        this.SESSIONS.delete(token)
+        sessionsToDelete.push(token)
       }
+    })
+    for (const token of sessionsToDelete) {
+      this.SESSIONS.delete(token)
     }
   }
 
@@ -144,10 +148,14 @@ export class PasswordSessionManager {
    */
   private static cleanupExpiredSessions(): void {
     const now = Date.now()
-    for (const [token, session] of this.SESSIONS.entries()) {
+    const expiredTokens: string[] = []
+    this.SESSIONS.forEach((session, token) => {
       if (now > session.expiresAt) {
-        this.SESSIONS.delete(token)
+        expiredTokens.push(token)
       }
+    })
+    for (const token of expiredTokens) {
+      this.SESSIONS.delete(token)
     }
   }
 
@@ -162,7 +170,8 @@ export class PasswordSessionManager {
     let activeCount = 0
     let expiredCount = 0
 
-    for (const session of this.SESSIONS.values()) {
+    const sessions = Array.from(this.SESSIONS.values())
+    for (const session of sessions) {
       if (now <= session.expiresAt) {
         activeCount++
       } else {

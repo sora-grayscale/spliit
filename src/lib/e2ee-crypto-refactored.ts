@@ -451,4 +451,16 @@ export class PasswordCrypto {
   ): Promise<EncryptedData> {
     return PasswordVerification.createPasswordTest(password, salt)
   }
+
+  /**
+   * Hash password for secure storage
+   */
+  static async hashPassword(password: string): Promise<string> {
+    // Use Web Crypto API to hash password
+    const encoder = new TextEncoder()
+    const data = encoder.encode(password)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashArray = new Uint8Array(hashBuffer)
+    return Array.from(hashArray, byte => byte.toString(16).padStart(2, '0')).join('')
+  }
 }

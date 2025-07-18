@@ -139,7 +139,7 @@ export async function createExpense(
     // CRITICAL SECURITY: Encrypt payment relationships with secure session management
     try {
       // Validate encryption context
-      if (!PasswordValidator.validateEncryptionContext(
+      if (!group.encryptionSalt || !PasswordValidator.validateEncryptionContext(
         groupId, 
         group.encryptionSalt, 
         sessionToken
@@ -151,6 +151,11 @@ export async function createExpense(
       const password = sessionToken 
         ? await PasswordSessionManager.getPassword(sessionToken, groupId)
         : null
+      
+      // CRITICAL: Only proceed with encryption if password is available
+      if (!password) {
+        throw new Error('Password required for encryption operations')
+      }
       
       if (password && group.encryptionSalt) {
         // Encrypt payment relationship data
@@ -703,7 +708,7 @@ export async function logActivity(
   if (isComprehensivelyEncrypted && group?.encryptionSalt) {
     try {
       // Validate encryption context
-      if (!PasswordValidator.validateEncryptionContext(
+      if (!group.encryptionSalt || !PasswordValidator.validateEncryptionContext(
         groupId, 
         group.encryptionSalt, 
         sessionToken
