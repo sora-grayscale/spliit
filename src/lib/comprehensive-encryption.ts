@@ -30,6 +30,23 @@ export interface ShareData {
   [participantId: string]: number
 }
 
+// Critical security types for payment relationships
+export interface PaymentRelationshipData {
+  paidById: string
+  paidFor: Array<{
+    participantId: string
+    shares: number
+  }>
+}
+
+export interface EncryptedPaymentData {
+  encryptedPaidBy: string
+  paidByIv: string
+  encryptedPaidFor: string
+  paidForIv: string
+  encryptionVersion: number
+}
+
 export interface EncryptionData {
   encryptionVersion: number
   encryptionFields: string[]
@@ -78,6 +95,18 @@ export interface EncryptedExpenseData {
   // Participant share data
   encryptedShares?: string
   sharesIv?: string
+
+  // Payment relationship encryption (CRITICAL SECURITY ADDITION)
+  encryptedPaidBy?: string
+  paidByIv?: string
+  encryptedPaidFor?: string
+  paidForIv?: string
+
+  // Amount and date encryption
+  encryptedAmount?: string
+  amountIv?: string
+  encryptedExpenseDate?: string
+  expenseDateIv?: string
 
   encryptionVersion: number
   encryptionFields: string[]
@@ -495,6 +524,146 @@ export class ComprehensiveEncryptionService {
       dataIv: encryption.iv,
       encryptionVersion: this.ENCRYPTION_VERSION,
       settingsType,
+    }
+  }
+
+  /**
+   * CRITICAL SECURITY: Encrypt payment relationship data
+   * This prevents exposure of "who paid whom" information
+   */
+  static async encryptPaymentRelationshipData(
+    paymentData: PaymentRelationshipData,
+    password: string,
+    salt: string,
+  ): Promise<EncryptedPaymentData> {
+    const key = await KeyDerivation.deriveKeyFromPassword(password, salt)
+
+    // Encrypt paidBy participant ID
+    const paidByEncryption = await EncryptionService.encryptData(
+      paymentData.paidById,
+      key,
+    )
+
+    // Encrypt paidFor array (participantId and shares)
+    const paidForString = JSON.stringify(paymentData.paidFor)
+    const paidForEncryption = await EncryptionService.encryptData(
+      paidForString,
+      key,
+    )
+
+    return {
+      encryptedPaidBy: paidByEncryption.encryptedData,
+      paidByIv: paidByEncryption.iv,
+      encryptedPaidFor: paidForEncryption.encryptedData,
+      paidForIv: paidForEncryption.iv,
+      encryptionVersion: this.ENCRYPTION_VERSION,
+    }
+  }
+
+  /**
+   * CRITICAL SECURITY: Decrypt payment relationship data
+   */
+  static async decryptPaymentRelationshipData(
+    encryptedPaymentData: EncryptedPaymentData,
+    password: string,
+    salt: string,
+  ): Promise<PaymentRelationshipData> {
+    const key = await KeyDerivation.deriveKeyFromPassword(password, salt)
+
+    // Decrypt paidBy participant ID
+    const paidById = await EncryptionService.decryptData(
+      encryptedPaymentData.encryptedPaidBy,
+      encryptedPaymentData.paidByIv,
+      key,
+    )
+
+    // Decrypt paidFor array
+    const paidForString = await EncryptionService.decryptData(
+      encryptedPaymentData.encryptedPaidFor,
+      encryptedPaymentData.paidForIv,
+      key,
+    )
+
+    const paidFor = JSON.parse(paidForString) as Array<{
+      participantId: string
+      shares: number
+    }>
+
+    return {
+      paidById,
+      paidFor,
+    }
+  }
+
+  /**
+   * CRITICAL SECURITY: Encrypt expense financial data (amount, date)
+   */
+  static async encryptExpenseFinancialData(
+    amount: number,
+    expenseDate: Date,
+    password: string,
+    salt: string,
+  ): Promise<{
+    encryptedAmount: string
+    amountIv: string
+    encryptedExpenseDate: string
+    expenseDateIv: string
+  }> {
+    const key = await KeyDerivation.deriveKeyFromPassword(password, salt)
+
+    // Encrypt amount
+    const amountEncryption = await EncryptionService.encryptData(
+      amount.toString(),
+      key,
+    )
+
+    // Encrypt expense date
+    const expenseDateEncryption = await EncryptionService.encryptData(
+      expenseDate.toISOString(),
+      key,
+    )
+
+    return {
+      encryptedAmount: amountEncryption.encryptedData,
+      amountIv: amountEncryption.iv,
+      encryptedExpenseDate: expenseDateEncryption.encryptedData,
+      expenseDateIv: expenseDateEncryption.iv,
+    }
+  }
+
+  /**
+   * CRITICAL SECURITY: Decrypt expense financial data
+   */
+  static async decryptExpenseFinancialData(
+    encryptedAmount: string,
+    amountIv: string,
+    encryptedExpenseDate: string,
+    expenseDateIv: string,
+    password: string,
+    salt: string,
+  ): Promise<{
+    amount: number
+    expenseDate: Date
+  }> {
+    const key = await KeyDerivation.deriveKeyFromPassword(password, salt)
+
+    // Decrypt amount
+    const amountString = await EncryptionService.decryptData(
+      encryptedAmount,
+      amountIv,
+      key,
+    )
+
+    // Decrypt expense date
+    const expenseDateString = await EncryptionService.decryptData(
+      encryptedExpenseDate,
+      expenseDateIv,
+      key,
+    )
+
+    return {
+      amount: parseFloat(amountString),
+      expenseDate: new Date(expenseDateString),
     }
   }
 

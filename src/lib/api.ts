@@ -8,6 +8,9 @@ import {
 } from '@prisma/client'
 import { nanoid } from 'nanoid'
 import { ComprehensiveEncryptionService } from './comprehensive-encryption'
+import { EncryptionService } from './encryption'
+import { KeyDerivation } from './key-derivation'
+import { PasswordSessionManager, PasswordValidator } from './password-session-manager'
 
 export function randomId() {
   return nanoid()
@@ -88,6 +91,7 @@ export async function createExpense(
   expenseFormValues: ExpenseFormValues,
   groupId: string,
   participantId?: string,
+  sessionToken?: string, // CRITICAL SECURITY: Secure password session token
 ): Promise<Expense> {
   const group = await getGroup(groupId)
   if (!group) throw new Error(`Invalid group ID: ${groupId}`)
@@ -109,6 +113,9 @@ export async function createExpense(
   const isComprehensivelyEncrypted = group.isEncrypted && group.encryptionSalt
 
   let comprehensiveEncryptionData = null
+  let paymentRelationshipEncryption = null
+  let financialDataEncryption = null
+
   if (isComprehensivelyEncrypted && isEncryptedExpense) {
     // Get category name for encryption
     const categories = await getCategories()
@@ -129,10 +136,52 @@ export async function createExpense(
       Object.create(null) as Record<string, number>,
     )
 
-    // We would need the password here - this is a limitation
-    // In a real implementation, the password should be passed from the client
-    // For now, we'll only encrypt if password is available in the session
-    // This would need to be handled at the API layer
+    // CRITICAL SECURITY: Encrypt payment relationships with secure session management
+    try {
+      // Validate encryption context
+      if (!PasswordValidator.validateEncryptionContext(
+        groupId, 
+        group.encryptionSalt, 
+        sessionToken
+      )) {
+        throw new Error('Invalid encryption context')
+      }
+
+      // Get secure password from session
+      const password = sessionToken 
+        ? await PasswordSessionManager.getPassword(sessionToken, groupId)
+        : null
+      
+      if (password && group.encryptionSalt) {
+        // Encrypt payment relationship data
+        paymentRelationshipEncryption =
+          await ComprehensiveEncryptionService.encryptPaymentRelationshipData(
+            {
+              paidById: expenseFormValues.paidBy,
+              paidFor: expenseFormValues.paidFor.map((pf) => ({
+                participantId: pf.participant,
+                shares: pf.shares,
+              })),
+            },
+            password,
+            group.encryptionSalt,
+          )
+
+        // Encrypt financial data (amount, date)
+        financialDataEncryption =
+          await ComprehensiveEncryptionService.encryptExpenseFinancialData(
+            expenseFormValues.amount,
+            expenseFormValues.expenseDate,
+            password,
+            group.encryptionSalt,
+          )
+      }
+    } catch (error) {
+      console.warn(
+        'Payment relationship encryption failed, storing as plaintext:',
+        error,
+      )
+    }
   }
 
   const expenseId = randomId()
@@ -154,11 +203,19 @@ export async function createExpense(
     data: {
       id: expenseId,
       groupId,
-      expenseDate: expenseFormValues.expenseDate,
+      // CRITICAL SECURITY: Use encrypted data when available, clear when encrypted
+      expenseDate: financialDataEncryption
+        ? new Date(0) // Clear date when encrypted
+        : expenseFormValues.expenseDate,
       categoryId: expenseFormValues.category,
-      amount: expenseFormValues.amount,
+      amount: financialDataEncryption
+        ? 0 // Clear amount when encrypted
+        : expenseFormValues.amount,
       title: isEncryptedExpense ? '' : expenseFormValues.title,
-      paidById: expenseFormValues.paidBy,
+      // CRITICAL SECURITY: Clear paidBy when encrypted
+      paidById: paymentRelationshipEncryption
+        ? '' // Clear paidBy when encrypted
+        : expenseFormValues.paidBy,
       splitMode: expenseFormValues.splitMode,
       recurrenceRule: expenseFormValues.recurrenceRule,
       recurringExpenseLink: {
@@ -170,10 +227,13 @@ export async function createExpense(
       },
       paidFor: {
         createMany: {
-          data: expenseFormValues.paidFor.map((paidFor) => ({
-            participantId: paidFor.participant,
-            shares: paidFor.shares,
-          })),
+          // CRITICAL SECURITY: Only create paidFor records when not encrypted
+          data: paymentRelationshipEncryption
+            ? [] // Clear paidFor when encrypted
+            : expenseFormValues.paidFor.map((paidFor) => ({
+                participantId: paidFor.participant,
+                shares: paidFor.shares,
+              })),
         },
       },
       isReimbursement: expenseFormValues.isReimbursement,
@@ -191,13 +251,28 @@ export async function createExpense(
       // E2EE fields
       encryptedData: expenseFormValues.encryptedData,
       encryptionIv: expenseFormValues.encryptionIv,
-      // Comprehensive encryption fields (placeholders for now)
+
+      // CRITICAL SECURITY: Payment relationship encryption
+      encryptedPaidBy: paymentRelationshipEncryption?.encryptedPaidBy,
+      paidByIv: paymentRelationshipEncryption?.paidByIv,
+      encryptedPaidFor: paymentRelationshipEncryption?.encryptedPaidFor,
+      paidForIv: paymentRelationshipEncryption?.paidForIv,
+
+      // Financial data encryption
+      encryptedAmount: financialDataEncryption?.encryptedAmount,
+      amountIv: financialDataEncryption?.amountIv,
+      encryptedExpenseDate: financialDataEncryption?.encryptedExpenseDate,
+      expenseDateIv: financialDataEncryption?.expenseDateIv,
+
+      // Comprehensive encryption fields
       encryptedCategory: null,
       categoryIv: null,
       encryptedShares: null,
       sharesIv: null,
       encryptionVersion: isComprehensivelyEncrypted ? 1 : null,
-      encryptionFields: [],
+      encryptionFields: paymentRelationshipEncryption
+        ? ['paidBy', 'paidFor', 'amount', 'expenseDate']
+        : [],
     },
   })
 }
@@ -610,6 +685,7 @@ export async function logActivity(
   groupId: string,
   activityType: ActivityType,
   extra?: { participantId?: string; expenseId?: string; data?: string },
+  sessionToken?: string, // CRITICAL SECURITY: Secure password session token
 ) {
   // Check if group has comprehensive encryption enabled
   const group = await getGroup(groupId)
@@ -618,20 +694,66 @@ export async function logActivity(
   let encryptedActivityData: Awaited<
     ReturnType<typeof ComprehensiveEncryptionService.encryptActivityData>
   > | null = null
+  let encryptedParticipantId: string | null = null
+  let participantIdIv: string | null = null
+  let encryptedExpenseId: string | null = null
+  let expenseIdIv: string | null = null
   let activityData = extra?.data || null
 
-  if (isComprehensivelyEncrypted && activityData && group?.encryptionSalt) {
-    // Note: In a real implementation, password should be available from session/context
-    // For now, we'll skip encryption if password is not available
-    // This would need to be handled at the API layer with proper session management
+  if (isComprehensivelyEncrypted && group?.encryptionSalt) {
     try {
-      // This is a placeholder - actual password retrieval would be implemented
-      // encryptedActivityData = await ComprehensiveEncryptionService.encryptActivityData(
-      //   activityData,
-      //   password,
-      //   group.encryptionSalt
-      // )
-      // activityData = '' // Clear plaintext when encrypted
+      // Validate encryption context
+      if (!PasswordValidator.validateEncryptionContext(
+        groupId, 
+        group.encryptionSalt, 
+        sessionToken
+      )) {
+        throw new Error('Invalid encryption context')
+      }
+
+      // Get secure password from session
+      const password = sessionToken 
+        ? await PasswordSessionManager.getPassword(sessionToken, groupId)
+        : null
+
+      if (password) {
+        // Encrypt activity data
+        if (activityData) {
+          encryptedActivityData =
+            await ComprehensiveEncryptionService.encryptActivityData(
+              activityData,
+              password,
+              group.encryptionSalt,
+            )
+          activityData = '' // Clear plaintext when encrypted
+        }
+
+        // CRITICAL SECURITY: Encrypt participant ID reference
+        if (extra?.participantId) {
+          const participantEncryption = await EncryptionService.encryptData(
+            extra.participantId,
+            await KeyDerivation.deriveKeyFromPassword(
+              password,
+              group.encryptionSalt,
+            ),
+          )
+          encryptedParticipantId = participantEncryption.encryptedData
+          participantIdIv = participantEncryption.iv
+        }
+
+        // CRITICAL SECURITY: Encrypt expense ID reference
+        if (extra?.expenseId) {
+          const expenseEncryption = await EncryptionService.encryptData(
+            extra.expenseId,
+            await KeyDerivation.deriveKeyFromPassword(
+              password,
+              group.encryptionSalt,
+            ),
+          )
+          encryptedExpenseId = expenseEncryption.encryptedData
+          expenseIdIv = expenseEncryption.iv
+        }
+      }
     } catch (error) {
       console.warn('Activity encryption failed, storing as plaintext:', error)
     }
@@ -642,18 +764,25 @@ export async function logActivity(
       id: randomId(),
       groupId,
       activityType,
-      participantId: extra?.participantId,
-      expenseId: extra?.expenseId,
+      // CRITICAL SECURITY: Clear references when encrypted
+      participantId: encryptedParticipantId ? '' : extra?.participantId,
+      expenseId: encryptedExpenseId ? '' : extra?.expenseId,
       data: activityData,
-      // Comprehensive encryption fields (conditionally set)
+
+      // Comprehensive encryption fields
       ...(encryptedActivityData
         ? {
             encryptedData: encryptedActivityData.encryptedData || undefined,
             dataIv: encryptedActivityData.dataIv || undefined,
-            encryptionVersion:
-              encryptedActivityData.encryptionVersion || undefined,
           }
         : {}),
+
+      // CRITICAL SECURITY: Reference encryption
+      encryptedParticipantId,
+      participantIdIv,
+      encryptedExpenseId,
+      expenseIdIv,
+      encryptionVersion: isComprehensivelyEncrypted ? 1 : undefined,
     },
   })
 }

@@ -90,6 +90,19 @@ model Expense {
   categoryIv       String?          // IV for category encryption
   encryptedShares  String?          @db.Text // Encrypted share distribution data
   sharesIv        String?          // IV for shares encryption
+  
+  // CRITICAL SECURITY: Payment relationship encryption
+  encryptedPaidBy    String?        @db.Text // Encrypted paidBy participant ID
+  paidByIv          String?         // IV for paidBy encryption
+  encryptedPaidFor   String?        @db.Text // Encrypted paidFor array (participantId + shares)
+  paidForIv         String?         // IV for paidFor encryption
+  
+  // Financial data encryption
+  encryptedAmount    String?        @db.Text // Encrypted amount
+  amountIv          String?         // IV for amount encryption
+  encryptedExpenseDate String?      @db.Text // Encrypted expense date
+  expenseDateIv     String?         // IV for expense date encryption
+  
   encryptionVersion Int?            @default(1) // Version of encryption scheme
   encryptionFields String[]         // List of encrypted field names
 }
@@ -154,8 +167,15 @@ model Activity {
   data          String?
   
   // Comprehensive encryption fields
-  encryptedData    String?  @db.Text // Encrypted activity data
-  dataIv          String?  // IV for data encryption
+  encryptedData      String?  @db.Text // Encrypted activity data
+  dataIv            String?  // IV for data encryption
+  
+  // CRITICAL SECURITY: Reference encryption
+  encryptedParticipantId String? @db.Text // Encrypted participant ID reference
+  participantIdIv       String? // IV for participant ID encryption
+  encryptedExpenseId    String? @db.Text // Encrypted expense ID reference
+  expenseIdIv          String? // IV for expense ID encryption
+  
   encryptionVersion Int?    @default(1) // Version of encryption scheme
 }
 
@@ -198,5 +218,7 @@ model UserSettings {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   
+  @@unique([groupId, settingsType])
   @@unique([groupId, participantId, settingsType])
+  @@index([groupId, participantId, settingsType])
 }

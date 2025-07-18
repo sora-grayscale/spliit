@@ -61,9 +61,8 @@ export class EncryptedSettingsService {
 
     await prisma.userSettings.upsert({
       where: {
-        groupId_participantId_settingsType: {
+        groupId_settingsType: {
           groupId,
-          participantId: null,
           settingsType: 'group_settings',
         },
       },
@@ -142,7 +141,7 @@ export class EncryptedSettingsService {
       where: {
         groupId_participantId_settingsType: {
           groupId,
-          participantId,
+          participantId: participantId ?? null,
           settingsType: 'participant_settings',
         },
       },
@@ -220,9 +219,8 @@ export class EncryptedSettingsService {
 
     await prisma.userSettings.upsert({
       where: {
-        groupId_participantId_settingsType: {
+        groupId_settingsType: {
           groupId,
-          participantId: null,
           settingsType,
         },
       },
