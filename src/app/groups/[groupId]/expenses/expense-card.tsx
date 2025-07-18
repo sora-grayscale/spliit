@@ -67,16 +67,16 @@ export function ExpenseCard({
       />
       <div className="flex-1">
         <div className={cn('mb-1', expense.isReimbursement && 'italic')}>
-          {isGroupEncrypted && expense.encryptedData ? (
+          {isGroupEncrypted ? (
             <DecryptedExpenseContent
               encryptedData={expense.encryptedData}
               encryptionIv={expense.encryptionIv}
               encryptionSalt={encryptionSalt}
               groupId={groupId}
-              fallbackTitle={expense.title}
+              fallbackTitle={expense.title || 'Untitled Expense'}
             />
           ) : (
-            expense.title
+            expense.title || 'Untitled Expense'
           )}
         </div>
         <div className="text-xs text-muted-foreground">

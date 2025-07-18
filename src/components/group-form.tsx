@@ -483,27 +483,25 @@ export function GroupForm({
                           />
                         </div>
 
-                        <FormDescription className="mt-3">
-                          <div className="space-y-2">
-                            <p>
-                              Share this password securely with group members
-                            </p>
-                            <div className="flex items-start space-x-2 p-2 bg-amber-50 dark:bg-amber-950/20 rounded-md border border-amber-200 dark:border-amber-800">
-                              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                              <div className="text-xs text-amber-700 dark:text-amber-300">
-                                <p className="font-medium mb-1">
-                                  Security Note:
-                                </p>
-                                <p>
-                                  Password memory clearing uses browser
-                                  best-effort techniques. For maximum security,
-                                  avoid entering passwords on shared or
-                                  compromised devices.
-                                </p>
+                        <div className="mt-3 space-y-2">
+                          <FormDescription>
+                            Share this password securely with group members
+                          </FormDescription>
+                          <div className="flex items-start space-x-2 p-2 bg-amber-50 dark:bg-amber-950/20 rounded-md border border-amber-200 dark:border-amber-800">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                            <div className="text-xs text-amber-700 dark:text-amber-300">
+                              <div className="font-medium mb-1">
+                                Security Note:
+                              </div>
+                              <div>
+                                Password memory clearing uses browser
+                                best-effort techniques. For maximum security,
+                                avoid entering passwords on shared or
+                                compromised devices.
                               </div>
                             </div>
                           </div>
-                        </FormDescription>
+                        </div>
                         <FormMessage>
                           {form.formState.errors.password?.message ===
                             'passwordRequired' &&
@@ -734,10 +732,9 @@ export function GroupForm({
                   <DialogHeader>
                     <DialogTitle>{tDeletion('confirmTitle')}</DialogTitle>
                     <DialogDescription>
-                      {tDeletion('confirmDescription').replace(
-                        '{groupName}',
-                        group.name,
-                      )}
+                      {tDeletion('confirmDescription', {
+                        groupName: group.name,
+                      })}
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>

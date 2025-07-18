@@ -63,7 +63,9 @@ function useSummary(
             encryptionIv={activity.expense.encryptionIv}
             encryptionSalt={encryptionSalt}
             groupId={groupId || ''}
-            fallbackTitle={activity.data ?? ''}
+            fallbackTitle={
+              activity.data === '[Encrypted]' ? '' : activity.data ?? ''
+            }
           />
         ) : // For deleted expenses, data might be the only source of title
         activity.data === '[Encrypted]' ? (

@@ -51,9 +51,9 @@ export function EditExpenseForm({
         if (group.isEncrypted && group.encryptionSalt) {
           const password = PasswordSession.getPassword(groupId)
           if (!password) {
-            throw new Error(
-              'Password is required for encrypted groups. Please unlock the group first.',
-            )
+            // Redirect to group page to unlock instead of throwing error
+            window.location.href = `/groups/${groupId}`
+            return
           }
 
           try {
@@ -72,9 +72,7 @@ export function EditExpenseForm({
 
             processedExpenseFormValues = {
               ...expenseFormValues,
-              // Clear plaintext data for encrypted expenses
-              title: '[Encrypted]',
-              notes: '[Encrypted]',
+              // Keep original data for validation, encryption data takes precedence
               // Add encrypted data
               encryptedData,
               encryptionIv: iv,

@@ -238,6 +238,21 @@ export class PasswordSession {
  */
 export class PasswordCrypto {
   /**
+   * API version for compatibility checking
+   * Used to detect modern vs legacy API signatures without relying on function.length
+   */
+  static readonly apiVersion = '2.0.0'
+
+  /**
+   * Capability flags for API feature detection
+   */
+  static readonly capabilities = {
+    modernDecryptSignature: true,
+    modernVerifySignature: true,
+    groupIdSupport: true,
+    rateLimiting: true,
+  } as const
+  /**
    * Generate a random salt for key derivation
    */
   static generateSalt(): string {

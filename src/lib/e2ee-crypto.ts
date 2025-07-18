@@ -16,6 +16,21 @@ export interface E2eeKeyData {
 }
 
 export class PasswordCrypto {
+  /**
+   * API version for compatibility checking (legacy version)
+   */
+  static readonly apiVersion = '1.0.0'
+
+  /**
+   * Capability flags for API feature detection (legacy capabilities)
+   */
+  static readonly capabilities = {
+    modernDecryptSignature: false,
+    modernVerifySignature: false,
+    groupIdSupport: false,
+    rateLimiting: false,
+  } as const
+
   private static readonly ITERATIONS = SECURITY_CONSTANTS.PBKDF2_ITERATIONS
   private static readonly KEY_LENGTH = SECURITY_CONSTANTS.AES_KEY_LENGTH
   private static readonly IV_LENGTH = SECURITY_CONSTANTS.AES_IV_LENGTH

@@ -53,11 +53,16 @@ export async function createExpense(
       throw new Error(`Invalid participant ID: ${participant}`)
   }
 
+  // Security: Clear plaintext fields for encrypted expenses
+  const isEncryptedExpense = !!(
+    expenseFormValues.encryptedData && expenseFormValues.encryptionIv
+  )
+
   const expenseId = randomId()
   await logActivity(groupId, ActivityType.CREATE_EXPENSE, {
     participantId,
     expenseId,
-    data: expenseFormValues.title,
+    data: isEncryptedExpense ? '[Encrypted]' : expenseFormValues.title,
   })
 
   const isCreateRecurrence =
@@ -75,7 +80,7 @@ export async function createExpense(
       expenseDate: expenseFormValues.expenseDate,
       categoryId: expenseFormValues.category,
       amount: expenseFormValues.amount,
-      title: expenseFormValues.title,
+      title: isEncryptedExpense ? '' : expenseFormValues.title,
       paidById: expenseFormValues.paidBy,
       splitMode: expenseFormValues.splitMode,
       recurrenceRule: expenseFormValues.recurrenceRule,
@@ -105,7 +110,7 @@ export async function createExpense(
           })),
         },
       },
-      notes: expenseFormValues.notes,
+      notes: isEncryptedExpense ? '' : expenseFormValues.notes,
       // E2EE fields
       encryptedData: expenseFormValues.encryptedData,
       encryptionIv: expenseFormValues.encryptionIv,
@@ -175,10 +180,15 @@ export async function updateExpense(
       throw new Error(`Invalid participant ID: ${participant}`)
   }
 
+  // Security: Clear plaintext fields for encrypted expenses
+  const isEncryptedExpense = !!(
+    expenseFormValues.encryptedData && expenseFormValues.encryptionIv
+  )
+
   await logActivity(groupId, ActivityType.UPDATE_EXPENSE, {
     participantId,
     expenseId,
-    data: expenseFormValues.title,
+    data: isEncryptedExpense ? '[Encrypted]' : expenseFormValues.title,
   })
 
   const isDeleteRecurrenceExpenseLink =
@@ -213,7 +223,7 @@ export async function updateExpense(
     data: {
       expenseDate: expenseFormValues.expenseDate,
       amount: expenseFormValues.amount,
-      title: expenseFormValues.title,
+      title: isEncryptedExpense ? '' : expenseFormValues.title,
       categoryId: expenseFormValues.category,
       paidById: expenseFormValues.paidBy,
       splitMode: expenseFormValues.splitMode,
@@ -280,7 +290,7 @@ export async function updateExpense(
             id: doc.id,
           })),
       },
-      notes: expenseFormValues.notes,
+      notes: isEncryptedExpense ? '' : expenseFormValues.notes,
       // E2EE fields
       encryptedData: expenseFormValues.encryptedData,
       encryptionIv: expenseFormValues.encryptionIv,

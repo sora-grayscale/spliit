@@ -38,14 +38,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { randomId } from '@/lib/api'
-import {
-  ApiIncompatibilityError,
-  isApiIncompatibilityError,
-} from '@/lib/crypto-errors'
 import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { useActiveUser } from '@/lib/hooks'
-import { hasModernSignature, toLegacyCrypto } from '@/lib/legacy-crypto-types'
 import {
   ExpenseFormValues,
   SplittingOptions,
@@ -305,10 +300,12 @@ export function ExpenseForm({
       }
 
       try {
-        // Type-safe API compatibility handling
+        // Enhanced API compatibility handling using version detection
         let decrypted
+
+        // Use modern API directly - PasswordCrypto always supports modern signature
+        console.debug('🔄 Expense form using modern API for decryption')
         try {
-          // Try modern API first
           decrypted = await PasswordCrypto.decryptExpenseData(
             expense.encryptedData,
             expense.encryptionIv,
@@ -316,34 +313,9 @@ export function ExpenseForm({
             group.encryptionSalt,
             group.id,
           )
-        } catch (apiError) {
-          // Type-safe fallback for API compatibility
-          if (
-            isApiIncompatibilityError(apiError) ||
-            !hasModernSignature(PasswordCrypto)
-          ) {
-            console.warn(
-              'Using legacy API signature for backward compatibility',
-            )
-
-            try {
-              const legacyCrypto = toLegacyCrypto(PasswordCrypto)
-              decrypted = await legacyCrypto.decryptExpenseData(
-                expense.encryptedData,
-                expense.encryptionIv,
-                password,
-                group.encryptionSalt,
-              )
-            } catch (legacyError) {
-              // If legacy API also fails, throw the original error
-              throw new ApiIncompatibilityError(
-                'Both modern and legacy API signatures failed',
-                apiError instanceof Error ? apiError : undefined,
-              )
-            }
-          } else {
-            throw apiError
-          }
+        } catch (error) {
+          console.error('🚨 Failed to decrypt expense data in form:', error)
+          throw error
         }
 
         // Validate decrypted data
