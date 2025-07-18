@@ -10,7 +10,10 @@ import { nanoid } from 'nanoid'
 import { ComprehensiveEncryptionService } from './comprehensive-encryption'
 import { EncryptionService } from './encryption'
 import { KeyDerivation } from './key-derivation'
-import { PasswordSessionManager, PasswordValidator } from './password-session-manager'
+import {
+  PasswordSessionManager,
+  PasswordValidator,
+} from './password-session-manager'
 
 export function randomId() {
   return nanoid()
@@ -139,24 +142,27 @@ export async function createExpense(
     // CRITICAL SECURITY: Encrypt payment relationships with secure session management
     try {
       // Validate encryption context
-      if (!group.encryptionSalt || !PasswordValidator.validateEncryptionContext(
-        groupId, 
-        group.encryptionSalt, 
-        sessionToken
-      )) {
+      if (
+        !group.encryptionSalt ||
+        !PasswordValidator.validateEncryptionContext(
+          groupId,
+          group.encryptionSalt,
+          sessionToken,
+        )
+      ) {
         throw new Error('Invalid encryption context')
       }
 
       // Get secure password from session
-      const password = sessionToken 
+      const password = sessionToken
         ? await PasswordSessionManager.getPassword(sessionToken, groupId)
         : null
-      
+
       // CRITICAL: Only proceed with encryption if password is available
       if (!password) {
         throw new Error('Password required for encryption operations')
       }
-      
+
       if (password && group.encryptionSalt) {
         // Encrypt payment relationship data
         paymentRelationshipEncryption =
@@ -708,16 +714,19 @@ export async function logActivity(
   if (isComprehensivelyEncrypted && group?.encryptionSalt) {
     try {
       // Validate encryption context
-      if (!group.encryptionSalt || !PasswordValidator.validateEncryptionContext(
-        groupId, 
-        group.encryptionSalt, 
-        sessionToken
-      )) {
+      if (
+        !group.encryptionSalt ||
+        !PasswordValidator.validateEncryptionContext(
+          groupId,
+          group.encryptionSalt,
+          sessionToken,
+        )
+      ) {
         throw new Error('Invalid encryption context')
       }
 
       // Get secure password from session
-      const password = sessionToken 
+      const password = sessionToken
         ? await PasswordSessionManager.getPassword(sessionToken, groupId)
         : null
 

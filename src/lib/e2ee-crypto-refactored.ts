@@ -461,6 +461,8 @@ export class PasswordCrypto {
     const data = encoder.encode(password)
     const hashBuffer = await crypto.subtle.digest('SHA-256', data)
     const hashArray = new Uint8Array(hashBuffer)
-    return Array.from(hashArray, byte => byte.toString(16).padStart(2, '0')).join('')
+    return Array.from(hashArray, (byte) =>
+      byte.toString(16).padStart(2, '0'),
+    ).join('')
   }
 }

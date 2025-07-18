@@ -31,8 +31,8 @@ export class PasswordSessionManager {
    * CRITICAL SECURITY: Store password securely in session
    */
   static async storePassword(
-    groupId: string, 
-    password: string
+    groupId: string,
+    password: string,
   ): Promise<string> {
     // Validate group ID format
     if (!/^[a-zA-Z0-9_-]+$/.test(groupId)) {
@@ -41,10 +41,10 @@ export class PasswordSessionManager {
 
     // Hash password for secure storage
     const hashedPassword = await PasswordCrypto.hashPassword(password)
-    
+
     // Generate secure session token
     const sessionToken = this.generateSecureToken()
-    
+
     // Store session with expiration
     this.SESSIONS.set(sessionToken, {
       groupId,
@@ -61,10 +61,10 @@ export class PasswordSessionManager {
    */
   static async getPassword(
     sessionToken: string,
-    groupId: string
+    groupId: string,
   ): Promise<string | null> {
     const session = this.SESSIONS.get(sessionToken)
-    
+
     if (!session) {
       return null
     }
@@ -82,7 +82,7 @@ export class PasswordSessionManager {
 
     // Update last access time
     session.lastAccess = Date.now()
-    
+
     // Note: In production, this would decrypt the stored password
     // For now, we return a placeholder that indicates session is valid
     return session.hashedPassword
@@ -91,12 +91,9 @@ export class PasswordSessionManager {
   /**
    * CRITICAL SECURITY: Validate session without exposing password
    */
-  static isValidSession(
-    sessionToken: string,
-    groupId: string
-  ): boolean {
+  static isValidSession(sessionToken: string, groupId: string): boolean {
     const session = this.SESSIONS.get(sessionToken)
-    
+
     if (!session) {
       return false
     }
@@ -140,7 +137,9 @@ export class PasswordSessionManager {
     // Use Web Crypto API for secure random generation
     const array = new Uint8Array(32)
     crypto.getRandomValues(array)
-    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+    return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join(
+      '',
+    )
   }
 
   /**
@@ -228,20 +227,23 @@ export class PasswordValidator {
   static validateEncryptionContext(
     groupId: string,
     salt: string,
-    sessionToken?: string
+    sessionToken?: string,
   ): boolean {
     // Group ID validation
     if (!groupId || typeof groupId !== 'string') {
       return false
     }
 
-    // Salt validation  
+    // Salt validation
     if (!salt || typeof salt !== 'string' || salt.length < 16) {
       return false
     }
 
     // Session token validation if provided
-    if (sessionToken && !PasswordSessionManager.isValidSession(sessionToken, groupId)) {
+    if (
+      sessionToken &&
+      !PasswordSessionManager.isValidSession(sessionToken, groupId)
+    ) {
       return false
     }
 
