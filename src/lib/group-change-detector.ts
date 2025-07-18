@@ -57,9 +57,10 @@ function compareParticipants(
     return { hasChanges: true, hasNameChanges: true }
   }
 
-  // Check for name differences
-  for (const name of Array.from(updatedNames)) {
-    if (!originalNames.has(name)) {
+  // Check for name differences using Array.from for compatibility
+  const updatedNamesArray = Array.from(updatedNames)
+  for (let i = 0; i < updatedNamesArray.length; i++) {
+    if (!originalNames.has(updatedNamesArray[i])) {
       return { hasChanges: true, hasNameChanges: true }
     }
   }

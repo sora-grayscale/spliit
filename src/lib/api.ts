@@ -114,13 +114,19 @@ export async function createExpense(
     const categories = await getCategories()
     const category = categories.find((c) => c.id === expenseFormValues.category)
 
-    // Prepare share data for encryption
+    // Prepare share data for encryption with validation
     const shareData = expenseFormValues.paidFor.reduce(
       (acc, paidFor) => {
+        // Runtime validation for numeric values
+        if (typeof paidFor.shares !== 'number' || isNaN(paidFor.shares)) {
+          throw new Error(
+            `Invalid share value for participant ${paidFor.participant}: ${paidFor.shares}`,
+          )
+        }
         acc[paidFor.participant] = paidFor.shares
         return acc
       },
-      {} as Record<string, number>,
+      Object.create(null) as Record<string, number>,
     )
 
     // We would need the password here - this is a limitation
@@ -605,12 +611,49 @@ export async function logActivity(
   activityType: ActivityType,
   extra?: { participantId?: string; expenseId?: string; data?: string },
 ) {
+  // Check if group has comprehensive encryption enabled
+  const group = await getGroup(groupId)
+  const isComprehensivelyEncrypted = group?.isEncrypted && group?.encryptionSalt
+
+  let encryptedActivityData: Awaited<
+    ReturnType<typeof ComprehensiveEncryptionService.encryptActivityData>
+  > | null = null
+  let activityData = extra?.data || null
+
+  if (isComprehensivelyEncrypted && activityData && group?.encryptionSalt) {
+    // Note: In a real implementation, password should be available from session/context
+    // For now, we'll skip encryption if password is not available
+    // This would need to be handled at the API layer with proper session management
+    try {
+      // This is a placeholder - actual password retrieval would be implemented
+      // encryptedActivityData = await ComprehensiveEncryptionService.encryptActivityData(
+      //   activityData,
+      //   password,
+      //   group.encryptionSalt
+      // )
+      // activityData = '' // Clear plaintext when encrypted
+    } catch (error) {
+      console.warn('Activity encryption failed, storing as plaintext:', error)
+    }
+  }
+
   return prisma.activity.create({
     data: {
       id: randomId(),
       groupId,
       activityType,
-      ...extra,
+      participantId: extra?.participantId,
+      expenseId: extra?.expenseId,
+      data: activityData,
+      // Comprehensive encryption fields (conditionally set)
+      ...(encryptedActivityData
+        ? {
+            encryptedData: encryptedActivityData.encryptedData || undefined,
+            dataIv: encryptedActivityData.dataIv || undefined,
+            encryptionVersion:
+              encryptedActivityData.encryptionVersion || undefined,
+          }
+        : {}),
     },
   })
 }

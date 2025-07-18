@@ -25,6 +25,47 @@ export interface EncryptedGroupData {
   encryptionFields: string[]
 }
 
+// Type definitions for better type safety
+export interface ShareData {
+  [participantId: string]: number
+}
+
+export interface EncryptionData {
+  encryptionVersion: number
+  encryptionFields: string[]
+}
+
+export type EncryptableData =
+  | EncryptedGroupData
+  | EncryptedExpenseData
+  | EncryptedParticipantData
+  | EncryptedActivityData
+  | EncryptedStatsData
+  | EncryptedSettingsData
+
+export interface EncryptedActivityData {
+  encryptedData?: string
+  dataIv?: string
+  encryptionVersion: number
+  encryptionFields?: string[]
+}
+
+export interface EncryptedStatsData {
+  encryptedData: string
+  dataIv: string
+  encryptionVersion: number
+  statsType: string
+  encryptionFields?: string[]
+}
+
+export interface EncryptedSettingsData {
+  encryptedData: string
+  dataIv: string
+  encryptionVersion: number
+  settingsType: string
+  encryptionFields?: string[]
+}
+
 export interface EncryptedExpenseData {
   // Existing expense encryption
   encryptedData?: string
@@ -52,6 +93,7 @@ export interface EncryptedParticipantData {
   metadataIv?: string
 
   encryptionVersion: number
+  encryptionFields?: string[]
 }
 
 /**
@@ -193,7 +235,7 @@ export class ComprehensiveEncryptionService {
     title: string,
     notes: string | undefined,
     categoryName: string | undefined,
-    shareData: Record<string, any> | undefined,
+    shareData: ShareData | undefined,
     password: string,
     salt: string,
   ): Promise<EncryptedExpenseData> {
@@ -253,7 +295,7 @@ export class ComprehensiveEncryptionService {
     title: string
     notes?: string
     categoryName?: string
-    shareData?: Record<string, any>
+    shareData?: ShareData
   }> {
     const key = await KeyDerivation.deriveKeyFromPassword(password, salt)
 
@@ -279,14 +321,14 @@ export class ComprehensiveEncryptionService {
     }
 
     // Decrypt share data if encrypted
-    let shareData: Record<string, any> | undefined
+    let shareData: ShareData | undefined
     if (encryptedExpenseData.encryptedShares && encryptedExpenseData.sharesIv) {
       const shareDataString = await EncryptionService.decryptData(
         encryptedExpenseData.encryptedShares,
         encryptedExpenseData.sharesIv,
         key,
       )
-      shareData = JSON.parse(shareDataString) as Record<string, any>
+      shareData = JSON.parse(shareDataString) as ShareData
     }
 
     return {
@@ -300,12 +342,15 @@ export class ComprehensiveEncryptionService {
   /**
    * Check if data is encrypted with comprehensive encryption
    */
-  static isComprehensivelyEncrypted(data: any): boolean {
+  static isComprehensivelyEncrypted(data: unknown): data is EncryptableData {
     return (
-      data &&
-      data.encryptionVersion === this.ENCRYPTION_VERSION &&
-      Array.isArray(data.encryptionFields) &&
-      data.encryptionFields.length > 0
+      typeof data === 'object' &&
+      data !== null &&
+      'encryptionVersion' in data &&
+      'encryptionFields' in data &&
+      (data as EncryptableData).encryptionVersion === this.ENCRYPTION_VERSION &&
+      Array.isArray((data as EncryptableData).encryptionFields) &&
+      ((data as EncryptableData).encryptionFields?.length ?? 0) > 0
     )
   }
 
@@ -313,10 +358,10 @@ export class ComprehensiveEncryptionService {
    * Migrate existing encrypted data to comprehensive encryption
    */
   static async migrateToComprehensiveEncryption(
-    existingData: any,
+    existingData: unknown,
     password: string,
     salt: string,
-  ): Promise<any> {
+  ): Promise<EncryptableData> {
     // Implementation for migrating existing encrypted data
     // This would be used to gradually upgrade existing encrypted groups
 
@@ -325,26 +370,151 @@ export class ComprehensiveEncryptionService {
     }
 
     // Perform migration logic here
-    return {
-      ...existingData,
+    const migrated: EncryptedGroupData = {
+      ...(existingData as Record<string, unknown>),
       encryptionVersion: this.ENCRYPTION_VERSION,
       encryptionFields: ['migrated'],
     }
+    return migrated
   }
 
   /**
    * Validate encryption integrity
    */
-  static validateEncryptionIntegrity(encryptedData: any): boolean {
+  static validateEncryptionIntegrity(encryptedData: unknown): boolean {
     if (!encryptedData || typeof encryptedData !== 'object') {
       return false
     }
 
+    const data = encryptedData as Record<string, unknown>
+
     // Check for required fields
-    const hasVersion = typeof encryptedData.encryptionVersion === 'number'
-    const hasFields = Array.isArray(encryptedData.encryptionFields)
+    const hasVersion = typeof data.encryptionVersion === 'number'
+    const hasFields = Array.isArray(data.encryptionFields)
 
     return hasVersion && hasFields
+  }
+
+  /**
+   * Encrypt activity data
+   */
+  static async encryptActivityData(
+    activityData: string,
+    password: string,
+    salt: string,
+  ): Promise<EncryptedActivityData> {
+    const key = await KeyDerivation.deriveKeyFromPassword(password, salt)
+
+    const encryption = await EncryptionService.encryptData(activityData, key)
+
+    return {
+      encryptedData: encryption.encryptedData,
+      dataIv: encryption.iv,
+      encryptionVersion: this.ENCRYPTION_VERSION,
+    }
+  }
+
+  /**
+   * Decrypt activity data
+   */
+  static async decryptActivityData(
+    encryptedActivityData: EncryptedActivityData,
+    password: string,
+    salt: string,
+  ): Promise<string> {
+    if (!encryptedActivityData.encryptedData || !encryptedActivityData.dataIv) {
+      throw new Error('Invalid encrypted activity data')
+    }
+
+    const key = await KeyDerivation.deriveKeyFromPassword(password, salt)
+
+    return await EncryptionService.decryptData(
+      encryptedActivityData.encryptedData,
+      encryptedActivityData.dataIv,
+      key,
+    )
+  }
+
+  /**
+   * Encrypt statistics data
+   */
+  static async encryptStatsData(
+    statsData: Record<string, unknown>,
+    statsType: string,
+    password: string,
+    salt: string,
+  ): Promise<EncryptedStatsData> {
+    const key = await KeyDerivation.deriveKeyFromPassword(password, salt)
+
+    const statsString = JSON.stringify(statsData)
+    const encryption = await EncryptionService.encryptData(statsString, key)
+
+    return {
+      encryptedData: encryption.encryptedData,
+      dataIv: encryption.iv,
+      encryptionVersion: this.ENCRYPTION_VERSION,
+      statsType,
+    }
+  }
+
+  /**
+   * Decrypt statistics data
+   */
+  static async decryptStatsData(
+    encryptedStatsData: EncryptedStatsData,
+    password: string,
+    salt: string,
+  ): Promise<Record<string, unknown>> {
+    const key = await KeyDerivation.deriveKeyFromPassword(password, salt)
+
+    const statsString = await EncryptionService.decryptData(
+      encryptedStatsData.encryptedData,
+      encryptedStatsData.dataIv,
+      key,
+    )
+
+    return JSON.parse(statsString) as Record<string, unknown>
+  }
+
+  /**
+   * Encrypt settings data
+   */
+  static async encryptSettingsData(
+    settingsData: Record<string, unknown>,
+    settingsType: string,
+    password: string,
+    salt: string,
+  ): Promise<EncryptedSettingsData> {
+    const key = await KeyDerivation.deriveKeyFromPassword(password, salt)
+
+    const settingsString = JSON.stringify(settingsData)
+    const encryption = await EncryptionService.encryptData(settingsString, key)
+
+    return {
+      encryptedData: encryption.encryptedData,
+      dataIv: encryption.iv,
+      encryptionVersion: this.ENCRYPTION_VERSION,
+      settingsType,
+    }
+  }
+
+  /**
+   * Decrypt settings data
+   */
+  static async decryptSettingsData(
+    encryptedSettingsData: EncryptedSettingsData,
+    password: string,
+    salt: string,
+  ): Promise<Record<string, unknown>> {
+    const key = await KeyDerivation.deriveKeyFromPassword(password, salt)
+
+    const settingsString = await EncryptionService.decryptData(
+      encryptedSettingsData.encryptedData,
+      encryptedSettingsData.dataIv,
+      key,
+    )
+
+    return JSON.parse(settingsString) as Record<string, unknown>
   }
 }
 

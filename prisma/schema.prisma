@@ -19,6 +19,8 @@ model Group {
   participants Participant[]
   expenses     Expense[]
   activities   Activity[]
+  encryptedStats EncryptedStats[]
+  userSettings UserSettings[]
   createdAt    DateTime      @default(now())
   
   // E2EE fields
@@ -150,6 +152,11 @@ model Activity {
   participantId String?
   expenseId     String?
   data          String?
+  
+  // Comprehensive encryption fields
+  encryptedData    String?  @db.Text // Encrypted activity data
+  dataIv          String?  // IV for data encryption
+  encryptionVersion Int?    @default(1) // Version of encryption scheme
 }
 
 enum ActivityType {
@@ -157,4 +164,39 @@ enum ActivityType {
   CREATE_EXPENSE
   UPDATE_EXPENSE
   DELETE_EXPENSE
+}
+
+model EncryptedStats {
+  id               String   @id
+  groupId          String
+  group            Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  statsType        String   // Type of statistics (totals, balances, etc.)
+  
+  // Encrypted statistics data
+  encryptedData    String   @db.Text // Encrypted statistics JSON
+  dataIv           String   // IV for data encryption
+  encryptionVersion Int     @default(1)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@unique([groupId, statsType])
+}
+
+model UserSettings {
+  id               String   @id
+  groupId          String
+  group            Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  participantId    String?  // Optional participant-specific settings
+  settingsType     String   // Type of settings (preferences, display, etc.)
+  
+  // Encrypted settings data
+  encryptedData    String   @db.Text // Encrypted settings JSON
+  dataIv           String   // IV for data encryption
+  encryptionVersion Int     @default(1)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@unique([groupId, participantId, settingsType])
 }
