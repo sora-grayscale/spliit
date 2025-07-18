@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/hover-card'
 import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
 import { Lock } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 interface DecryptedExpenseContentProps {
   encryptedData?: string | null
@@ -42,26 +42,23 @@ export function DecryptedExpenseContent({
     useState<DecryptedExpenseData | null>(null)
   const [isDecrypting, setIsDecrypting] = useState(false)
 
-  useEffect(() => {
-    // Reset state when props change
-    setDecryptedData(null)
-    setIsDecrypting(false)
+  // Memoize fallback title to prevent unnecessary re-renders
+  const memoizedFallbackTitle = useMemo(() => {
+    return isValidString(fallbackTitle) ? fallbackTitle : 'Untitled Expense'
+  }, [fallbackTitle])
 
-    // Use AbortController to prevent race conditions
-    const abortController = new AbortController()
-    let isMounted = true
-
-    const decryptExpenseData = async () => {
+  // Memoize the decryption function to prevent recreation on every render
+  const decryptExpenseData = useCallback(
+    async (
+      abortController: AbortController,
+      isMounted: { current: boolean },
+    ) => {
       // Check if this is a non-encrypted expense first
       if (!isValidString(encryptedData) || !isValidString(encryptionIv)) {
         // Non-encrypted expense: use fallback title immediately
-        if (isMounted) {
-          const displayTitle = isValidString(fallbackTitle)
-            ? fallbackTitle
-            : 'Untitled Expense'
-
+        if (isMounted.current) {
           setDecryptedData({
-            title: displayTitle,
+            title: memoizedFallbackTitle,
             notes: undefined,
           })
         }
@@ -70,18 +67,18 @@ export function DecryptedExpenseContent({
 
       // For encrypted expenses, we need encryption salt
       if (!isValidString(encryptionSalt)) {
-        if (isMounted) setDecryptedData(null)
+        if (isMounted.current) setDecryptedData(null)
         return
       }
 
       if (!isValidString(groupId)) {
-        if (isMounted) setDecryptedData(null)
+        if (isMounted.current) setDecryptedData(null)
         return
       }
 
       const password = PasswordSession.getPassword(groupId)
       if (!isValidString(password)) {
-        if (isMounted) {
+        if (isMounted.current) {
           // No password available - leave as null to show locked indicator
           setDecryptedData(null)
         }
@@ -92,7 +89,7 @@ export function DecryptedExpenseContent({
       if (abortController.signal.aborted) return
 
       try {
-        if (isMounted) setIsDecrypting(true)
+        if (isMounted.current) setIsDecrypting(true)
 
         // Use modern API directly for reliable decryption
         let result: DecryptedExpenseData | null = null
@@ -110,23 +107,20 @@ export function DecryptedExpenseContent({
         }
 
         // Check if operation was aborted after decryption
-        if (abortController.signal.aborted || !isMounted) return
+        if (abortController.signal.aborted || !isMounted.current) return
 
         // Validate decryption result
         if (!result || !isValidString(result.title)) {
-          if (isMounted) {
-            const fallback = isValidString(fallbackTitle)
-              ? fallbackTitle
-              : 'Untitled Expense'
+          if (isMounted.current) {
             setDecryptedData({
-              title: fallback,
+              title: memoizedFallbackTitle,
               notes: undefined,
             })
           }
           return
         }
 
-        if (isMounted) {
+        if (isMounted.current) {
           setDecryptedData(result)
         }
       } catch (error) {
@@ -134,34 +128,46 @@ export function DecryptedExpenseContent({
         if (!abortController.signal.aborted) {
           console.error('Failed to decrypt expense data:', error)
         }
-        if (isMounted) {
+        if (isMounted.current) {
           // Set fallback instead of null for error cases
-          const fallback = isValidString(fallbackTitle)
-            ? fallbackTitle
-            : 'Untitled Expense'
           setDecryptedData({
-            title: fallback,
+            title: memoizedFallbackTitle,
             notes: undefined,
           })
         }
       } finally {
-        if (isMounted) setIsDecrypting(false)
+        if (isMounted.current) setIsDecrypting(false)
       }
-    }
+    },
+    [
+      encryptedData,
+      encryptionIv,
+      encryptionSalt,
+      groupId,
+      memoizedFallbackTitle,
+    ],
+  )
 
-    decryptExpenseData()
+  useEffect(() => {
+    // Reset state when props change
+    setDecryptedData(null)
+    setIsDecrypting(false)
+
+    // Use AbortController to prevent race conditions
+    const abortController = new AbortController()
+    const isMounted = { current: true }
+
+    decryptExpenseData(abortController, isMounted)
 
     // Cleanup function to prevent race conditions
     return () => {
-      isMounted = false
+      isMounted.current = false
       abortController.abort()
     }
-  }, [encryptedData, encryptionIv, encryptionSalt, groupId, fallbackTitle])
+  }, [decryptExpenseData])
 
-  // Enhanced fallback title handling
-  const safeFallbackTitle = isValidString(fallbackTitle)
-    ? fallbackTitle
-    : 'Untitled Expense'
+  // Use memoized fallback title
+  const safeFallbackTitle = memoizedFallbackTitle
 
   // Show locked indicator only for encrypted expenses without password
   const isEncryptedExpense =

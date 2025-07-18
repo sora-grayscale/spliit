@@ -255,6 +255,7 @@ export function ExpenseForm({
   const activeUserId = useActiveUser(group.id)
   const [decryptedTitle, setDecryptedTitle] = useState<string | null>(null)
   const [decryptedNotes, setDecryptedNotes] = useState<string | null>(null)
+  const [initialFormSetup, setInitialFormSetup] = useState(false)
 
   // Decrypt title and notes if the group is encrypted with enhanced error handling
   useEffect(() => {
@@ -273,9 +274,8 @@ export function ExpenseForm({
         setDecryptedTitle(safeTitle)
         setDecryptedNotes(safeNotes)
 
-        // Update form values safely
-        form.setValue('title', safeTitle)
-        form.setValue('notes', safeNotes)
+        // Skip form update since we're already in an useEffect - form will be updated once at the end
+        // This prevents infinite re-renders
         return
       }
 
@@ -324,9 +324,7 @@ export function ExpenseForm({
         setDecryptedTitle(safeTitle)
         setDecryptedNotes(safeNotes)
 
-        // Update form values with decrypted data
-        form.setValue('title', safeTitle)
-        form.setValue('notes', safeNotes)
+        // Skip form update to prevent infinite loops - form will be updated once at the end
       } catch (error) {
         console.error('Failed to decrypt expense data:', error)
 
@@ -336,14 +334,24 @@ export function ExpenseForm({
         setDecryptedTitle(fallbackTitle)
         setDecryptedNotes(fallbackNotes)
 
-        // Update form with fallback values
-        form.setValue('title', fallbackTitle)
-        form.setValue('notes', fallbackNotes)
+        // Skip form update to prevent infinite loops - form will be updated once at the end
       }
     }
 
-    decryptExpenseData()
-  }, [expense, group, form])
+    decryptExpenseData().then(() => {
+      // Update form once after decryption is complete to prevent infinite loops
+      if (!initialFormSetup) {
+        const titleValue = decryptedTitle ?? ''
+        const notesValue = decryptedNotes ?? ''
+        form.reset({
+          ...form.getValues(),
+          title: titleValue,
+          notes: notesValue,
+        })
+        setInitialFormSetup(true)
+      }
+    })
+  }, [expense, group, form, initialFormSetup, decryptedTitle, decryptedNotes])
 
   const submit = async (values: ExpenseFormValues) => {
     await persistDefaultSplittingOptions(group.id, values)
@@ -461,7 +469,9 @@ export function ExpenseForm({
                           const { categoryId } = await extractCategoryFromTitle(
                             field.value,
                           )
-                          form.setValue('category', categoryId)
+                          form.setValue('category', categoryId, {
+                            shouldValidate: true,
+                          })
                           setCategoryLoading(false)
                         }
                       }}
@@ -517,7 +527,10 @@ export function ExpenseForm({
                           const v = enforceCurrencyPattern(event.target.value)
                           const income = Number(v) < 0
                           setIsIncome(income)
-                          if (income) form.setValue('isReimbursement', false)
+                          if (income)
+                            form.setValue('isReimbursement', false, {
+                              shouldValidate: true,
+                            })
                           onChange(v)
                         }}
                         onFocus={(e) => {
@@ -626,7 +639,9 @@ export function ExpenseForm({
                   <FormLabel>{t(`${sExpense}.recurrenceRule.label`)}</FormLabel>
                   <Select
                     onValueChange={(value) => {
-                      form.setValue('recurrenceRule', value as RecurrenceRule)
+                      form.setValue('recurrenceRule', value as RecurrenceRule, {
+                        shouldValidate: true,
+                      })
                     }}
                     defaultValue={getSelectedRecurrenceRule(field)}
                   >

@@ -46,6 +46,14 @@ export const SECURITY_CONSTANTS = {
   MEMORY_CLEAR_DELAY: 100, // Delay between memory clear operations (ms)
   SECURE_RANDOM_BYTES: 32, // Default random bytes length
 
+  // Memory clearing patterns
+  FILL_BYTE_ZERO: 0x00, // Zero pattern for memory clearing
+  FILL_BYTE_FF: 0xff, // All-ones pattern for memory clearing
+  FILL_BYTE_AA: 0xaa, // Alternating pattern for memory clearing
+
+  // Numeric limits
+  MAX_UINT32: 0xffffffff, // Maximum 32-bit unsigned integer value
+
   // Timing attack prevention
   MIN_DECRYPTION_TIME_MS: 100, // Minimum time for decryption operations to prevent timing attacks
 } as const

@@ -337,7 +337,12 @@ class SecureMemory {
         cycle < SECURITY_CONSTANTS.PASSWORD_MEMORY_CLEAR_CYCLES;
         cycle++
       ) {
-        const pattern = cycle % 3 === 0 ? 0x00 : cycle % 3 === 1 ? 0xff : 0xaa
+        const pattern =
+          cycle % 3 === 0
+            ? SECURITY_CONSTANTS.FILL_BYTE_ZERO
+            : cycle % 3 === 1
+            ? SECURITY_CONSTANTS.FILL_BYTE_FF
+            : SECURITY_CONSTANTS.FILL_BYTE_AA
         buffer.fill(pattern)
 
         // Non-blocking delay between cycles to prevent UI freezing
@@ -371,7 +376,12 @@ class SecureMemory {
   static async clearSecureBuffer(buffer: Uint8Array): Promise<void> {
     // Multiple overwrite patterns
     for (let cycle = 0; cycle < 3; cycle++) {
-      const pattern = cycle % 3 === 0 ? 0x00 : cycle % 3 === 1 ? 0xff : 0xaa
+      const pattern =
+        cycle % 3 === 0
+          ? SECURITY_CONSTANTS.FILL_BYTE_ZERO
+          : cycle % 3 === 1
+          ? SECURITY_CONSTANTS.FILL_BYTE_FF
+          : SECURITY_CONSTANTS.FILL_BYTE_AA
       buffer.fill(pattern)
 
       if (cycle < 2) {

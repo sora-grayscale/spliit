@@ -36,12 +36,12 @@ export function timingSafeEqual(a: string, b: string): boolean {
  * This avoids bias that can be introduced by modulo operations
  */
 export function getUnbiasedRandomInt(max: number): number {
-  if (max <= 0 || max > 0xffffffff) {
+  if (max <= 0 || max > SECURITY_CONSTANTS.MAX_UINT32) {
     throw new Error('Invalid max value for random int generation')
   }
 
   // Calculate the largest multiple of max that fits in a 32-bit unsigned integer
-  const limit = Math.floor(0xffffffff / max) * max
+  const limit = Math.floor(SECURITY_CONSTANTS.MAX_UINT32 / max) * max
 
   let value: number
   let attempts = 0
