@@ -105,16 +105,19 @@ export function hasModernSignature(api: unknown): api is VersionedCryptoApi {
     return caps.modernDecryptSignature === true
   }
 
-  // Tertiary check: Duck typing with test call approach
-  // Try to detect modern signature through method inspection
+  // Tertiary check: Function length inspection (fallback only)
+  // IMPORTANT: This is unreliable due to minification and default parameters
+  // Only use as a last resort when apiVersion and capabilities are unavailable
   if (typeof cryptoApi.decryptExpenseData === 'function') {
     try {
-      // Check if the function has a toString() that suggests 5 parameters
-      const fnStr = cryptoApi.decryptExpenseData.toString()
-      // Look for groupId parameter in function signature
-      return fnStr.includes('groupId') || fnStr.includes('group_id')
+      // Modern signature has 5 parameters: (encryptedData, iv, password, salt, groupId)
+      // Legacy signature has 4 parameters: (encryptedData, iv, password, salt)
+      // WARNING: This may fail in production builds due to minification
+      const paramCount = cryptoApi.decryptExpenseData.length
+      // Conservative approach: only consider it modern if exactly 5 parameters
+      return paramCount === 5
     } catch {
-      // If toString() fails, fall back to safe assumption
+      // If length check fails, assume legacy for safety
       return false
     }
   }

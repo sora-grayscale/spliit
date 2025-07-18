@@ -369,12 +369,7 @@ export function validatePassword(password: string): PasswordValidation {
 /**
  * Character sets for password generation
  */
-const PASSWORD_CHARS = {
-  lowercase: 'abcdefghijklmnopqrstuvwxyz',
-  uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-  numbers: '0123456789',
-  symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?~`',
-} as const
+const PASSWORD_CHARS = SECURITY_CONSTANTS.PASSWORD_CHARS
 
 /**
  * Fisher-Yates shuffle using unbiased secure random

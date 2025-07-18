@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/hover-card'
 import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
 import { Lock } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 interface DecryptedExpenseContentProps {
   encryptedData?: string | null
@@ -41,6 +41,7 @@ export function DecryptedExpenseContent({
   const [decryptedData, setDecryptedData] =
     useState<DecryptedExpenseData | null>(null)
   const [isDecrypting, setIsDecrypting] = useState(false)
+  const isMountedRef = useRef(true)
 
   // Memoize fallback title to prevent unnecessary re-renders
   const memoizedFallbackTitle = useMemo(() => {
@@ -51,12 +52,12 @@ export function DecryptedExpenseContent({
   const decryptExpenseData = useCallback(
     async (
       abortController: AbortController,
-      isMounted: { current: boolean },
+      isMountedRef: React.MutableRefObject<boolean>,
     ) => {
       // Check if this is a non-encrypted expense first
       if (!isValidString(encryptedData) || !isValidString(encryptionIv)) {
         // Non-encrypted expense: use fallback title immediately
-        if (isMounted.current) {
+        if (isMountedRef.current) {
           setDecryptedData({
             title: memoizedFallbackTitle,
             notes: undefined,
@@ -67,18 +68,18 @@ export function DecryptedExpenseContent({
 
       // For encrypted expenses, we need encryption salt
       if (!isValidString(encryptionSalt)) {
-        if (isMounted.current) setDecryptedData(null)
+        if (isMountedRef.current) setDecryptedData(null)
         return
       }
 
       if (!isValidString(groupId)) {
-        if (isMounted.current) setDecryptedData(null)
+        if (isMountedRef.current) setDecryptedData(null)
         return
       }
 
       const password = PasswordSession.getPassword(groupId)
       if (!isValidString(password)) {
-        if (isMounted.current) {
+        if (isMountedRef.current) {
           // No password available - leave as null to show locked indicator
           setDecryptedData(null)
         }
@@ -89,7 +90,7 @@ export function DecryptedExpenseContent({
       if (abortController.signal.aborted) return
 
       try {
-        if (isMounted.current) setIsDecrypting(true)
+        if (isMountedRef.current) setIsDecrypting(true)
 
         // Use modern API directly for reliable decryption
         let result: DecryptedExpenseData | null = null
@@ -107,11 +108,11 @@ export function DecryptedExpenseContent({
         }
 
         // Check if operation was aborted after decryption
-        if (abortController.signal.aborted || !isMounted.current) return
+        if (abortController.signal.aborted || !isMountedRef.current) return
 
         // Validate decryption result
         if (!result || !isValidString(result.title)) {
-          if (isMounted.current) {
+          if (isMountedRef.current) {
             setDecryptedData({
               title: memoizedFallbackTitle,
               notes: undefined,
@@ -120,7 +121,7 @@ export function DecryptedExpenseContent({
           return
         }
 
-        if (isMounted.current) {
+        if (isMountedRef.current) {
           setDecryptedData(result)
         }
       } catch (error) {
@@ -128,7 +129,7 @@ export function DecryptedExpenseContent({
         if (!abortController.signal.aborted) {
           console.error('Failed to decrypt expense data:', error)
         }
-        if (isMounted.current) {
+        if (isMountedRef.current) {
           // Set fallback instead of null for error cases
           setDecryptedData({
             title: memoizedFallbackTitle,
@@ -136,7 +137,7 @@ export function DecryptedExpenseContent({
           })
         }
       } finally {
-        if (isMounted.current) setIsDecrypting(false)
+        if (isMountedRef.current) setIsDecrypting(false)
       }
     },
     [
@@ -152,17 +153,23 @@ export function DecryptedExpenseContent({
     // Reset state when props change
     setDecryptedData(null)
     setIsDecrypting(false)
+    isMountedRef.current = true
 
     // Use AbortController to prevent race conditions
     const abortController = new AbortController()
-    const isMounted = { current: true }
 
-    decryptExpenseData(abortController, isMounted)
+    // Add a small delay to prevent rapid successive calls
+    const timeoutId = setTimeout(() => {
+      if (!abortController.signal.aborted) {
+        decryptExpenseData(abortController, isMountedRef)
+      }
+    }, 100)
 
     // Cleanup function to prevent race conditions
     return () => {
-      isMounted.current = false
+      isMountedRef.current = false
       abortController.abort()
+      clearTimeout(timeoutId)
     }
   }, [decryptExpenseData])
 

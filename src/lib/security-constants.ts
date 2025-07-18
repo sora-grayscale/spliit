@@ -54,6 +54,14 @@ export const SECURITY_CONSTANTS = {
   // Numeric limits
   MAX_UINT32: 0xffffffff, // Maximum 32-bit unsigned integer value
 
+  // Password character sets
+  PASSWORD_CHARS: {
+    lowercase: 'abcdefghijklmnopqrstuvwxyz',
+    uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    numbers: '0123456789',
+    symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?~`',
+  } as const,
+
   // Timing attack prevention
   MIN_DECRYPTION_TIME_MS: 100, // Minimum time for decryption operations to prevent timing attacks
 } as const

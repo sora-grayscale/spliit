@@ -264,7 +264,7 @@ export function ExpenseForm({
         // Clear state if no expense
         setDecryptedTitle(null)
         setDecryptedNotes(null)
-        return
+        return { title: '', notes: '' }
       }
 
       // For non-encrypted groups, use the original values
@@ -273,10 +273,7 @@ export function ExpenseForm({
         const safeNotes = expense.notes ?? ''
         setDecryptedTitle(safeTitle)
         setDecryptedNotes(safeNotes)
-
-        // Skip form update since we're already in an useEffect - form will be updated once at the end
-        // This prevents infinite re-renders
-        return
+        return { title: safeTitle, notes: safeNotes }
       }
 
       // For encrypted groups, attempt decryption
@@ -286,7 +283,7 @@ export function ExpenseForm({
         const fallbackNotes = expense.notes ?? ''
         setDecryptedTitle(fallbackTitle)
         setDecryptedNotes(fallbackNotes)
-        return
+        return { title: fallbackTitle, notes: fallbackNotes }
       }
 
       const password = PasswordSession.getPassword(group.id)
@@ -296,7 +293,7 @@ export function ExpenseForm({
         const fallbackNotes = expense.notes ?? ''
         setDecryptedTitle(fallbackTitle)
         setDecryptedNotes(fallbackNotes)
-        return
+        return { title: fallbackTitle, notes: fallbackNotes }
       }
 
       try {
@@ -323,8 +320,7 @@ export function ExpenseForm({
 
         setDecryptedTitle(safeTitle)
         setDecryptedNotes(safeNotes)
-
-        // Skip form update to prevent infinite loops - form will be updated once at the end
+        return { title: safeTitle, notes: safeNotes }
       } catch (error) {
         console.error('Failed to decrypt expense data:', error)
 
@@ -333,25 +329,24 @@ export function ExpenseForm({
         const fallbackNotes = expense.notes ?? ''
         setDecryptedTitle(fallbackTitle)
         setDecryptedNotes(fallbackNotes)
-
-        // Skip form update to prevent infinite loops - form will be updated once at the end
+        return { title: fallbackTitle, notes: fallbackNotes }
       }
     }
 
-    decryptExpenseData().then(() => {
-      // Update form once after decryption is complete to prevent infinite loops
-      if (!initialFormSetup) {
-        const titleValue = decryptedTitle ?? ''
-        const notesValue = decryptedNotes ?? ''
-        form.reset({
-          ...form.getValues(),
-          title: titleValue,
-          notes: notesValue,
-        })
+    if (!initialFormSetup) {
+      decryptExpenseData().then(({ title, notes }) => {
+        // Update form once after decryption is complete to prevent infinite loops
+        if (title || notes) {
+          form.reset({
+            ...form.getValues(),
+            title: title || '',
+            notes: notes || '',
+          })
+        }
         setInitialFormSetup(true)
-      }
-    })
-  }, [expense, group, form, initialFormSetup, decryptedTitle, decryptedNotes])
+      })
+    }
+  }, [expense, group, form, initialFormSetup])
 
   const submit = async (values: ExpenseFormValues) => {
     await persistDefaultSplittingOptions(group.id, values)

@@ -42,7 +42,7 @@ export class GroupRateLimiter {
       // Different limits for different operations
       const limits =
         operationType === 'decryption'
-          ? { maxAttempts: 5, windowMs: 60000 } // 5 attempts per minute for decryption
+          ? { maxAttempts: 15, windowMs: 60000 } // 15 attempts per minute for decryption (more lenient)
           : { maxAttempts: 10, windowMs: 300000 } // 10 attempts per 5 minutes for verification
 
       this.instances.set(
