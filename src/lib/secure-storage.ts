@@ -46,7 +46,9 @@ export class SecureStorage {
             // Migrate to new consistent key name
             sessionStorage.setItem(sessionKeyName, oldKey)
             sessionStorage.removeItem(key) // Clean up old key
-            console.info(`[SecureStorage] Migrated session key from ${key} to ${sessionKeyName}`)
+            console.info(
+              `[SecureStorage] Migrated session key from ${key} to ${sessionKeyName}`,
+            )
             return oldKey
           }
         }
@@ -59,10 +61,14 @@ export class SecureStorage {
         const array = new Uint8Array(20) // Increased entropy
         crypto.getRandomValues(array)
         const timestamp = Date.now().toString(36)
-        const origin = window.location.origin.slice(-8).replace(/[^a-zA-Z0-9]/g, '')
+        const origin = window.location.origin
+          .slice(-8)
+          .replace(/[^a-zA-Z0-9]/g, '')
         newKey =
           `spliit_session_${timestamp}_${origin}_` +
-          Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('')
+          Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join(
+            '',
+          )
       } else {
         // Enhanced fallback with timestamp and random component
         const timestamp = Date.now().toString(36)
@@ -80,19 +86,40 @@ export class SecureStorage {
   }
 
   /**
+   * Cryptographically validate key identity
+   * SECURITY: Uses exact matching instead of vulnerable prefix comparison
+   */
+  private static validateKeyIdentity(
+    sessionKey: string,
+    keyId: string,
+  ): boolean {
+    if (!sessionKey || !keyId) return false
+
+    try {
+      // SECURITY FIX: Use exact key ID matching instead of prefix comparison
+      // Extract the first 16 characters as the key identifier for exact comparison
+      const sessionKeyId = sessionKey.substring(0, 16)
+      return sessionKeyId === keyId
+    } catch (error) {
+      console.warn('Key identity validation failed:', error)
+      return false
+    }
+  }
+
+  /**
    * Try to recover the encryption key from sessionStorage
-   * SECURITY: Attempts to find the correct key for legacy data
+   * SECURITY: Attempts to find the correct key for legacy data with exact matching
    */
   private static tryKeyRecovery(keyId: string): string | null {
     if (typeof window === 'undefined') return null
 
     try {
-      // Check sessionStorage for any keys that start with the keyId
+      // Check sessionStorage for any keys that match exactly
       for (let i = 0; i < sessionStorage.length; i++) {
         const storageKey = sessionStorage.key(i)
         if (storageKey && storageKey.includes('spliit_session')) {
           const sessionKey = sessionStorage.getItem(storageKey)
-          if (sessionKey && sessionKey.startsWith(keyId)) {
+          if (sessionKey && this.validateKeyIdentity(sessionKey, keyId)) {
             console.info(`[SecureStorage] Recovered key for keyId: ${keyId}`)
             return sessionKey
           }
@@ -102,8 +129,10 @@ export class SecureStorage {
       // Check localStorage for any migration data that might contain the key
       const migrationKey = `migration_key_${keyId}`
       const migrationData = localStorage.getItem(migrationKey)
-      if (migrationData) {
-        console.info(`[SecureStorage] Recovered key from migration data for keyId: ${keyId}`)
+      if (migrationData && this.validateKeyIdentity(migrationData, keyId)) {
+        console.info(
+          `[SecureStorage] Recovered key from migration data for keyId: ${keyId}`,
+        )
         return migrationData
       }
 
@@ -122,11 +151,13 @@ export class SecureStorage {
   private static getDynamicMasterKeyName(): string {
     // Use a hash of the current session to create a unique key name
     if (typeof window !== 'undefined') {
-      const sessionInfo = `${window.location.origin}_${Date.now().toString().slice(-6)}`
+      const sessionInfo = `${window.location.origin}_${Date.now()
+        .toString()
+        .slice(-6)}`
       let hash = 0
       for (let i = 0; i < sessionInfo.length; i++) {
         const char = sessionInfo.charCodeAt(i)
-        hash = ((hash << 5) - hash) + char
+        hash = (hash << 5) - hash + char
         hash = hash & hash // Convert to 32-bit integer
       }
       return `${this.MASTER_KEY_PREFIX}_${Math.abs(hash).toString(36)}`
@@ -465,22 +496,28 @@ export class SecureStorage {
             return this.xorDecrypt(item.value, sessionKey)
           } else if (item.encryptionType === 'aes-gcm') {
             // Enhanced key consistency check for AES-GCM operations
-            if (item.keyId && !sessionKey.startsWith(item.keyId)) {
+            if (
+              item.keyId &&
+              !this.validateKeyIdentity(sessionKey, item.keyId)
+            ) {
               console.warn(
                 'Key mismatch detected for AES-GCM, trying key recovery for key:',
                 key,
               )
-              
+
               // Try to recover from sessionStorage with old key pattern
               const recoveredKey = this.tryKeyRecovery(item.keyId)
               if (recoveredKey) {
                 try {
                   return await this.cryptoDecrypt(item.value, recoveredKey)
                 } catch (recoveryError) {
-                  console.warn('Key recovery failed, using XOR fallback:', recoveryError)
+                  console.warn(
+                    'Key recovery failed, using XOR fallback:',
+                    recoveryError,
+                  )
                 }
               }
-              
+
               return this.xorDecrypt(item.value, sessionKey)
             }
 
@@ -499,22 +536,28 @@ export class SecureStorage {
 
             if (isAesGcmFormat) {
               // Enhanced key consistency check for AES-GCM
-              if (item.keyId && !sessionKey.startsWith(item.keyId)) {
+              if (
+                item.keyId &&
+                !this.validateKeyIdentity(sessionKey, item.keyId)
+              ) {
                 console.warn(
                   'Legacy key mismatch detected, trying key recovery for key:',
                   key,
                 )
-                
+
                 // Try to recover from sessionStorage with old key pattern
                 const recoveredKey = this.tryKeyRecovery(item.keyId)
                 if (recoveredKey) {
                   try {
                     return await this.cryptoDecrypt(item.value, recoveredKey)
                   } catch (recoveryError) {
-                    console.warn('Legacy key recovery failed, using XOR fallback:', recoveryError)
+                    console.warn(
+                      'Legacy key recovery failed, using XOR fallback:',
+                      recoveryError,
+                    )
                   }
                 }
-                
+
                 return this.xorDecrypt(item.value, sessionKey)
               }
 

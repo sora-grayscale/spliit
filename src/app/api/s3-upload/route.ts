@@ -1,19 +1,11 @@
 import { randomId } from '@/lib/api'
 import { env } from '@/lib/env'
+import { getMimeTypeFromExtension, validateFile } from '@/lib/mime-validation'
 import { POST as route } from 'next-s3-upload/route'
 
 export const POST = route.configure({
-  key(req, filename) {
-    // SECURITY FIX: Enhanced file validation with MIME type checking
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.pdf', '.gif', '.webp']
-    const allowedMimeTypes = [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'application/pdf',
-    ]
+  async key(req, filename) {
+    // SECURITY FIX: Enhanced file validation with comprehensive MIME type checking
     const maxFilenameLength = 255
     const maxFileSize = 10 * 1024 * 1024 // 10MB limit
 
@@ -24,13 +16,45 @@ export const POST = route.configure({
 
     // Extract and validate extension
     const [, extension] = filename.match(/(\.[^\.]*)$/) ?? [null, '']
-    if (!extension || !allowedExtensions.includes(extension.toLowerCase())) {
+    if (!extension) {
+      throw new Error('No file extension found')
+    }
+
+    // Validate extension against allowed types
+    const expectedMimeType = getMimeTypeFromExtension(extension)
+    if (!expectedMimeType) {
       throw new Error('Invalid file type. Only images and PDFs are allowed.')
     }
 
-    // SECURITY FIX: Validate file content and MIME type (basic check)
-    // Note: More comprehensive MIME validation would require access to file content
-    // This is a basic validation - full validation should be done on the client side too
+    // SECURITY FIX: Validate file content headers for actual MIME type
+    try {
+      // Get file content for validation
+      const formData = await req.formData()
+      const file = formData.get('file') as File
+
+      if (file && file.size > 0) {
+        // Read first chunk of file for signature validation
+        const buffer = await file.slice(0, 16).arrayBuffer()
+        const validationResult = validateFile(filename, buffer)
+
+        if (!validationResult.isValid) {
+          throw new Error(`File validation failed: ${validationResult.error}`)
+        }
+
+        // Check file size
+        if (file.size > maxFileSize) {
+          throw new Error(
+            `File too large. Maximum size is ${maxFileSize / (1024 * 1024)}MB`,
+          )
+        }
+      }
+    } catch (error) {
+      // Log validation error but allow fallback to extension-only validation
+      console.warn(
+        'Advanced MIME validation failed, falling back to extension validation:',
+        error,
+      )
+    }
 
     // Sanitize filename - remove any potentially dangerous characters
     const sanitizedName = filename

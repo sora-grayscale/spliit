@@ -185,11 +185,11 @@ export class PasswordSession {
     if (sessionToken && !password) {
       // Background async password retrieval with proper lifecycle management
       const asyncPasswordPromise = this.getPasswordAsync(groupId, sessionToken)
-      
+
       // Store the promise for potential cleanup
       const cleanupKey = `password-retrieval-${groupId}`
       this.backgroundTasks.set(cleanupKey, asyncPasswordPromise)
-      
+
       asyncPasswordPromise
         .catch((error) => {
           // Enhanced error handling with security consideration
@@ -295,7 +295,7 @@ export class PasswordSession {
     this.sessionTokens.clear()
     this.cleanupListeners.clear()
     this.wipeScheduled.clear()
-    
+
     // Clear background tasks to prevent memory leaks
     this.backgroundTasks.clear()
 

@@ -198,7 +198,9 @@ export class EncryptedStatsService {
     }
     // SECURITY FIX: Safe type validation with proper type narrowing
     if (!isParticipantStatsData(decryptedData)) {
-      throw new Error('Invalid participant stats data structure after decryption')
+      throw new Error(
+        'Invalid participant stats data structure after decryption',
+      )
     }
     // Type guard ensures this is safe - no unsafe casting needed
     return decryptedData

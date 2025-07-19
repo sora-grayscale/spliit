@@ -14,6 +14,7 @@ import {
   PasswordSessionManager,
   PasswordValidator,
 } from './password-session-manager'
+import { validateParticipantId, validateShareValue } from './validation-utils'
 
 export function randomId() {
   return nanoid()
@@ -127,10 +128,15 @@ export async function createExpense(
     // CLARITY FIX: Use Map for clearer intent and better type safety with validation
     const shareData = new Map<string, number>()
     for (const paidFor of expenseFormValues.paidFor) {
-      // Enhanced validation using centralized validation utility
-      const { validateShareValue, validateParticipantId } = await import('./validation-utils')
-      const validParticipantId = validateParticipantId(paidFor.participant, 'paidFor entry')
-      const validShareValue = validateShareValue(paidFor.shares, validParticipantId)
+      // PERFORMANCE FIX: Use static imports instead of dynamic imports in loops
+      const validParticipantId = validateParticipantId(
+        paidFor.participant,
+        'paidFor entry',
+      )
+      const validShareValue = validateShareValue(
+        paidFor.shares,
+        validParticipantId,
+      )
       shareData.set(validParticipantId, validShareValue)
     }
 

@@ -356,7 +356,10 @@ export class ComprehensiveEncryptionService {
         encryptedExpenseData.sharesIv,
         key,
       )
-      const shareDataObject = JSON.parse(shareDataString) as Record<string, number>
+      const shareDataObject = JSON.parse(shareDataString) as Record<
+        string,
+        number
+      >
       shareData = new Map(Object.entries(shareDataObject))
     }
 

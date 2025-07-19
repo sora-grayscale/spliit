@@ -18,7 +18,7 @@ import {
 import { useMediaQuery } from '@/lib/hooks'
 import { Category } from '@prisma/client'
 import { useTranslations } from 'next-intl'
-import { forwardRef, useCallback, useEffect, useState } from 'react'
+import { forwardRef, useEffect, useState } from 'react'
 
 type Props = {
   categories: Category[]

@@ -34,11 +34,12 @@ export function validateShareValue(
     throw new Error(`Invalid share value${contextMsg}: value is not finite`)
   }
 
-  // Range check (shares should be positive)
-  if (value <= 0) {
+  // FLEXIBILITY FIX: Allow zero shares for legitimate use cases (e.g., observers)
+  // Zero shares may be valid for participants who observe but don't pay/receive
+  if (value < 0) {
     const contextMsg = participantId ? ` for participant ${participantId}` : ''
     throw new Error(
-      `Invalid share value${contextMsg}: value must be positive, got ${value}`,
+      `Invalid share value${contextMsg}: value cannot be negative, got ${value}`,
     )
   }
 
@@ -60,10 +61,7 @@ export function validateShareValue(
  * @returns The validated number
  * @throws Error if validation fails
  */
-export function validateAmountValue(
-  value: unknown,
-  context?: string,
-): number {
+export function validateAmountValue(value: unknown, context?: string): number {
   // Type check
   if (typeof value !== 'number') {
     const contextMsg = context ? ` for ${context}` : ''
@@ -173,12 +171,13 @@ export function validateParticipantId(
     )
   }
 
-  // Basic format check (alphanumeric, dashes, underscores)
-  const validFormat = /^[a-zA-Z0-9_-]+$/.test(value)
+  // SECURITY FIX: More flexible format validation for existing participant IDs
+  // Allow more characters that may exist in existing participant IDs
+  const validFormat = /^[a-zA-Z0-9_.-]+$/.test(value)
   if (!validFormat) {
     const contextMsg = context ? ` for ${context}` : ''
     throw new Error(
-      `Invalid participant ID${contextMsg}: invalid format (only alphanumeric, dashes, underscores allowed)`,
+      `Invalid participant ID${contextMsg}: invalid format (only alphanumeric, dashes, underscores, dots allowed)`,
     )
   }
 
@@ -215,12 +214,13 @@ export function validateGroupId(value: unknown, context?: string): string {
     )
   }
 
-  // Enhanced format check (more flexible than fix.txt suggestion)
-  const validFormat = /^[a-zA-Z0-9_-]+$/.test(value)
+  // SECURITY FIX: More flexible format validation for existing group IDs
+  // Allow more characters that may exist in existing group IDs (e.g., dots, plus signs)
+  const validFormat = /^[a-zA-Z0-9_.-]+$/.test(value)
   if (!validFormat) {
     const contextMsg = context ? ` for ${context}` : ''
     throw new Error(
-      `Invalid group ID${contextMsg}: invalid format (only alphanumeric, dashes, underscores allowed)`,
+      `Invalid group ID${contextMsg}: invalid format (only alphanumeric, dashes, underscores, dots allowed)`,
     )
   }
 
@@ -272,10 +272,7 @@ export function validateShareArray(
  * @returns The converted number
  * @throws Error if conversion fails
  */
-export function safeNumberConversion(
-  value: unknown,
-  context?: string,
-): number {
+export function safeNumberConversion(value: unknown, context?: string): number {
   if (typeof value === 'number') {
     return validateAmountValue(value, context)
   }
