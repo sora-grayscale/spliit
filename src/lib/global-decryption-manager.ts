@@ -19,14 +19,29 @@ const MAX_CACHE_SIZE = 200
 const pendingDecryptions = new Map<string, Promise<{ title: string; notes?: string }>>()
 
 /**
- * Generate secure cache key for decryption
+ * Generate secure cache key for decryption using SHA-256
+ * SECURITY: Prevents information leakage through hash-based key generation
  */
-function generateCacheKey(
+async function generateCacheKey(
   groupId: string,
   encryptedData: string,
   encryptionIv: string
-): string {
-  // SECURITY: Use hash-like key to prevent data leakage
+): Promise<string> {
+  // SECURITY: Use SHA-256 hash to prevent data leakage
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    try {
+      const combined = `${groupId}:${encryptedData}:${encryptionIv}`
+      const encoder = new TextEncoder()
+      const data = encoder.encode(combined)
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32)
+    } catch (error) {
+      console.warn('SHA-256 hashing failed, falling back to base64:', error)
+    }
+  }
+  
+  // Fallback for environments without Web Crypto API
   const combined = `${groupId}:${encryptedData.substring(0, 12)}:${encryptionIv.substring(0, 12)}`
   return btoa(combined).substring(0, 32)
 }
@@ -73,7 +88,7 @@ export class GlobalDecryptionManager {
       return { title: fallbackTitle }
     }
 
-    const cacheKey = generateCacheKey(groupId, encryptedData, encryptionIv)
+    const cacheKey = await generateCacheKey(groupId, encryptedData, encryptionIv)
     
     // SECURITY: Check cache first
     const cached = globalDecryptionCache.get(cacheKey)
@@ -96,6 +111,9 @@ export class GlobalDecryptionManager {
     if (!password?.trim()) {
       return { title: fallbackTitle }
     }
+    
+    // SECURITY: Initialize cleanup on first use (lazy initialization)
+    initializeCleanup()
     
     // SECURITY: Create single decryption promise to prevent duplicate calls
     const decryptionPromise = this.performDecryption(
@@ -125,7 +143,20 @@ export class GlobalDecryptionManager {
       
       return result
     } catch (error) {
-      console.error('Decryption failed:', error)
+      // SECURITY FIX: Enhanced error handling with proper fallback
+      if (error instanceof Error) {
+        if (error.message.includes('Too many decryption attempts')) {
+          console.warn('Rate limit exceeded for decryption, using fallback title')
+        } else if (error.message.includes('Invalid')) {
+          console.warn('Invalid decryption data, using fallback title')
+        } else {
+          console.warn('Decryption failed:', error.message)
+        }
+      } else {
+        console.warn('Unexpected decryption error:', error)
+      }
+      
+      // Return fallback title instead of throwing
       return { title: fallbackTitle }
     } finally {
       pendingDecryptions.delete(cacheKey)
@@ -157,7 +188,16 @@ export class GlobalDecryptionManager {
         notes: result.notes?.trim() || undefined
       }
     } catch (error) {
-      // SECURITY: Don't leak error details, just fallback
+      // SECURITY FIX: Enhanced error handling without leaking details
+      if (error instanceof Error) {
+        if (error.message.includes('Too many decryption attempts')) {
+          throw new Error('Rate limit exceeded')
+        } else if (error.message.includes('password')) {
+          throw new Error('Authentication failed')
+        } else {
+          throw new Error('Decryption failed')
+        }
+      }
       throw new Error('Decryption failed')
     }
   }
@@ -165,16 +205,16 @@ export class GlobalDecryptionManager {
   /**
    * SECURITY: Check if data is cached (without triggering decryption)
    */
-  static isCached(
+  static async isCached(
     encryptedData: string,
     encryptionIv: string,
     groupId: string
-  ): boolean {
+  ): Promise<boolean> {
     if (!encryptedData?.trim() || !encryptionIv?.trim() || !groupId?.trim()) {
       return false
     }
     
-    const cacheKey = generateCacheKey(groupId, encryptedData, encryptionIv)
+    const cacheKey = await generateCacheKey(groupId, encryptedData, encryptionIv)
     const cached = globalDecryptionCache.get(cacheKey)
     
     return cached ? Date.now() - cached.timestamp < CACHE_EXPIRY_MS : false
@@ -232,14 +272,26 @@ export class GlobalDecryptionManager {
   }
 }
 
-// SECURITY: Cleanup on window unload
-if (typeof window !== 'undefined') {
+// SECURITY: Lazy initialization of cleanup interval to prevent memory leaks
+let cleanupInterval: NodeJS.Timeout | null = null
+let isInitialized = false
+
+function initializeCleanup(): void {
+  if (isInitialized || typeof window === 'undefined') return
+  
+  isInitialized = true
+  
+  // SECURITY: Cleanup on window unload
   window.addEventListener('beforeunload', () => {
     GlobalDecryptionManager.clearCache()
+    if (cleanupInterval) {
+      clearInterval(cleanupInterval)
+      cleanupInterval = null
+    }
   })
   
-  // Periodic cleanup every 2 minutes
-  setInterval(() => {
+  // SECURITY: Periodic cleanup every 2 minutes
+  cleanupInterval = setInterval(() => {
     cleanExpiredCache()
   }, 2 * 60 * 1000)
 }

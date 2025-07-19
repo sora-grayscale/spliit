@@ -128,7 +128,7 @@ export function safeNumberConversion(value: unknown): number {
     const parsed = parseFloat(value)
     if (!isNaN(parsed) && isFinite(parsed)) return parsed
   }
-  throw new Error(`Cannot safely convert ${typeof value} to number: ${value}`)
+  throw new Error(`Cannot safely convert ${typeof value} to number`)
 }
 
 /**
@@ -138,5 +138,5 @@ export function safeStringConversion(value: unknown): string {
   if (typeof value === 'string') return value
   if (typeof value === 'number') return value.toString()
   if (value === null || value === undefined) return ''
-  throw new Error(`Cannot safely convert ${typeof value} to string: ${value}`)
+  throw new Error(`Cannot safely convert ${typeof value} to string`)
 }

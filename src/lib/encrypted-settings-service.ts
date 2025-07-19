@@ -62,13 +62,10 @@ export class EncryptedSettingsService {
 
     await prisma.userSettings.upsert({
       where: {
-        groupId_settingsType: {
-          groupId,
-          settingsType: 'group_settings',
-        },
+        id: `${groupId}_group_settings`, // Use composite ID since there's no unique constraint on groupId_settingsType
       },
       create: {
-        id: randomId(),
+        id: `${groupId}_group_settings`,
         groupId,
         participantId: null,
         settingsType: 'group_settings',
@@ -230,15 +227,12 @@ export class EncryptedSettingsService {
 
     await prisma.userSettings.upsert({
       where: {
-        groupId_settingsType: {
-          groupId,
-          settingsType,
-        },
+        id: `${groupId}_app_${settingsType}`, // Use composite ID for app settings
       },
       create: {
-        id: randomId(),
+        id: `${groupId}_app_${settingsType}`,
         groupId,
-        participantId: null,
+        participantId: null, // App settings are not participant-specific
         settingsType,
         encryptedData: encryptedData.encryptedData,
         dataIv: encryptedData.dataIv,

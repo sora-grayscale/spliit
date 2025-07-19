@@ -123,9 +123,19 @@ export function DecryptedExpenseContent({
           setDecryptedData(result)
         }
       } catch (error) {
-        // Don't log errors if the operation was aborted
+        // SECURITY FIX: Enhanced error logging without sensitive data exposure
         if (!abortController.signal.aborted) {
-          console.error('Failed to decrypt expense data:', error)
+          if (error instanceof Error) {
+            if (error.message.includes('Rate limit')) {
+              console.warn('Decryption rate limit exceeded, using fallback title')
+            } else if (error.message.includes('Authentication')) {
+              console.warn('Decryption authentication failed, using fallback title')
+            } else {
+              console.warn('Decryption failed:', error.message)
+            }
+          } else {
+            console.warn('Unexpected decryption error')
+          }
         }
         if (isMountedRef.current) {
           // Set fallback instead of null for error cases

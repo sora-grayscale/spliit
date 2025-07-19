@@ -399,7 +399,8 @@ export async function updateExpense(
       amount: expenseFormValues.amount,
       title: isEncryptedExpense ? '' : expenseFormValues.title,
       categoryId: expenseFormValues.category,
-      paidById: expenseFormValues.paidBy,
+      // CRITICAL SECURITY FIX: Handle encrypted paidBy properly in updates
+      paidById: isComprehensivelyEncrypted && isEncryptedExpense ? '' : expenseFormValues.paidBy,
       splitMode: expenseFormValues.splitMode,
       recurrenceRule: expenseFormValues.recurrenceRule,
       paidFor: {

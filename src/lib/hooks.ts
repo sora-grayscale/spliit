@@ -58,9 +58,14 @@ export function useActiveUser(groupId?: string) {
 
   useEffect(() => {
     if (groupId) {
-      // SECURITY FIX: Use secure storage instead of plain localStorage
-      const activeUser = SecureStorage.getSecureItem(`${groupId}-activeUser`)
-      if (activeUser) setActiveUser(activeUser)
+      // SECURITY FIX: Use secure storage instead of plain localStorage (async)
+      SecureStorage.getSecureItem(`${groupId}-activeUser`)
+        .then(activeUser => {
+          if (activeUser) setActiveUser(activeUser)
+        })
+        .catch(error => {
+          console.warn('Failed to retrieve active user:', error)
+        })
     }
   }, [groupId])
 
