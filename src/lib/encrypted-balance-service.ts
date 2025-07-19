@@ -6,6 +6,8 @@ import { randomId } from './api'
 import { Balances, Reimbursement } from './balances'
 import { ComprehensiveEncryptionService } from './comprehensive-encryption'
 import { prisma } from './prisma'
+import { isEncryptedBalanceData } from './type-guards'
+import type { SafeEncryptedBalanceData } from './type-guards'
 
 export interface EncryptedBalanceData extends Record<string, unknown> {
   balances: Balances
@@ -88,6 +90,10 @@ export class EncryptedBalanceService {
       salt,
     )
 
+    // SECURITY FIX: Safe type validation instead of dangerous casting
+    if (!isEncryptedBalanceData(decryptedData)) {
+      throw new Error('Invalid balance data structure after decryption')
+    }
     return decryptedData as unknown as EncryptedBalanceData
   }
 

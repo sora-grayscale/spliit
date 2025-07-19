@@ -4,6 +4,8 @@
 
 import { randomId } from './api'
 import { ComprehensiveEncryptionService } from './comprehensive-encryption'
+import { isGroupStatsData, isParticipantStatsData } from './type-guards'
+import type { SafeGroupStatsData, SafeParticipantStatsData } from './type-guards'
 import { prisma } from './prisma'
 
 export interface GroupStatsData extends Record<string, unknown> {
@@ -105,6 +107,10 @@ export class EncryptedStatsService {
       salt,
     )
 
+    // SECURITY FIX: Safe type validation instead of dangerous casting
+    if (!isGroupStatsData(decryptedData)) {
+      throw new Error('Invalid group stats data structure after decryption')
+    }
     return decryptedData as unknown as GroupStatsData
   }
 
@@ -184,6 +190,10 @@ export class EncryptedStatsService {
       salt,
     )
 
+    // SECURITY FIX: Safe type validation instead of dangerous casting
+    if (!isParticipantStatsData(decryptedData)) {
+      throw new Error('Invalid participant stats data structure after decryption')
+    }
     return decryptedData as unknown as ParticipantStatsData
   }
 

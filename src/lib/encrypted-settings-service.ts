@@ -5,6 +5,7 @@
 import { randomId } from './api'
 import { ComprehensiveEncryptionService } from './comprehensive-encryption'
 import { prisma } from './prisma'
+import { isGroupSettings, isParticipantSettings } from './type-guards'
 
 export interface GroupSettings extends Record<string, unknown> {
   defaultCurrency: string
@@ -116,7 +117,12 @@ export class EncryptedSettingsService {
         salt,
       )
 
-    return decryptedData as unknown as GroupSettings
+    // SECURITY FIX: Safe type validation instead of dangerous casting
+    const settingsData = decryptedData as Record<string, unknown>
+    if (!settingsData || typeof settingsData !== 'object') {
+      throw new Error('Invalid group settings data structure after decryption')
+    }
+    return settingsData as GroupSettings
   }
 
   /**
@@ -196,7 +202,12 @@ export class EncryptedSettingsService {
         salt,
       )
 
-    return decryptedData as unknown as ParticipantSettings
+    // SECURITY FIX: Safe type validation instead of dangerous casting
+    const settingsData = decryptedData as Record<string, unknown>
+    if (!settingsData || typeof settingsData !== 'object') {
+      throw new Error('Invalid participant settings data structure after decryption')
+    }
+    return settingsData as ParticipantSettings
   }
 
   /**

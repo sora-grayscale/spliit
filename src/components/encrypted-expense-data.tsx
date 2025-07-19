@@ -5,8 +5,8 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card'
-import { ComprehensiveEncryptionService } from '@/lib/comprehensive-encryption'
 import { PasswordSession } from '@/lib/e2ee-crypto-refactored'
+import { GlobalDecryptionManager } from '@/lib/global-decryption-manager'
 import { Lock } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -78,28 +78,34 @@ export function EncryptedExpenseData({
       return
     }
 
+    // SECURITY: Only decrypt if we have basic encrypted data (title/notes)
+    if (!encryptedData || !encryptionIv) {
+      setDecryptedData({
+        title: expenseTitle,
+        notes: expenseNotes || undefined,
+        categoryName: categoryName || undefined,
+      })
+      return
+    }
+
     try {
       setIsDecrypting(true)
       setDecryptionError(false)
 
-      // Decrypt comprehensive expense data
-      const decryptedExpenseData =
-        await ComprehensiveEncryptionService.decryptExpenseExtendedData(
-          {
-            encryptedData: encryptedData || undefined,
-            encryptionIv: encryptionIv || undefined,
-            encryptedCategory: encryptedCategory || undefined,
-            categoryIv: categoryIv || undefined,
-            encryptedShares: encryptedShares || undefined,
-            sharesIv: sharesIv || undefined,
-            encryptionVersion: 1,
-            encryptionFields: [],
-          },
-          password,
-          encryptionSalt,
-        )
+      // SECURITY: Use GlobalDecryptionManager for basic title/notes decryption
+      const basicDecrypted = await GlobalDecryptionManager.decryptExpenseData(
+        encryptedData,
+        encryptionIv,
+        encryptionSalt,
+        groupId,
+        expenseTitle
+      )
 
-      setDecryptedData(decryptedExpenseData)
+      setDecryptedData({
+        title: basicDecrypted.title,
+        notes: basicDecrypted.notes || expenseNotes || undefined,
+        categoryName: categoryName || undefined, // Category decryption handled separately if needed
+      })
     } catch (error) {
       console.error('Failed to decrypt expense data:', error)
       setDecryptionError(true)
@@ -118,10 +124,6 @@ export function EncryptedExpenseData({
     categoryName,
     encryptedData,
     encryptionIv,
-    encryptedCategory,
-    categoryIv,
-    encryptedShares,
-    sharesIv,
     encryptionSalt,
     isEncrypted,
   ])
@@ -249,24 +251,24 @@ export function useDecryptedExpenseData(
 
       const expenseMap = new Map<string, DecryptedExpenseData>()
 
-      // Decrypt expenses one by one (could be optimized for batch processing)
+      // SECURITY: Use GlobalDecryptionManager for batch decryption
       for (const expense of expenses) {
         try {
           if (expense.encryptedData && expense.encryptionIv) {
-            const decryptedData =
-              await ComprehensiveEncryptionService.decryptExpenseExtendedData(
-                {
-                  encryptedData: expense.encryptedData,
-                  encryptionIv: expense.encryptionIv,
-                  encryptedCategory: expense.encryptedCategory || undefined,
-                  categoryIv: expense.categoryIv || undefined,
-                  encryptionVersion: 1,
-                  encryptionFields: [],
-                },
-                password,
-                encryptionSalt,
-              )
-            expenseMap.set(expense.id, decryptedData)
+            // Use GlobalDecryptionManager for centralized rate-limited decryption
+            const decryptedData = await GlobalDecryptionManager.decryptExpenseData(
+              expense.encryptedData,
+              expense.encryptionIv,
+              encryptionSalt,
+              groupId,
+              expense.title
+            )
+            
+            expenseMap.set(expense.id, {
+              title: decryptedData.title,
+              notes: decryptedData.notes || expense.notes || undefined,
+              categoryName: expense.categoryName || undefined,
+            })
           } else {
             // Non-encrypted expense
             expenseMap.set(expense.id, {

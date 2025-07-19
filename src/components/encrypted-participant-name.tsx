@@ -126,9 +126,6 @@ export function EncryptedParticipantName({
   return (
     <span className={className}>
       {decryptedName || participantName}
-      {isEncrypted && (
-        <Lock className="w-2 h-2 ml-1 text-primary inline opacity-60" />
-      )}
     </span>
   )
 }

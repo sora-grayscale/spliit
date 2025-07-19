@@ -5,7 +5,8 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card'
-import { PasswordCrypto, PasswordSession } from '@/lib/e2ee-crypto-refactored'
+import { PasswordSession } from '@/lib/e2ee-crypto-refactored'
+import { GlobalDecryptionManager } from '@/lib/global-decryption-manager'
 import { Lock } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -48,7 +49,10 @@ export function DecryptedExpenseContent({
     return isValidString(fallbackTitle) ? fallbackTitle : 'Untitled Expense'
   }, [fallbackTitle])
 
-  // Memoize the decryption function to prevent recreation on every render
+  // SECURITY: Debounce decryption attempts to prevent rapid successive calls
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // SECURITY: Memoize the decryption function using GlobalDecryptionManager
   const decryptExpenseData = useCallback(
     async (
       abortController: AbortController,
@@ -92,20 +96,14 @@ export function DecryptedExpenseContent({
       try {
         if (isMountedRef.current) setIsDecrypting(true)
 
-        // Use modern API directly for reliable decryption
-        let result: DecryptedExpenseData | null = null
-
-        try {
-          result = await PasswordCrypto.decryptExpenseData(
-            encryptedData,
-            encryptionIv,
-            password,
-            encryptionSalt,
-            groupId,
-          )
-        } catch (error) {
-          throw error
-        }
+        // SECURITY: Use GlobalDecryptionManager for rate-limited, cached decryption
+        const result = await GlobalDecryptionManager.decryptExpenseData(
+          encryptedData,
+          encryptionIv,
+          encryptionSalt,
+          groupId,
+          memoizedFallbackTitle
+        )
 
         // Check if operation was aborted after decryption
         if (abortController.signal.aborted || !isMountedRef.current) return
@@ -158,18 +156,26 @@ export function DecryptedExpenseContent({
     // Use AbortController to prevent race conditions
     const abortController = new AbortController()
 
-    // Add a small delay to prevent rapid successive calls (reduced for better UX)
-    const timeoutId = setTimeout(() => {
+    // SECURITY: Clear any existing debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+
+    // SECURITY: Debounce decryption calls to prevent rapid successive attempts
+    debounceTimerRef.current = setTimeout(() => {
       if (!abortController.signal.aborted) {
         decryptExpenseData(abortController, isMountedRef)
       }
-    }, 50)
+    }, 200) // Increased debounce delay for security
 
     // Cleanup function to prevent race conditions
     return () => {
       isMountedRef.current = false
       abortController.abort()
-      clearTimeout(timeoutId)
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
+      }
     }
   }, [decryptExpenseData])
 

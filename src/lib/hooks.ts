@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { SecureStorage } from './secure-storage'
 
 export function useMediaQuery(query: string): boolean {
   const getMatches = (query: string): boolean => {
@@ -57,7 +58,8 @@ export function useActiveUser(groupId?: string) {
 
   useEffect(() => {
     if (groupId) {
-      const activeUser = localStorage.getItem(`${groupId}-activeUser`)
+      // SECURITY FIX: Use secure storage instead of plain localStorage
+      const activeUser = SecureStorage.getSecureItem(`${groupId}-activeUser`)
       if (activeUser) setActiveUser(activeUser)
     }
   }, [groupId])
