@@ -143,17 +143,8 @@ export function isEncryptedBalanceData(
   )
 }
 
-/**
- * Safe number conversion with validation
- */
-export function safeNumberConversion(value: unknown): number {
-  if (typeof value === 'number') return value
-  if (typeof value === 'string') {
-    const parsed = parseFloat(value)
-    if (!isNaN(parsed) && isFinite(parsed)) return parsed
-  }
-  throw new Error(`Cannot safely convert ${typeof value} to number`)
-}
+// REFACTOR: Removed duplicate safeNumberConversion function
+// Use the comprehensive version from validation-utils.ts instead
 
 /**
  * Safe string conversion with validation

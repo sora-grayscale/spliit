@@ -171,13 +171,13 @@ export function validateParticipantId(
     )
   }
 
-  // SECURITY FIX: More flexible format validation for existing participant IDs
-  // Allow more characters that may exist in existing participant IDs
-  const validFormat = /^[a-zA-Z0-9_.-]+$/.test(value)
+  // SECURITY FIX: Restrict to alphanumeric characters and safe separators only
+  // Removed dots to prevent path traversal attacks - use hyphens and underscores only
+  const validFormat = /^[a-zA-Z0-9_-]+$/.test(value)
   if (!validFormat) {
     const contextMsg = context ? ` for ${context}` : ''
     throw new Error(
-      `Invalid participant ID${contextMsg}: invalid format (only alphanumeric, dashes, underscores, dots allowed)`,
+      `Invalid participant ID${contextMsg}: invalid format (only alphanumeric, dashes, underscores allowed)`,
     )
   }
 
@@ -214,13 +214,13 @@ export function validateGroupId(value: unknown, context?: string): string {
     )
   }
 
-  // SECURITY FIX: More flexible format validation for existing group IDs
-  // Allow more characters that may exist in existing group IDs (e.g., dots, plus signs)
-  const validFormat = /^[a-zA-Z0-9_.-]+$/.test(value)
+  // SECURITY FIX: Restrict to alphanumeric characters and safe separators only
+  // Removed dots to prevent path traversal attacks - use hyphens and underscores only
+  const validFormat = /^[a-zA-Z0-9_-]+$/.test(value)
   if (!validFormat) {
     const contextMsg = context ? ` for ${context}` : ''
     throw new Error(
-      `Invalid group ID${contextMsg}: invalid format (only alphanumeric, dashes, underscores, dots allowed)`,
+      `Invalid group ID${contextMsg}: invalid format (only alphanumeric, dashes, underscores allowed)`,
     )
   }
 

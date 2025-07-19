@@ -223,7 +223,14 @@ export class SecureStorage {
       combined.set(iv, salt.length)
       combined.set(new Uint8Array(encrypted), salt.length + iv.length)
 
-      return btoa(String.fromCharCode.apply(null, Array.from(combined)))
+      // PERFORMANCE FIX: Use chunked approach to prevent stack overflow with large arrays
+      const chunkSize = 8192 // Safe chunk size for most browsers
+      let result = ''
+      for (let i = 0; i < combined.length; i += chunkSize) {
+        const chunk = combined.slice(i, i + chunkSize)
+        result += String.fromCharCode.apply(null, Array.from(chunk))
+      }
+      return btoa(result)
     } catch (error) {
       // SECURITY FIX: Enhanced error handling for encryption failures
       if (error instanceof DOMException) {

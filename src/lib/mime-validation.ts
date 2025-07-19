@@ -70,7 +70,12 @@ export function validateFileSignature(
                 detectedMimeType: mimeType,
               }
             }
-            continue
+            // SECURITY FIX: Don't continue to other signatures if RIFF matched but WebP validation failed
+            // This prevents non-WebP RIFF files from passing validation
+            return {
+              isValid: false,
+              error: 'RIFF file detected but not a valid WebP format',
+            }
           }
 
           return {
@@ -111,9 +116,18 @@ function matchesSignature(bytes: Uint8Array, signature: number[]): boolean {
 /**
  * Additional validation for WebP files
  * WebP files start with RIFF but need "WEBP" at offset 8
+ * SECURITY FIX: Enhanced validation to prevent non-WebP RIFF files
  */
 function validateWebPSignature(bytes: Uint8Array): boolean {
   if (bytes.length < 12) return false
+
+  // First 4 bytes should be "RIFF" (already validated by signature matching)
+  const riffSignature = [0x52, 0x49, 0x46, 0x46] // "RIFF"
+  for (let i = 0; i < 4; i++) {
+    if (bytes[i] !== riffSignature[i]) return false
+  }
+
+  // Bytes 4-7 are file size (skip validation as it's dynamic)
 
   // Check for "WEBP" at offset 8
   const webpSignature = [0x57, 0x45, 0x42, 0x50] // "WEBP"

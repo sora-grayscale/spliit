@@ -14,7 +14,7 @@ import {
   PasswordSessionManager,
   PasswordValidator,
 } from './password-session-manager'
-import { validateParticipantId, validateShareValue } from './validation-utils'
+import { validateShareArray } from './validation-utils'
 
 export function randomId() {
   return nanoid()
@@ -125,19 +125,13 @@ export async function createExpense(
     const categories = await getCategories()
     const category = categories.find((c) => c.id === expenseFormValues.category)
 
-    // CLARITY FIX: Use Map for clearer intent and better type safety with validation
+    // PERFORMANCE FIX: Validate entire array at once instead of in loop
+    const validatedShares = validateShareArray(expenseFormValues.paidFor)
+
+    // CLARITY FIX: Use Map for clearer intent and better type safety
     const shareData = new Map<string, number>()
-    for (const paidFor of expenseFormValues.paidFor) {
-      // PERFORMANCE FIX: Use static imports instead of dynamic imports in loops
-      const validParticipantId = validateParticipantId(
-        paidFor.participant,
-        'paidFor entry',
-      )
-      const validShareValue = validateShareValue(
-        paidFor.shares,
-        validParticipantId,
-      )
-      shareData.set(validParticipantId, validShareValue)
+    for (const validatedShare of validatedShares) {
+      shareData.set(validatedShare.participant, validatedShare.shares)
     }
 
     // CRITICAL SECURITY: Encrypt payment relationships with secure session management

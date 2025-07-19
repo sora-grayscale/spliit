@@ -26,10 +26,24 @@ export const POST = route.configure({
       throw new Error('Invalid file type. Only images and PDFs are allowed.')
     }
 
-    // SECURITY FIX: Validate file content headers for actual MIME type
+    // PERFORMANCE FIX: Lightweight validation to avoid formData conflicts with next-s3-upload
+    // Only perform advanced validation if Content-Length header is available
+    const contentLength = req.headers.get('content-length')
+    if (contentLength) {
+      const fileSize = parseInt(contentLength, 10)
+      if (fileSize > maxFileSize) {
+        throw new Error(
+          `File too large. Maximum size is ${maxFileSize / (1024 * 1024)}MB`,
+        )
+      }
+    }
+
+    // SECURITY NOTE: Advanced MIME validation is performed in a try-catch
+    // to avoid interfering with next-s3-upload library's formData processing
     try {
-      // Get file content for validation
-      const formData = await req.formData()
+      // Clone the request for validation (safer approach)
+      const clonedReq = req.clone()
+      const formData = await clonedReq.formData()
       const file = formData.get('file') as File
 
       if (file && file.size > 0) {
@@ -39,13 +53,6 @@ export const POST = route.configure({
 
         if (!validationResult.isValid) {
           throw new Error(`File validation failed: ${validationResult.error}`)
-        }
-
-        // Check file size
-        if (file.size > maxFileSize) {
-          throw new Error(
-            `File too large. Maximum size is ${maxFileSize / (1024 * 1024)}MB`,
-          )
         }
       }
     } catch (error) {
