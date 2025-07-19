@@ -98,7 +98,7 @@ export function EncryptedExpenseData({
         encryptionIv,
         encryptionSalt,
         groupId,
-        expenseTitle
+        expenseTitle,
       )
 
       setDecryptedData({
@@ -256,14 +256,15 @@ export function useDecryptedExpenseData(
         try {
           if (expense.encryptedData && expense.encryptionIv) {
             // Use GlobalDecryptionManager for centralized rate-limited decryption
-            const decryptedData = await GlobalDecryptionManager.decryptExpenseData(
-              expense.encryptedData,
-              expense.encryptionIv,
-              encryptionSalt,
-              groupId,
-              expense.title
-            )
-            
+            const decryptedData =
+              await GlobalDecryptionManager.decryptExpenseData(
+                expense.encryptedData,
+                expense.encryptionIv,
+                encryptionSalt,
+                groupId,
+                expense.title,
+              )
+
             expenseMap.set(expense.id, {
               title: decryptedData.title,
               notes: decryptedData.notes || expense.notes || undefined,

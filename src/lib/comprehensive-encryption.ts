@@ -26,9 +26,7 @@ export interface EncryptedGroupData {
 }
 
 // Type definitions for better type safety
-export interface ShareData {
-  [participantId: string]: number
-}
+export type ShareData = Map<string, number>
 
 // Critical security types for payment relationships
 export interface PaymentRelationshipData {
@@ -292,8 +290,9 @@ export class ComprehensiveEncryptionService {
 
     // Encrypt share data if provided
     let sharesEncryption = null
-    if (shareData && Object.keys(shareData).length > 0) {
-      const shareDataString = JSON.stringify(shareData)
+    if (shareData && shareData.size > 0) {
+      const shareDataObject = Object.fromEntries(shareData)
+      const shareDataString = JSON.stringify(shareDataObject)
       sharesEncryption = await EncryptionService.encryptData(
         shareDataString,
         key,
@@ -357,7 +356,8 @@ export class ComprehensiveEncryptionService {
         encryptedExpenseData.sharesIv,
         key,
       )
-      shareData = JSON.parse(shareDataString) as ShareData
+      const shareDataObject = JSON.parse(shareDataString) as Record<string, number>
+      shareData = new Map(Object.entries(shareDataObject))
     }
 
     return {

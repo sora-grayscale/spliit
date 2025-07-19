@@ -124,16 +124,14 @@ export async function createExpense(
     const categories = await getCategories()
     const category = categories.find((c) => c.id === expenseFormValues.category)
 
-    // CLARITY FIX: Use Map for clearer intent and better type safety
-    const shareData: Record<string, number> = {}
+    // CLARITY FIX: Use Map for clearer intent and better type safety with validation
+    const shareData = new Map<string, number>()
     for (const paidFor of expenseFormValues.paidFor) {
-      // Runtime validation for numeric values
-      if (typeof paidFor.shares !== 'number' || isNaN(paidFor.shares)) {
-        throw new Error(
-          `Invalid share value for participant ${paidFor.participant}: ${paidFor.shares}`,
-        )
-      }
-      shareData[paidFor.participant] = paidFor.shares
+      // Enhanced validation using centralized validation utility
+      const { validateShareValue, validateParticipantId } = await import('./validation-utils')
+      const validParticipantId = validateParticipantId(paidFor.participant, 'paidFor entry')
+      const validShareValue = validateShareValue(paidFor.shares, validParticipantId)
+      shareData.set(validParticipantId, validShareValue)
     }
 
     // CRITICAL SECURITY: Encrypt payment relationships with secure session management
@@ -400,7 +398,10 @@ export async function updateExpense(
       title: isEncryptedExpense ? '' : expenseFormValues.title,
       categoryId: expenseFormValues.category,
       // CRITICAL SECURITY FIX: Handle encrypted paidBy properly in updates
-      paidById: isComprehensivelyEncrypted && isEncryptedExpense ? '' : expenseFormValues.paidBy,
+      paidById:
+        isComprehensivelyEncrypted && isEncryptedExpense
+          ? ''
+          : expenseFormValues.paidBy,
       splitMode: expenseFormValues.splitMode,
       recurrenceRule: expenseFormValues.recurrenceRule,
       paidFor: {

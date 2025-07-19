@@ -83,10 +83,12 @@ export function PasswordUnlockDialog({
       } else {
         console.error('Password verification failed - check server logs')
       }
-      
+
       // Provide user-friendly error message
       if (err instanceof Error && err.message.includes('verification')) {
-        setError('Password verification failed. Please check your password and try again.')
+        setError(
+          'Password verification failed. Please check your password and try again.',
+        )
       } else if (err instanceof Error && err.message.includes('rate limit')) {
         setError('Too many attempts. Please wait a moment before trying again.')
       } else {

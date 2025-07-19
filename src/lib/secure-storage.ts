@@ -17,50 +17,131 @@ interface SecureStorageItem {
 export class SecureStorage {
   private static readonly ENCRYPTION_PREFIX = 'enc:'
   private static readonly MAX_AGE = 24 * 60 * 60 * 1000 // 24 hours
-  private static readonly MASTER_KEY = 'spliit_master_session_key'
-  
+  private static readonly MASTER_KEY_PREFIX = 'spliit_master_session_key'
+
   // Migration statistics
   private static migrationStats = {
     migratedKeys: 0,
     failedMigrations: 0,
-    lastMigrationTime: 0
+    lastMigrationTime: 0,
   }
 
   /**
-   * Get or generate a consistent storage key for the session
-   * SECURITY: Uses consistent key for encrypt/decrypt operations
+   * Get or generate a session key with consistent recovery
+   * SECURITY: Uses session-persistent key generation with legacy support
    */
   private static getStorageKey(): string {
-    // Try to get existing session key first
     if (typeof window !== 'undefined') {
-      const existingKey = sessionStorage.getItem(this.MASTER_KEY)
+      // Use a stable session key name for consistency
+      const sessionKeyName = 'spliit_session_master_key'
+      const existingKey = sessionStorage.getItem(sessionKeyName)
       if (existingKey) return existingKey
-      
-      // Generate new session key
+
+      // Check for existing data with old dynamic keys to ensure migration compatibility
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key && key.startsWith(this.MASTER_KEY_PREFIX)) {
+          const oldKey = sessionStorage.getItem(key)
+          if (oldKey) {
+            // Migrate to new consistent key name
+            sessionStorage.setItem(sessionKeyName, oldKey)
+            sessionStorage.removeItem(key) // Clean up old key
+            console.info(`[SecureStorage] Migrated session key from ${key} to ${sessionKeyName}`)
+            return oldKey
+          }
+        }
+      }
+
+      // Generate new session key with enhanced entropy
       let newKey: string
       if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-        const array = new Uint8Array(16)
+        // Enhanced entropy: timestamp + random + origin
+        const array = new Uint8Array(20) // Increased entropy
         crypto.getRandomValues(array)
-        newKey = 'spliit_session_' + Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+        const timestamp = Date.now().toString(36)
+        const origin = window.location.origin.slice(-8).replace(/[^a-zA-Z0-9]/g, '')
+        newKey =
+          `spliit_session_${timestamp}_${origin}_` +
+          Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('')
       } else {
-        // Fallback for environments without crypto API
-        newKey = 'spliit_session_' + Date.now().toString()
+        // Enhanced fallback with timestamp and random component
+        const timestamp = Date.now().toString(36)
+        const random = Math.random().toString(36).substring(2, 10)
+        newKey = `spliit_session_${timestamp}_${random}`
       }
-      
+
       // Store in sessionStorage for consistency
-      sessionStorage.setItem(this.MASTER_KEY, newKey)
+      sessionStorage.setItem(sessionKeyName, newKey)
       return newKey
     }
-    
-    // Server-side fallback
-    return 'spliit_session_fallback'
+
+    // Server-side fallback with timestamp
+    return `spliit_session_fallback_${Date.now()}`
+  }
+
+  /**
+   * Try to recover the encryption key from sessionStorage
+   * SECURITY: Attempts to find the correct key for legacy data
+   */
+  private static tryKeyRecovery(keyId: string): string | null {
+    if (typeof window === 'undefined') return null
+
+    try {
+      // Check sessionStorage for any keys that start with the keyId
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const storageKey = sessionStorage.key(i)
+        if (storageKey && storageKey.includes('spliit_session')) {
+          const sessionKey = sessionStorage.getItem(storageKey)
+          if (sessionKey && sessionKey.startsWith(keyId)) {
+            console.info(`[SecureStorage] Recovered key for keyId: ${keyId}`)
+            return sessionKey
+          }
+        }
+      }
+
+      // Check localStorage for any migration data that might contain the key
+      const migrationKey = `migration_key_${keyId}`
+      const migrationData = localStorage.getItem(migrationKey)
+      if (migrationData) {
+        console.info(`[SecureStorage] Recovered key from migration data for keyId: ${keyId}`)
+        return migrationData
+      }
+
+      return null
+    } catch (error) {
+      console.warn('Key recovery failed:', error)
+      return null
+    }
+  }
+
+  /**
+   * Generate dynamic master key name to prevent collision attacks
+   * SECURITY: Dynamic key names prevent cross-session interference
+   * @deprecated Use stable session key instead
+   */
+  private static getDynamicMasterKeyName(): string {
+    // Use a hash of the current session to create a unique key name
+    if (typeof window !== 'undefined') {
+      const sessionInfo = `${window.location.origin}_${Date.now().toString().slice(-6)}`
+      let hash = 0
+      for (let i = 0; i < sessionInfo.length; i++) {
+        const char = sessionInfo.charCodeAt(i)
+        hash = ((hash << 5) - hash) + char
+        hash = hash & hash // Convert to 32-bit integer
+      }
+      return `${this.MASTER_KEY_PREFIX}_${Math.abs(hash).toString(36)}`
+    }
+    return this.MASTER_KEY_PREFIX
   }
 
   /**
    * AES-GCM encryption for localStorage protection
    * SECURITY: Cryptographically secure encryption using Web Crypto API
    */
-  private static async cryptoEncrypt(data: string, password: string): Promise<string> {
+  private static async cryptoEncrypt(
+    data: string,
+    password: string,
+  ): Promise<string> {
     if (typeof crypto === 'undefined' || !crypto.subtle) {
       // Fallback to XOR encryption if Web Crypto API not available
       return this.xorEncrypt(data, password)
@@ -69,62 +150,71 @@ export class SecureStorage {
     try {
       const encoder = new TextEncoder()
       const dataBuffer = encoder.encode(data)
-      
+
       // Generate salt and IV
       const salt = crypto.getRandomValues(new Uint8Array(16))
       const iv = crypto.getRandomValues(new Uint8Array(12))
-      
+
       // Derive key from password
       const keyMaterial = await crypto.subtle.importKey(
         'raw',
         encoder.encode(password),
         'PBKDF2',
         false,
-        ['deriveKey']
+        ['deriveKey'],
       )
-      
+
       const key = await crypto.subtle.deriveKey(
         {
           name: 'PBKDF2',
           salt: salt,
           iterations: 100000,
-          hash: 'SHA-256'
+          hash: 'SHA-256',
         },
         keyMaterial,
         { name: 'AES-GCM', length: 256 },
         false,
-        ['encrypt']
+        ['encrypt'],
       )
-      
+
       // Encrypt data
       const encrypted = await crypto.subtle.encrypt(
         { name: 'AES-GCM', iv: iv },
         key,
-        dataBuffer
+        dataBuffer,
       )
-      
+
       // Combine salt, iv, and encrypted data
-      const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength)
+      const combined = new Uint8Array(
+        salt.length + iv.length + encrypted.byteLength,
+      )
       combined.set(salt, 0)
       combined.set(iv, salt.length)
       combined.set(new Uint8Array(encrypted), salt.length + iv.length)
-      
+
       return btoa(String.fromCharCode.apply(null, Array.from(combined)))
     } catch (error) {
       // SECURITY FIX: Enhanced error handling for encryption failures
       if (error instanceof DOMException) {
-        console.warn('Crypto encryption failed with DOMException:', error.name, error.message)
+        console.warn(
+          'Crypto encryption failed with DOMException:',
+          error.name,
+          error.message,
+        )
       } else {
         console.warn('Crypto encryption failed with unexpected error:', error)
       }
-      
+
       // Fallback to XOR encryption
       console.info('Falling back to XOR encryption for compatibility')
       return this.xorEncrypt(data, password)
     }
   }
 
-  private static async cryptoDecrypt(encryptedData: string, password: string): Promise<string> {
+  private static async cryptoDecrypt(
+    encryptedData: string,
+    password: string,
+  ): Promise<string> {
     if (typeof crypto === 'undefined' || !crypto.subtle) {
       // Fallback to XOR decryption
       return this.xorDecrypt(encryptedData, password)
@@ -132,55 +222,68 @@ export class SecureStorage {
 
     try {
       const encoder = new TextEncoder()
-      const combined = new Uint8Array(atob(encryptedData).split('').map(char => char.charCodeAt(0)))
-      
+      const combined = new Uint8Array(
+        atob(encryptedData)
+          .split('')
+          .map((char) => char.charCodeAt(0)),
+      )
+
       // Extract salt, iv, and encrypted data
       const salt = combined.slice(0, 16)
       const iv = combined.slice(16, 28)
       const encrypted = combined.slice(28)
-      
+
       // Derive key from password
       const keyMaterial = await crypto.subtle.importKey(
         'raw',
         encoder.encode(password),
         'PBKDF2',
         false,
-        ['deriveKey']
+        ['deriveKey'],
       )
-      
+
       const key = await crypto.subtle.deriveKey(
         {
           name: 'PBKDF2',
           salt: salt,
           iterations: 100000,
-          hash: 'SHA-256'
+          hash: 'SHA-256',
         },
         keyMaterial,
         { name: 'AES-GCM', length: 256 },
         false,
-        ['decrypt']
+        ['decrypt'],
       )
-      
+
       // Decrypt data
       const decrypted = await crypto.subtle.decrypt(
         { name: 'AES-GCM', iv: iv },
         key,
-        encrypted
+        encrypted,
       )
-      
+
       return new TextDecoder().decode(decrypted)
     } catch (error) {
       // SECURITY FIX: Enhanced error handling with specific error types
       if (error instanceof DOMException) {
-        if (error.name === 'OperationError' || error.name === 'InvalidAccessError') {
-          console.warn('Crypto decryption failed due to invalid password/data, trying XOR fallback')
+        if (
+          error.name === 'OperationError' ||
+          error.name === 'InvalidAccessError'
+        ) {
+          console.warn(
+            'Crypto decryption failed due to invalid password/data, trying XOR fallback',
+          )
         } else {
-          console.warn('Crypto decryption failed with DOMException:', error.name, error.message)
+          console.warn(
+            'Crypto decryption failed with DOMException:',
+            error.name,
+            error.message,
+          )
         }
       } else {
         console.warn('Crypto decryption failed with unexpected error:', error)
       }
-      
+
       // Always fallback to XOR decryption
       return this.xorDecrypt(encryptedData, password)
     }
@@ -209,7 +312,7 @@ export class SecureStorage {
     let result = ''
     for (let i = 0; i < data.length; i++) {
       result += String.fromCharCode(
-        data.charCodeAt(i) ^ key.charCodeAt(i % key.length)
+        data.charCodeAt(i) ^ key.charCodeAt(i % key.length),
       )
     }
     return btoa(result)
@@ -221,7 +324,7 @@ export class SecureStorage {
       let result = ''
       for (let i = 0; i < data.length; i++) {
         result += String.fromCharCode(
-          data.charCodeAt(i) ^ key.charCodeAt(i % key.length)
+          data.charCodeAt(i) ^ key.charCodeAt(i % key.length),
         )
       }
       return result
@@ -234,21 +337,28 @@ export class SecureStorage {
    * Store sensitive data with AES-GCM encryption
    * SECURITY: Uses cryptographically secure encryption
    */
-  static async setSecureItem(key: string, value: string, encrypt = true): Promise<void> {
+  static async setSecureItem(
+    key: string,
+    value: string,
+    encrypt = true,
+  ): Promise<void> {
     if (typeof window === 'undefined') return
 
     try {
       const sessionKey = this.getStorageKey()
       let encryptedValue = value
       let encryptionType: 'aes-gcm' | 'xor' | undefined = undefined
-      
+
       if (encrypt) {
         // SECURITY FIX: Try AES-GCM first, fallback to XOR with proper tracking
         try {
           encryptedValue = await this.cryptoEncrypt(value, sessionKey)
           encryptionType = 'aes-gcm'
         } catch (cryptoError) {
-          console.warn('AES-GCM encryption failed, using XOR fallback:', cryptoError)
+          console.warn(
+            'AES-GCM encryption failed, using XOR fallback:',
+            cryptoError,
+          )
           encryptedValue = this.xorEncrypt(value, sessionKey)
           encryptionType = 'xor'
         }
@@ -297,19 +407,27 @@ export class SecureStorage {
       } catch (parseError) {
         // Legacy data is stored as plain string, migrate it
         if (process.env.NODE_ENV === 'development') {
-          console.info(`[SecureStorage] Migrating legacy data for key: ${key} (${itemStr.length} chars)`)
+          console.info(
+            `[SecureStorage] Migrating legacy data for key: ${key} (${itemStr.length} chars)`,
+          )
         }
         try {
           await this.setSecureItem(key, itemStr, true)
           this.migrationStats.migratedKeys++
           this.migrationStats.lastMigrationTime = Date.now()
           if (process.env.NODE_ENV === 'development') {
-            console.info(`[SecureStorage] Successfully migrated legacy data for key: ${key} (Total: ${this.migrationStats.migratedKeys})`)
+            console.info(
+              `[SecureStorage] Successfully migrated legacy data for key: ${key} (Total: ${this.migrationStats.migratedKeys})`,
+            )
           }
           return itemStr
         } catch (migrationError) {
           this.migrationStats.failedMigrations++
-          console.warn('[SecureStorage] Failed to migrate legacy data for key:', key, migrationError)
+          console.warn(
+            '[SecureStorage] Failed to migrate legacy data for key:',
+            key,
+            migrationError,
+          )
           return itemStr // Return as-is if migration fails
         }
       }
@@ -318,7 +436,9 @@ export class SecureStorage {
         // Handle case where data is a plain string (legacy format)
         if (typeof parsed === 'string') {
           if (process.env.NODE_ENV === 'development') {
-            console.info(`[SecureStorage] Migrating legacy string data for key: ${key}`)
+            console.info(
+              `[SecureStorage] Migrating legacy string data for key: ${key}`,
+            )
           }
           await this.setSecureItem(key, parsed, true)
           return parsed
@@ -339,38 +459,72 @@ export class SecureStorage {
         // Decrypt if encrypted
         if (item.encrypted && isEncrypted) {
           const sessionKey = this.getStorageKey()
-          
+
           // SECURITY FIX: Enhanced decryption method selection with format detection
           if (item.encryptionType === 'xor') {
             return this.xorDecrypt(item.value, sessionKey)
           } else if (item.encryptionType === 'aes-gcm') {
-            // Verify key consistency for AES-GCM operations
+            // Enhanced key consistency check for AES-GCM operations
             if (item.keyId && !sessionKey.startsWith(item.keyId)) {
-              console.warn('Key mismatch detected for AES-GCM, trying XOR fallback for key:', key)
+              console.warn(
+                'Key mismatch detected for AES-GCM, trying key recovery for key:',
+                key,
+              )
+              
+              // Try to recover from sessionStorage with old key pattern
+              const recoveredKey = this.tryKeyRecovery(item.keyId)
+              if (recoveredKey) {
+                try {
+                  return await this.cryptoDecrypt(item.value, recoveredKey)
+                } catch (recoveryError) {
+                  console.warn('Key recovery failed, using XOR fallback:', recoveryError)
+                }
+              }
+              
               return this.xorDecrypt(item.value, sessionKey)
             }
-            
+
             try {
               return await this.cryptoDecrypt(item.value, sessionKey)
             } catch (cryptoError) {
-              console.warn('AES-GCM decryption failed, trying XOR fallback:', cryptoError)
+              console.warn(
+                'AES-GCM decryption failed, trying XOR fallback:',
+                cryptoError,
+              )
               return this.xorDecrypt(item.value, sessionKey)
             }
           } else {
             // SECURITY FIX: Detect data format for legacy data without encryptionType
             const isAesGcmFormat = this.detectAesGcmFormat(item.value)
-            
+
             if (isAesGcmFormat) {
-              // Key consistency check for AES-GCM
+              // Enhanced key consistency check for AES-GCM
               if (item.keyId && !sessionKey.startsWith(item.keyId)) {
-                console.warn('Key mismatch detected, trying XOR fallback for key:', key)
+                console.warn(
+                  'Legacy key mismatch detected, trying key recovery for key:',
+                  key,
+                )
+                
+                // Try to recover from sessionStorage with old key pattern
+                const recoveredKey = this.tryKeyRecovery(item.keyId)
+                if (recoveredKey) {
+                  try {
+                    return await this.cryptoDecrypt(item.value, recoveredKey)
+                  } catch (recoveryError) {
+                    console.warn('Legacy key recovery failed, using XOR fallback:', recoveryError)
+                  }
+                }
+                
                 return this.xorDecrypt(item.value, sessionKey)
               }
-              
+
               try {
                 return await this.cryptoDecrypt(item.value, sessionKey)
               } catch (cryptoError) {
-                console.warn('Legacy AES-GCM decryption failed, trying XOR fallback:', cryptoError)
+                console.warn(
+                  'Legacy AES-GCM decryption failed, trying XOR fallback:',
+                  cryptoError,
+                )
                 return this.xorDecrypt(item.value, sessionKey)
               }
             } else {
@@ -384,9 +538,12 @@ export class SecureStorage {
       } else {
         // Legacy format without timestamp, migrate it
         if (process.env.NODE_ENV === 'development') {
-          console.info(`[SecureStorage] Migrating legacy object data for key: ${key}`)
+          console.info(
+            `[SecureStorage] Migrating legacy object data for key: ${key}`,
+          )
         }
-        const legacyValue = typeof parsed === 'string' ? parsed : JSON.stringify(parsed)
+        const legacyValue =
+          typeof parsed === 'string' ? parsed : JSON.stringify(parsed)
         await this.setSecureItem(key, legacyValue, true)
         return legacyValue
       }
@@ -423,7 +580,8 @@ export class SecureStorage {
   } {
     return {
       ...this.migrationStats,
-      hasRecentMigrations: Date.now() - this.migrationStats.lastMigrationTime < 60000 // Within last minute
+      hasRecentMigrations:
+        Date.now() - this.migrationStats.lastMigrationTime < 60000, // Within last minute
     }
   }
 
@@ -435,10 +593,14 @@ export class SecureStorage {
 
     try {
       const keysToRemove: string[] = []
-      
+
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
-        if (key && (key.startsWith(this.ENCRYPTION_PREFIX) || key.includes('-activeUser'))) {
+        if (
+          key &&
+          (key.startsWith(this.ENCRYPTION_PREFIX) ||
+            key.includes('-activeUser'))
+        ) {
           const itemStr = localStorage.getItem(key)
           if (itemStr) {
             try {
@@ -456,7 +618,7 @@ export class SecureStorage {
         }
       }
 
-      keysToRemove.forEach(key => localStorage.removeItem(key))
+      keysToRemove.forEach((key) => localStorage.removeItem(key))
     } catch (error) {
       console.warn('Failed to cleanup expired items:', error)
     }

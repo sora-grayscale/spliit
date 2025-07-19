@@ -8,23 +8,32 @@
  */
 export interface SafeGroupStatsData extends Record<string, unknown> {
   totalExpenses: number
-  totalAmount: number
-  averageExpense: number
-  participantCount: number
-  lastActivity?: string
+  totalParticipants: number
+  averageExpenseAmount: number
+  categoryBreakdown: Record<string, number>
+  monthlyTrends: Array<{
+    month: string
+    amount: number
+    count: number
+  }>
+  topSpenders: Array<{
+    participantId: string
+    amount: number
+  }>
 }
 
 export function isGroupStatsData(data: unknown): data is SafeGroupStatsData {
   if (!data || typeof data !== 'object') return false
-  
+
   const obj = data as Record<string, unknown>
-  
+
   return (
     typeof obj.totalExpenses === 'number' &&
-    typeof obj.totalAmount === 'number' &&
-    typeof obj.averageExpense === 'number' &&
-    typeof obj.participantCount === 'number' &&
-    (obj.lastActivity === undefined || typeof obj.lastActivity === 'string')
+    typeof obj.totalParticipants === 'number' &&
+    typeof obj.averageExpenseAmount === 'number' &&
+    typeof obj.categoryBreakdown === 'object' &&
+    Array.isArray(obj.monthlyTrends) &&
+    Array.isArray(obj.topSpenders)
   )
 }
 
@@ -32,24 +41,28 @@ export function isGroupStatsData(data: unknown): data is SafeGroupStatsData {
  * Safe participant statistics data type guard
  */
 export interface SafeParticipantStatsData extends Record<string, unknown> {
-  participantId: string
   totalPaid: number
   totalOwed: number
-  netBalance: number
+  balance: number
   expenseCount: number
+  averageExpense: number
+  categoryPreferences: Record<string, number>
 }
 
-export function isParticipantStatsData(data: unknown): data is SafeParticipantStatsData {
+export function isParticipantStatsData(
+  data: unknown,
+): data is SafeParticipantStatsData {
   if (!data || typeof data !== 'object') return false
-  
+
   const obj = data as Record<string, unknown>
-  
+
   return (
-    typeof obj.participantId === 'string' &&
     typeof obj.totalPaid === 'number' &&
     typeof obj.totalOwed === 'number' &&
-    typeof obj.netBalance === 'number' &&
-    typeof obj.expenseCount === 'number'
+    typeof obj.balance === 'number' &&
+    typeof obj.expenseCount === 'number' &&
+    typeof obj.averageExpense === 'number' &&
+    typeof obj.categoryPreferences === 'object'
   )
 }
 
@@ -65,13 +78,15 @@ export interface GroupSettings extends Record<string, unknown> {
 
 export function isGroupSettings(data: unknown): data is GroupSettings {
   if (!data || typeof data !== 'object') return false
-  
+
   const obj = data as Record<string, unknown>
-  
+
   return (
     (obj.currency === undefined || typeof obj.currency === 'string') &&
-    (obj.defaultSplitMode === undefined || typeof obj.defaultSplitMode === 'string') &&
-    (obj.notifications === undefined || typeof obj.notifications === 'boolean') &&
+    (obj.defaultSplitMode === undefined ||
+      typeof obj.defaultSplitMode === 'string') &&
+    (obj.notifications === undefined ||
+      typeof obj.notifications === 'boolean') &&
     (obj.theme === undefined || typeof obj.theme === 'string')
   )
 }
@@ -85,15 +100,18 @@ export interface ParticipantSettings extends Record<string, unknown> {
   defaultRole?: string
 }
 
-export function isParticipantSettings(data: unknown): data is ParticipantSettings {
+export function isParticipantSettings(
+  data: unknown,
+): data is ParticipantSettings {
   if (!data || typeof data !== 'object') return false
-  
+
   const obj = data as Record<string, unknown>
-  
+
   return (
     (obj.displayName === undefined || typeof obj.displayName === 'string') &&
-    (obj.notificationPreferences === undefined || 
-     (typeof obj.notificationPreferences === 'object' && obj.notificationPreferences !== null)) &&
+    (obj.notificationPreferences === undefined ||
+      (typeof obj.notificationPreferences === 'object' &&
+        obj.notificationPreferences !== null)) &&
     (obj.defaultRole === undefined || typeof obj.defaultRole === 'string')
   )
 }
@@ -102,20 +120,26 @@ export function isParticipantSettings(data: unknown): data is ParticipantSetting
  * Safe encrypted balance data type guard
  */
 export interface SafeEncryptedBalanceData extends Record<string, unknown> {
-  participantId: string
-  balance: number
-  currency?: string
+  balances: Record<string, { paid: number; paidFor: number; total: number }>
+  reimbursements: Array<{ from: string; to: string; amount: number }>
+  totalExpenses: number
+  participantTotals: Record<string, number>
 }
 
-export function isEncryptedBalanceData(data: unknown): data is SafeEncryptedBalanceData {
+export function isEncryptedBalanceData(
+  data: unknown,
+): data is SafeEncryptedBalanceData {
   if (!data || typeof data !== 'object') return false
-  
+
   const obj = data as Record<string, unknown>
-  
+
   return (
-    typeof obj.participantId === 'string' &&
-    typeof obj.balance === 'number' &&
-    (obj.currency === undefined || typeof obj.currency === 'string')
+    typeof obj.balances === 'object' &&
+    obj.balances !== null &&
+    Array.isArray(obj.reimbursements) &&
+    typeof obj.totalExpenses === 'number' &&
+    typeof obj.participantTotals === 'object' &&
+    obj.participantTotals !== null
   )
 }
 

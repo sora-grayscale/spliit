@@ -57,13 +57,10 @@ function compareParticipants(
     return { hasChanges: true, hasNameChanges: true }
   }
 
-  // PERFORMANCE FIX: Use forEach for ES5 compatibility with Set iteration
-  let hasNameChanges = false
-  updatedNames.forEach((name) => {
-    if (!originalNames.has(name)) {
-      hasNameChanges = true
-    }
-  })
+  // PERFORMANCE FIX: Use Array.some() for better performance and early exit
+  const hasNameChanges = !Array.from(updatedNames).every((name) =>
+    originalNames.has(name),
+  )
 
   if (hasNameChanges) {
     return { hasChanges: true, hasNameChanges: true }

@@ -111,9 +111,5 @@ export function EncryptedGroupName({
   }
 
   // Show decrypted name or fallback
-  return (
-    <span className={className}>
-      {decryptedName || groupName}
-    </span>
-  )
+  return <span className={className}>{decryptedName || groupName}</span>
 }

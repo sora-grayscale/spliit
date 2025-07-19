@@ -390,7 +390,7 @@ export function ExpenseForm({
   // Extract watched values to prevent complex expressions in dependency array
   const splitMode = form.watch('splitMode')
   const amount = form.watch('amount')
-  
+
   useEffect(() => {
     setManuallyEditedParticipants(new Set())
   }, [splitMode, amount])
@@ -443,12 +443,7 @@ export function ExpenseForm({
       }
       form.setValue('paidFor', newPaidFor, { shouldValidate: true })
     }
-  }, [
-    manuallyEditedParticipants,
-    amount,
-    splitMode,
-    form,
-  ])
+  }, [manuallyEditedParticipants, amount, splitMode, form])
 
   return (
     <Form {...form}>

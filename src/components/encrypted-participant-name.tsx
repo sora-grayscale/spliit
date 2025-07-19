@@ -123,11 +123,7 @@ export function EncryptedParticipantName({
   }
 
   // Show decrypted name or fallback
-  return (
-    <span className={className}>
-      {decryptedName || participantName}
-    </span>
-  )
+  return <span className={className}>{decryptedName || participantName}</span>
 }
 
 /**

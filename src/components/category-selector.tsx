@@ -38,16 +38,11 @@ export function CategorySelector({
   const [value, setValue] = useState<number>(defaultValue)
   const isDesktop = useMediaQuery('(min-width: 768px)')
 
-  // Memoize the callback to prevent unnecessary re-renders
-  const handleValueChange = useCallback((categoryId: Category['id']) => {
-    onValueChange(categoryId)
-  }, [onValueChange])
-
   // allow overwriting currently selected category from outside
   useEffect(() => {
     setValue(defaultValue)
-    handleValueChange(defaultValue)
-  }, [defaultValue, handleValueChange])
+    onValueChange(defaultValue)
+  }, [defaultValue, onValueChange])
 
   const selectedCategory =
     categories.find((category) => category.id === value) ?? categories[0]

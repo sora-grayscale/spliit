@@ -81,10 +81,10 @@ export function ExpenseCard({
           )}
         </div>
         <div className="text-xs text-muted-foreground">
-          <DecryptedParticipants 
-            expense={expense} 
-            groupId={groupId} 
-            isGroupEncrypted={!!isGroupEncrypted} 
+          <DecryptedParticipants
+            expense={expense}
+            groupId={groupId}
+            isGroupEncrypted={!!isGroupEncrypted}
           />
         </div>
         <div className="text-xs text-muted-foreground">

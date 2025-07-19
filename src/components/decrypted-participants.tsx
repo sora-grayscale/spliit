@@ -1,9 +1,8 @@
 'use client'
 
 import { DecryptedPaymentService } from '@/lib/decrypted-payment-service'
-import { useCallback, useEffect, useState } from 'react'
-import { Fragment } from 'react'
 import { useTranslations } from 'next-intl'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 
 interface DecryptedParticipantsProps {
   expense: {
@@ -38,28 +37,35 @@ interface DecryptedPaymentData {
   }>
 }
 
-export function DecryptedParticipants({ 
-  expense, 
-  groupId, 
-  isGroupEncrypted 
+export function DecryptedParticipants({
+  expense,
+  groupId,
+  isGroupEncrypted,
 }: DecryptedParticipantsProps) {
   const t = useTranslations('ExpenseCard')
-  const [decryptedPayment, setDecryptedPayment] = useState<DecryptedPaymentData | null>(null)
+  const [decryptedPayment, setDecryptedPayment] =
+    useState<DecryptedPaymentData | null>(null)
   const [isDecrypting, setIsDecrypting] = useState(false)
-  
+
   const decryptPaymentData = useCallback(async () => {
     // If not encrypted or no encrypted payment data, use original data
-    if (!isGroupEncrypted || !DecryptedPaymentService.hasEncryptedPaymentData(expense)) {
+    if (
+      !isGroupEncrypted ||
+      !DecryptedPaymentService.hasEncryptedPaymentData(expense)
+    ) {
       setDecryptedPayment({
         paidBy: expense.paidBy,
         paidFor: expense.paidFor,
       })
       return
     }
-    
+
     try {
       setIsDecrypting(true)
-      const result = await DecryptedPaymentService.decryptExpensePaymentData(expense, groupId)
+      const result = await DecryptedPaymentService.decryptExpensePaymentData(
+        expense,
+        groupId,
+      )
       setDecryptedPayment(result)
     } catch (error) {
       console.warn('Failed to decrypt payment data:', error)
@@ -75,11 +81,15 @@ export function DecryptedParticipants({
   }, [decryptPaymentData])
 
   if (isDecrypting) {
-    return <span className="text-muted-foreground">Decrypting participants...</span>
+    return (
+      <span className="text-muted-foreground">Decrypting participants...</span>
+    )
   }
 
   if (!decryptedPayment) {
-    return <span className="text-muted-foreground">Loading participants...</span>
+    return (
+      <span className="text-muted-foreground">Loading participants...</span>
+    )
   }
 
   const key = expense.amount > 0 ? 'paidBy' : 'receivedBy'

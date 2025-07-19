@@ -60,10 +60,10 @@ export function useActiveUser(groupId?: string) {
     if (groupId) {
       // SECURITY FIX: Use secure storage instead of plain localStorage (async)
       SecureStorage.getSecureItem(`${groupId}-activeUser`)
-        .then(activeUser => {
+        .then((activeUser) => {
           if (activeUser) setActiveUser(activeUser)
         })
-        .catch(error => {
+        .catch((error) => {
           console.warn('Failed to retrieve active user:', error)
         })
     }

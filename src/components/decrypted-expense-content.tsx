@@ -51,7 +51,7 @@ export function DecryptedExpenseContent({
 
   // SECURITY: Debounce decryption attempts to prevent rapid successive calls
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
-  
+
   // SECURITY: Memoize the decryption function using GlobalDecryptionManager
   const decryptExpenseData = useCallback(
     async (
@@ -102,7 +102,7 @@ export function DecryptedExpenseContent({
           encryptionIv,
           encryptionSalt,
           groupId,
-          memoizedFallbackTitle
+          memoizedFallbackTitle,
         )
 
         // Check if operation was aborted after decryption
@@ -127,9 +127,13 @@ export function DecryptedExpenseContent({
         if (!abortController.signal.aborted) {
           if (error instanceof Error) {
             if (error.message.includes('Rate limit')) {
-              console.warn('Decryption rate limit exceeded, using fallback title')
+              console.warn(
+                'Decryption rate limit exceeded, using fallback title',
+              )
             } else if (error.message.includes('Authentication')) {
-              console.warn('Decryption authentication failed, using fallback title')
+              console.warn(
+                'Decryption authentication failed, using fallback title',
+              )
             } else {
               console.warn('Decryption failed:', error.message)
             }

@@ -102,7 +102,8 @@ export class GroupRateLimiter {
 
     // SECURITY FIX: Only add delay for verification operations to prevent brute force
     // Decryption operations should not be delayed as they are legitimate UI operations
-    if (record.count > this.maxAttempts * 0.8) { // Only delay when near limit
+    if (record.count > this.maxAttempts * 0.8) {
+      // Only delay when near limit
       await constantTimeDelay(Math.min(record.count * 50, 500)) // Max 0.5 second delay
     }
 

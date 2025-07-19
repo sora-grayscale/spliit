@@ -3,9 +3,9 @@
  * CRITICAL: Handles paidFor data decryption for encrypted groups
  */
 
+import { getGroup } from './api'
 import { ComprehensiveEncryptionService } from './comprehensive-encryption'
 import { PasswordSession } from './e2ee-crypto-refactored'
-import { getGroup } from './api'
 
 export interface DecryptedPaymentData {
   paidBy: {
@@ -47,8 +47,12 @@ export class DecryptedPaymentService {
     groupId: string,
   ): Promise<DecryptedPaymentData | null> {
     // Check if this expense has encrypted payment data
-    if (!expense.encryptedPaidBy || !expense.encryptedPaidFor || 
-        !expense.paidByIv || !expense.paidForIv) {
+    if (
+      !expense.encryptedPaidBy ||
+      !expense.encryptedPaidFor ||
+      !expense.paidByIv ||
+      !expense.paidForIv
+    ) {
       // Return existing data if not encrypted
       return {
         paidBy: expense.paidBy,
@@ -67,36 +71,50 @@ export class DecryptedPaymentService {
     if (!password) {
       // Return fallback data structure if no password
       return {
-        paidBy: expense.paidBy.id ? expense.paidBy : { id: 'unknown', name: 'Encrypted User' },
-        paidFor: expense.paidFor.length > 0 ? expense.paidFor : [
-          { participant: { id: 'unknown', name: 'Encrypted Participants' }, shares: 1 }
-        ],
+        paidBy: expense.paidBy.id
+          ? expense.paidBy
+          : { id: 'unknown', name: 'Encrypted User' },
+        paidFor:
+          expense.paidFor.length > 0
+            ? expense.paidFor
+            : [
+                {
+                  participant: {
+                    id: 'unknown',
+                    name: 'Encrypted Participants',
+                  },
+                  shares: 1,
+                },
+              ],
       }
     }
 
     try {
       // Decrypt payment relationship data
-      const decryptedPayment = await ComprehensiveEncryptionService.decryptPaymentRelationshipData(
-        {
-          encryptedPaidBy: expense.encryptedPaidBy,
-          paidByIv: expense.paidByIv,
-          encryptedPaidFor: expense.encryptedPaidFor,
-          paidForIv: expense.paidForIv,
-          encryptionVersion: expense.encryptionVersion || 1,
-        },
-        password,
-        group.encryptionSalt,
-      )
+      const decryptedPayment =
+        await ComprehensiveEncryptionService.decryptPaymentRelationshipData(
+          {
+            encryptedPaidBy: expense.encryptedPaidBy,
+            paidByIv: expense.paidByIv,
+            encryptedPaidFor: expense.encryptedPaidFor,
+            paidForIv: expense.paidForIv,
+            encryptionVersion: expense.encryptionVersion || 1,
+          },
+          password,
+          group.encryptionSalt,
+        )
 
       // Map participant IDs to participant objects from the group
-      const participantMap = new Map(group.participants.map(p => [p.id, p]))
+      const participantMap = new Map(group.participants.map((p) => [p.id, p]))
 
       const paidByParticipant = participantMap.get(decryptedPayment.paidById)
       if (!paidByParticipant) {
-        throw new Error(`PaidBy participant not found: ${decryptedPayment.paidById}`)
+        throw new Error(
+          `PaidBy participant not found: ${decryptedPayment.paidById}`,
+        )
       }
 
-      const paidForMapped = decryptedPayment.paidFor.map(pf => {
+      const paidForMapped = decryptedPayment.paidFor.map((pf) => {
         const participant = participantMap.get(pf.participantId)
         if (!participant) {
           throw new Error(`PaidFor participant not found: ${pf.participantId}`)
@@ -118,14 +136,29 @@ export class DecryptedPaymentService {
         paidFor: paidForMapped,
       }
     } catch (error) {
-      console.warn('Failed to decrypt payment data for expense:', expense.id, error)
-      
+      console.warn(
+        'Failed to decrypt payment data for expense:',
+        expense.id,
+        error,
+      )
+
       // Return fallback data structure
       return {
-        paidBy: expense.paidBy.id ? expense.paidBy : { id: 'unknown', name: 'Encrypted User' },
-        paidFor: expense.paidFor.length > 0 ? expense.paidFor : [
-          { participant: { id: 'unknown', name: 'Encrypted Participants' }, shares: 1 }
-        ],
+        paidBy: expense.paidBy.id
+          ? expense.paidBy
+          : { id: 'unknown', name: 'Encrypted User' },
+        paidFor:
+          expense.paidFor.length > 0
+            ? expense.paidFor
+            : [
+                {
+                  participant: {
+                    id: 'unknown',
+                    name: 'Encrypted Participants',
+                  },
+                  shares: 1,
+                },
+              ],
       }
     }
   }
@@ -138,24 +171,33 @@ export class DecryptedPaymentService {
     groupId: string,
   ): Promise<(DecryptedPaymentData | null)[]> {
     const results: (DecryptedPaymentData | null)[] = []
-    
+
     for (const expense of expenses) {
       try {
-        const decryptedData = await this.decryptExpensePaymentData(expense, groupId)
+        const decryptedData = await this.decryptExpensePaymentData(
+          expense,
+          groupId,
+        )
         results.push(decryptedData)
       } catch (error) {
-        console.warn('Failed to decrypt payment data for expense:', expense.id, error)
+        console.warn(
+          'Failed to decrypt payment data for expense:',
+          expense.id,
+          error,
+        )
         results.push(null)
       }
     }
-    
+
     return results
   }
 
   /**
    * Check if expense has encrypted payment data
    */
-  static hasEncryptedPaymentData(expense: EncryptedExpenseWithPayment): boolean {
+  static hasEncryptedPaymentData(
+    expense: EncryptedExpenseWithPayment,
+  ): boolean {
     return !!(
       expense.encryptedPaidBy &&
       expense.encryptedPaidFor &&
@@ -171,7 +213,10 @@ export class DecryptedPaymentService {
     return {
       paidBy: { id: 'encrypted', name: 'Encrypted User' },
       paidFor: [
-        { participant: { id: 'encrypted', name: 'Encrypted Participants' }, shares: 1 }
+        {
+          participant: { id: 'encrypted', name: 'Encrypted Participants' },
+          shares: 1,
+        },
       ],
     }
   }
