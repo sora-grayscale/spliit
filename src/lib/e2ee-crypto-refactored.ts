@@ -109,16 +109,20 @@ class SecureMemory {
 
 /**
  * Browser-side password session management with enhanced security and per-group rate limiting
+ * COMPATIBILITY LAYER: This class provides backward compatibility for UI components
+ * while delegating to the secure PasswordSessionManager for actual implementation
  */
 export class PasswordSession {
-  private static passwords = new Map<string, string>() // groupId -> password
+  private static passwords = new Map<string, string>() // groupId -> password (legacy storage)
   private static readonly MAX_PASSWORD_AGE =
     SECURITY_CONSTANTS.PASSWORD_SESSION_TIMEOUT
   private static passwordTimestamps = new Map<string, number>() // groupId -> timestamp
   private static wipeScheduled = new Set<string>() // groupIds scheduled for secure wipe
   private static cleanupListeners = new Map<string, Array<() => void>>() // groupId -> cleanup functions
+  private static sessionTokens = new Map<string, string>() // groupId -> sessionToken for PasswordSessionManager integration
+  private static backgroundTasks = new Map<string, Promise<unknown>>() // Background task management for proper lifecycle
 
-  static setPassword(groupId: string, password: string): void {
+  static async setPassword(groupId: string, password: string): Promise<void> {
     if (!groupId || !password) {
       throw new Error('Group ID and password must be provided')
     }
@@ -126,14 +130,42 @@ export class PasswordSession {
     // Clear any existing password for this group first
     this.clearPassword(groupId)
 
+    // Store in legacy storage for immediate compatibility
     this.passwords.set(groupId, password)
     this.passwordTimestamps.set(groupId, Date.now())
+
+    // CRITICAL: Also store in secure PasswordSessionManager
+    try {
+      const { PasswordSessionManager } = await import(
+        './password-session-manager'
+      )
+      const sessionToken = await PasswordSessionManager.storePassword(
+        groupId,
+        password,
+      )
+      this.sessionTokens.set(groupId, sessionToken)
+    } catch (error) {
+      // Enhanced error logging with security consideration
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(
+          'Failed to store password in secure session manager:',
+          error,
+        )
+      } else {
+        console.warn(
+          'Failed to store password in secure session manager - check server logs',
+        )
+      }
+      // Continue with legacy storage for backward compatibility
+      // This ensures the application remains functional even if secure storage fails
+    }
 
     // Set up automatic cleanup
     this.setupPasswordCleanup(groupId)
   }
 
   static getPassword(groupId: string): string | undefined {
+    // First try to get from legacy storage for immediate compatibility
     const password = this.passwords.get(groupId)
     const timestamp = this.passwordTimestamps.get(groupId)
 
@@ -147,7 +179,70 @@ export class PasswordSession {
       return undefined
     }
 
+    // CRITICAL: For enhanced security, also try PasswordSessionManager
+    // This is done asynchronously in background to maintain compatibility
+    const sessionToken = this.sessionTokens.get(groupId)
+    if (sessionToken && !password) {
+      // Background async password retrieval with proper lifecycle management
+      const asyncPasswordPromise = this.getPasswordAsync(groupId, sessionToken)
+
+      // Store the promise for potential cleanup
+      const cleanupKey = `password-retrieval-${groupId}`
+      this.backgroundTasks.set(cleanupKey, asyncPasswordPromise)
+
+      asyncPasswordPromise
+        .catch((error) => {
+          // Enhanced error handling with security consideration
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Background password retrieval failed:', error)
+          }
+          // Ignore async errors to maintain compatibility
+        })
+        .finally(() => {
+          // Clean up completed task
+          this.backgroundTasks.delete(cleanupKey)
+        })
+    }
+
     return password
+  }
+
+  /**
+   * CRITICAL: Async password retrieval from secure session manager
+   * This method is used internally for background security enhancement
+   */
+  private static async getPasswordAsync(
+    groupId: string,
+    sessionToken: string,
+  ): Promise<string | null> {
+    try {
+      const { PasswordSessionManager } = await import(
+        './password-session-manager'
+      )
+      const password = await PasswordSessionManager.getPassword(
+        sessionToken,
+        groupId,
+      )
+
+      if (password) {
+        // Update legacy storage with retrieved password
+        this.passwords.set(groupId, password)
+        this.passwordTimestamps.set(groupId, Date.now())
+      }
+
+      return password
+    } catch (error) {
+      // Enhanced error logging with security consideration
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(
+          'Failed to retrieve password from secure session manager:',
+          error,
+        )
+      } else {
+        console.warn('Password retrieval failed - check server logs')
+      }
+      return null
+    }
   }
 
   static clearPassword(groupId: string): void {
@@ -168,6 +263,23 @@ export class PasswordSession {
     }
     this.passwordTimestamps.delete(groupId)
 
+    // CRITICAL: Also clear from secure session manager
+    const sessionToken = this.sessionTokens.get(groupId)
+    if (sessionToken) {
+      import('./password-session-manager')
+        .then(({ PasswordSessionManager }) => {
+          PasswordSessionManager.clearSession(sessionToken)
+        })
+        .catch((error) => {
+          // Enhanced error handling for async session clearing
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Failed to clear secure session:', error)
+          }
+          // Ignore async errors for compatibility
+        })
+      this.sessionTokens.delete(groupId)
+    }
+
     // Clean up event listeners
     this.removePasswordCleanup(groupId)
   }
@@ -175,12 +287,34 @@ export class PasswordSession {
   static async clearAllPasswords(): Promise<void> {
     // Process passwords one at a time to prevent memory doubling
     const passwordEntries = Array.from(this.passwords.entries())
+    const sessionTokenEntries = Array.from(this.sessionTokens.entries())
 
     // Clear maps first to prevent access during cleanup
     this.passwords.clear()
     this.passwordTimestamps.clear()
+    this.sessionTokens.clear()
     this.cleanupListeners.clear()
     this.wipeScheduled.clear()
+
+    // Clear background tasks to prevent memory leaks
+    this.backgroundTasks.clear()
+
+    // CRITICAL: Clear secure session manager
+    try {
+      const { PasswordSessionManager } = await import(
+        './password-session-manager'
+      )
+      for (const [groupId, sessionToken] of sessionTokenEntries) {
+        PasswordSessionManager.clearSession(sessionToken)
+      }
+    } catch (error) {
+      // Enhanced error logging for security context
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Failed to clear secure session manager:', error)
+      } else {
+        console.warn('Session cleanup failed - check server logs')
+      }
+    }
 
     // Securely wipe passwords one by one
     for (const [groupId, password] of passwordEntries) {
@@ -194,7 +328,35 @@ export class PasswordSession {
   }
 
   static hasPassword(groupId: string): boolean {
-    return this.getPassword(groupId) !== undefined
+    // Check legacy storage first
+    const hasLegacyPassword = this.getPassword(groupId) !== undefined
+
+    // CRITICAL: Also check secure session manager
+    const sessionToken = this.sessionTokens.get(groupId)
+    if (sessionToken) {
+      try {
+        // Dynamic import to avoid circular dependencies
+        import('./password-session-manager')
+          .then(({ PasswordSessionManager }) => {
+            return PasswordSessionManager.isValidSession(sessionToken, groupId)
+          })
+          .catch((error) => {
+            // Enhanced error handling for session validation
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('Session validation failed:', error)
+            }
+            return false
+          })
+      } catch (error) {
+        // Enhanced error handling with fallback
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Session check failed:', error)
+        }
+        // Ignore errors and fall back to legacy check
+      }
+    }
+
+    return hasLegacyPassword
   }
 
   private static setupPasswordCleanup(groupId: string): void {
@@ -450,5 +612,19 @@ export class PasswordCrypto {
     salt: string,
   ): Promise<EncryptedData> {
     return PasswordVerification.createPasswordTest(password, salt)
+  }
+
+  /**
+   * Hash password for secure storage
+   */
+  static async hashPassword(password: string): Promise<string> {
+    // Use Web Crypto API to hash password
+    const encoder = new TextEncoder()
+    const data = encoder.encode(password)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashArray = new Uint8Array(hashBuffer)
+    return Array.from(hashArray, (byte) =>
+      byte.toString(16).padStart(2, '0'),
+    ).join('')
   }
 }

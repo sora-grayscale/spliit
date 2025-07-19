@@ -19,6 +19,8 @@ model Group {
   participants Participant[]
   expenses     Expense[]
   activities   Activity[]
+  encryptedStats EncryptedStats[]
+  userSettings UserSettings[]
   createdAt    DateTime      @default(now())
   
   // E2EE fields
@@ -26,6 +28,14 @@ model Group {
   encryptionSalt   String?     // Salt for PBKDF2 key derivation
   testEncryptedData String?    @db.Text // Encrypted test data for password verification
   testIv           String?     // IV for test data encryption
+  
+  // Comprehensive encryption fields
+  encryptedName        String?  @db.Text // Encrypted group name
+  nameIv              String?  // IV for name encryption
+  encryptedInformation String?  @db.Text // Encrypted group information
+  informationIv       String?  // IV for information encryption
+  encryptionVersion   Int?     @default(1) // Version of encryption scheme
+  encryptionFields    String[] // List of encrypted field names
 }
 
 model Participant {
@@ -35,6 +45,11 @@ model Participant {
   groupId         String
   expensesPaidBy  Expense[]
   expensesPaidFor ExpensePaidFor[]
+  
+  // Comprehensive encryption fields
+  encryptedName   String?          @db.Text // Encrypted participant name
+  nameIv         String?          // IV for name encryption
+  encryptionVersion Int?           @default(1) // Version of encryption scheme
 }
 
 model Category {
@@ -69,6 +84,27 @@ model Expense {
   // E2EE fields
   encryptedData   String?           @db.Text // Encrypted JSON of {title, notes}
   encryptionIv    String?           // AES-GCM initialization vector
+  
+  // Comprehensive encryption fields
+  encryptedCategory String?         @db.Text // Encrypted category name
+  categoryIv       String?          // IV for category encryption
+  encryptedShares  String?          @db.Text // Encrypted share distribution data
+  sharesIv        String?          // IV for shares encryption
+  
+  // CRITICAL SECURITY: Payment relationship encryption
+  encryptedPaidBy    String?        @db.Text // Encrypted paidBy participant ID
+  paidByIv          String?         // IV for paidBy encryption
+  encryptedPaidFor   String?        @db.Text // Encrypted paidFor array (participantId + shares)
+  paidForIv         String?         // IV for paidFor encryption
+  
+  // Financial data encryption
+  encryptedAmount    String?        @db.Text // Encrypted amount
+  amountIv          String?         // IV for amount encryption
+  encryptedExpenseDate String?      @db.Text // Encrypted expense date
+  expenseDateIv     String?         // IV for expense date encryption
+  
+  encryptionVersion Int?            @default(1) // Version of encryption scheme
+  encryptionFields String[]         // List of encrypted field names
 }
 
 model ExpenseDocument {
@@ -129,6 +165,18 @@ model Activity {
   participantId String?
   expenseId     String?
   data          String?
+  
+  // Comprehensive encryption fields
+  encryptedData      String?  @db.Text // Encrypted activity data
+  dataIv            String?  // IV for data encryption
+  
+  // CRITICAL SECURITY: Reference encryption
+  encryptedParticipantId String? @db.Text // Encrypted participant ID reference
+  participantIdIv       String? // IV for participant ID encryption
+  encryptedExpenseId    String? @db.Text // Encrypted expense ID reference
+  expenseIdIv          String? // IV for expense ID encryption
+  
+  encryptionVersion Int?    @default(1) // Version of encryption scheme
 }
 
 enum ActivityType {
@@ -136,4 +184,41 @@ enum ActivityType {
   CREATE_EXPENSE
   UPDATE_EXPENSE
   DELETE_EXPENSE
+}
+
+model EncryptedStats {
+  id               String   @id
+  groupId          String
+  group            Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  statsType        String   // Type of statistics (totals, balances, etc.)
+  
+  // Encrypted statistics data
+  encryptedData    String   @db.Text // Encrypted statistics JSON
+  dataIv           String   // IV for data encryption
+  encryptionVersion Int     @default(1)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@unique([groupId, statsType])
+}
+
+model UserSettings {
+  id               String   @id
+  groupId          String
+  group            Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  participantId    String?  // Optional participant-specific settings
+  settingsType     String   // Type of settings (preferences, display, etc.)
+  
+  // Encrypted settings data
+  encryptedData    String   @db.Text // Encrypted settings JSON
+  dataIv           String   // IV for data encryption
+  encryptionVersion Int     @default(1)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@unique([groupId, participantId, settingsType])
+  @@index([groupId, settingsType]) // Index for group-level settings queries
+  @@index([groupId, participantId, settingsType])
 }

@@ -6,6 +6,7 @@ import {
   unarchiveGroup,
   unstarGroup,
 } from '@/app/groups/recent-groups-helpers'
+import { EncryptedGroupName } from '@/components/encrypted-group-name'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -80,7 +81,14 @@ export function RecentGroupListCard({
                     </HoverCardContent>
                   </HoverCard>
                 )}
-                {group.name}
+                <EncryptedGroupName
+                  groupId={group.id}
+                  groupName={group.name}
+                  encryptedName={groupDetail?.encryptedName}
+                  nameIv={groupDetail?.nameIv}
+                  encryptionSalt={groupDetail?.encryptionSalt}
+                  isEncrypted={groupDetail?.isEncrypted}
+                />
               </Link>
               <span className="flex-shrink-0">
                 <Button

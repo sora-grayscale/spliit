@@ -2,6 +2,7 @@
 
 import { GroupTabs } from '@/app/groups/[groupId]/group-tabs'
 import { ShareButton } from '@/app/groups/[groupId]/share-button'
+import { EncryptedGroupName } from '@/components/encrypted-group-name'
 import {
   HoverCard,
   HoverCardContent,
@@ -40,7 +41,14 @@ export const GroupHeader = () => {
                   </HoverCardContent>
                 </HoverCard>
               )}
-              {group.name}
+              <EncryptedGroupName
+                groupId={groupId}
+                groupName={group.name}
+                encryptedName={group.encryptedName}
+                nameIv={group.nameIv}
+                encryptionSalt={group.encryptionSalt}
+                isEncrypted={group.isEncrypted}
+              />
             </div>
           )}
         </Link>

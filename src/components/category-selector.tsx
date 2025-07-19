@@ -42,7 +42,7 @@ export function CategorySelector({
   useEffect(() => {
     setValue(defaultValue)
     onValueChange(defaultValue)
-  }, [defaultValue])
+  }, [defaultValue, onValueChange])
 
   const selectedCategory =
     categories.find((category) => category.id === value) ?? categories[0]

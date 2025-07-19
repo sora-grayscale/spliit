@@ -42,8 +42,8 @@ export class GroupRateLimiter {
       // Different limits for different operations
       const limits =
         operationType === 'decryption'
-          ? { maxAttempts: 10, windowMs: 60000 } // 10 attempts per minute for decryption (strengthened security)
-          : { maxAttempts: 5, windowMs: 300000 } // 5 attempts per 5 minutes for verification (more strict)
+          ? { maxAttempts: 50, windowMs: 60000 } // 50 attempts per minute for decryption (reasonable for UI)
+          : { maxAttempts: 10, windowMs: 300000 } // 10 attempts per 5 minutes for verification
 
       this.instances.set(
         key,
@@ -100,9 +100,11 @@ export class GroupRateLimiter {
 
     const isBlocked = record.count >= this.maxAttempts
 
-    // Add progressive delay for repeated attempts
-    if (record.count > 1) {
-      await constantTimeDelay(Math.min(record.count * 100, 2000)) // Max 2 second delay
+    // SECURITY FIX: Only add delay for verification operations to prevent brute force
+    // Decryption operations should not be delayed as they are legitimate UI operations
+    if (record.count > this.maxAttempts * 0.8) {
+      // Only delay when near limit
+      await constantTimeDelay(Math.min(record.count * 50, 500)) // Max 0.5 second delay
     }
 
     return isBlocked

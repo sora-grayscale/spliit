@@ -37,7 +37,7 @@ export function GroupLayoutClient({
         setIsUnlocked(true)
       }
     }
-  }, [data, groupId, isUnlocked])
+  }, [data, groupId, isUnlocked, t, toast])
 
   const props =
     isLoading || !data?.group

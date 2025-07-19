@@ -71,14 +71,29 @@ export function PasswordUnlockDialog({
         }
       }
 
-      // Store password in session
-      PasswordSession.setPassword(groupId, password)
+      // Store password in session (async for enhanced security)
+      await PasswordSession.setPassword(groupId, password)
       onUnlock(password)
       setPassword('')
       onClose()
     } catch (err) {
-      console.error('Password verification failed:', err)
-      setError('Failed to verify password. Please try again.')
+      // Enhanced error handling with security consideration
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Password verification failed:', err)
+      } else {
+        console.error('Password verification failed - check server logs')
+      }
+
+      // Provide user-friendly error message
+      if (err instanceof Error && err.message.includes('verification')) {
+        setError(
+          'Password verification failed. Please check your password and try again.',
+        )
+      } else if (err instanceof Error && err.message.includes('rate limit')) {
+        setError('Too many attempts. Please wait a moment before trying again.')
+      } else {
+        setError('Failed to verify password. Please try again.')
+      }
     } finally {
       setIsVerifying(false)
     }
