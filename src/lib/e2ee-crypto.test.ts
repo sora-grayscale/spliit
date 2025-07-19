@@ -11,12 +11,17 @@ const mockCrypto = {
     deriveKey: jest.fn(),
     encrypt: jest.fn(),
     decrypt: jest.fn(),
+    digest: jest.fn(),
   },
   getRandomValues: jest.fn(),
 }
 
-// @ts-ignore
-global.crypto = mockCrypto
+// Ensure crypto is available globally
+Object.defineProperty(global, 'crypto', {
+  value: mockCrypto,
+  writable: true,
+  configurable: true,
+})
 
 describe('PasswordCrypto', () => {
   const testPassword = 'test-password-123'
@@ -34,7 +39,7 @@ describe('PasswordCrypto', () => {
 
       const salt = PasswordCrypto.generateSalt()
 
-      expect(mockCrypto.getRandomValues).toHaveBeenCalledWith(
+      expect(global.crypto.getRandomValues).toHaveBeenCalledWith(
         expect.any(Uint8Array),
       )
       expect(typeof salt).toBe('string')
@@ -97,7 +102,7 @@ describe('PasswordCrypto', () => {
         mockKey as CryptoKey,
       )
 
-      expect(mockCrypto.getRandomValues).toHaveBeenCalledWith(
+      expect(global.crypto.getRandomValues).toHaveBeenCalledWith(
         expect.any(Uint8Array),
       )
       expect(mockCrypto.subtle.encrypt).toHaveBeenCalledWith(
@@ -178,24 +183,24 @@ describe('PasswordSession', () => {
     PasswordSession.clearAllPasswords()
   })
 
-  it('should store and retrieve passwords', () => {
-    PasswordSession.setPassword(testGroupId, testPassword)
+  it('should store and retrieve passwords', async () => {
+    await PasswordSession.setPassword(testGroupId, testPassword)
     expect(PasswordSession.getPassword(testGroupId)).toBe(testPassword)
     expect(PasswordSession.hasPassword(testGroupId)).toBe(true)
   })
 
-  it('should clear individual passwords', () => {
-    PasswordSession.setPassword(testGroupId, testPassword)
+  it('should clear individual passwords', async () => {
+    await PasswordSession.setPassword(testGroupId, testPassword)
     PasswordSession.clearPassword(testGroupId)
     expect(PasswordSession.getPassword(testGroupId)).toBeUndefined()
     expect(PasswordSession.hasPassword(testGroupId)).toBe(false)
   })
 
-  it('should clear all passwords', () => {
-    PasswordSession.setPassword('group1', 'pass1')
-    PasswordSession.setPassword('group2', 'pass2')
+  it('should clear all passwords', async () => {
+    await PasswordSession.setPassword('group1', 'pass1')
+    await PasswordSession.setPassword('group2', 'pass2')
 
-    PasswordSession.clearAllPasswords()
+    await PasswordSession.clearAllPasswords()
 
     expect(PasswordSession.getPassword('group1')).toBeUndefined()
     expect(PasswordSession.getPassword('group2')).toBeUndefined()

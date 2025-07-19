@@ -18,7 +18,7 @@ import {
 import { useMediaQuery } from '@/lib/hooks'
 import { Category } from '@prisma/client'
 import { useTranslations } from 'next-intl'
-import { forwardRef, useEffect, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useState } from 'react'
 
 type Props = {
   categories: Category[]
@@ -38,11 +38,16 @@ export function CategorySelector({
   const [value, setValue] = useState<number>(defaultValue)
   const isDesktop = useMediaQuery('(min-width: 768px)')
 
+  // Memoize the callback to prevent unnecessary re-renders
+  const handleValueChange = useCallback((categoryId: Category['id']) => {
+    onValueChange(categoryId)
+  }, [onValueChange])
+
   // allow overwriting currently selected category from outside
   useEffect(() => {
     setValue(defaultValue)
-    onValueChange(defaultValue)
-  }, [defaultValue])
+    handleValueChange(defaultValue)
+  }, [defaultValue, handleValueChange])
 
   const selectedCategory =
     categories.find((category) => category.id === value) ?? categories[0]

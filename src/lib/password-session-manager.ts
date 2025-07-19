@@ -3,11 +3,10 @@
  * This module handles secure storage and validation of encryption passwords
  */
 
-import { PasswordCrypto } from './e2ee-crypto-refactored'
-
 interface PasswordSession {
   groupId: string
-  hashedPassword: string
+  encryptedPassword: string // Encrypted with session key
+  sessionKey: string // Derived key for this session
   expiresAt: number
   lastAccess: number
 }
@@ -19,12 +18,104 @@ export class PasswordSessionManager {
   private static readonly SESSIONS = new Map<string, PasswordSession>()
   private static readonly SESSION_TIMEOUT = 30 * 60 * 1000 // 30 minutes
   private static readonly CLEANUP_INTERVAL = 5 * 60 * 1000 // 5 minutes
+  private static cleanupIntervalId: NodeJS.Timeout | null = null
 
   static {
-    // Automatic cleanup of expired sessions
-    setInterval(() => {
+    // Automatic cleanup of expired sessions with cleanup tracking
+    this.cleanupIntervalId = setInterval(() => {
       this.cleanupExpiredSessions()
     }, this.CLEANUP_INTERVAL)
+  }
+
+  /**
+   * CRITICAL: Generate session key for password encryption
+   */
+  private static async generateSessionKey(): Promise<string> {
+    const array = new Uint8Array(32)
+    crypto.getRandomValues(array)
+    return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join(
+      '',
+    )
+  }
+
+  /**
+   * CRITICAL: Encrypt password with session key
+   */
+  private static async encryptPasswordWithSessionKey(
+    password: string,
+    sessionKey: string,
+  ): Promise<string> {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(password)
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(sessionKey.slice(0, 32)),
+      { name: 'AES-GCM' },
+      false,
+      ['encrypt'],
+    )
+
+    const iv = new Uint8Array(12)
+    crypto.getRandomValues(iv)
+
+    const encrypted = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      data,
+    )
+
+    const combined = new Uint8Array(iv.length + encrypted.byteLength)
+    combined.set(iv)
+    combined.set(new Uint8Array(encrypted), iv.length)
+
+    return Array.from(combined, (byte) =>
+      byte.toString(16).padStart(2, '0'),
+    ).join('')
+  }
+
+  /**
+   * CRITICAL: Decrypt password with session key
+   */
+  private static async decryptPasswordWithSessionKey(
+    encryptedPassword: string,
+    sessionKey: string,
+  ): Promise<string> {
+    const encoder = new TextEncoder()
+    const decoder = new TextDecoder()
+
+    const combined = new Uint8Array(
+      encryptedPassword.match(/.{2}/g)?.map((byte) => parseInt(byte, 16)) || [],
+    )
+
+    const iv = combined.slice(0, 12)
+    const encrypted = combined.slice(12)
+
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(sessionKey.slice(0, 32)),
+      { name: 'AES-GCM' },
+      false,
+      ['decrypt'],
+    )
+
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      encrypted,
+    )
+
+    return decoder.decode(decrypted)
+  }
+
+  /**
+   * CRITICAL: Cleanup mechanism for memory leak prevention
+   */
+  static cleanup(): void {
+    if (this.cleanupIntervalId) {
+      clearInterval(this.cleanupIntervalId)
+      this.cleanupIntervalId = null
+    }
+    this.SESSIONS.clear()
   }
 
   /**
@@ -39,16 +130,21 @@ export class PasswordSessionManager {
       throw new Error('Invalid group ID format')
     }
 
-    // Hash password for secure storage
-    const hashedPassword = await PasswordCrypto.hashPassword(password)
+    // CRITICAL FIX: Encrypt password with session key
+    const sessionKey = await this.generateSessionKey()
+    const encryptedPassword = await this.encryptPasswordWithSessionKey(
+      password,
+      sessionKey,
+    )
 
     // Generate secure session token
     const sessionToken = this.generateSecureToken()
 
-    // Store session with expiration
+    // Store encrypted session with expiration
     this.SESSIONS.set(sessionToken, {
       groupId,
-      hashedPassword,
+      encryptedPassword,
+      sessionKey,
       expiresAt: Date.now() + this.SESSION_TIMEOUT,
       lastAccess: Date.now(),
     })
@@ -83,9 +179,17 @@ export class PasswordSessionManager {
     // Update last access time
     session.lastAccess = Date.now()
 
-    // Note: In production, this would decrypt the stored password
-    // For now, we return a placeholder that indicates session is valid
-    return session.hashedPassword
+    try {
+      // CRITICAL FIX: Decrypt password with session key
+      return await this.decryptPasswordWithSessionKey(
+        session.encryptedPassword,
+        session.sessionKey,
+      )
+    } catch (error) {
+      // If decryption fails, remove the session
+      this.SESSIONS.delete(sessionToken)
+      return null
+    }
   }
 
   /**
@@ -128,6 +232,22 @@ export class PasswordSessionManager {
     for (const token of sessionsToDelete) {
       this.SESSIONS.delete(token)
     }
+  }
+
+  /**
+   * CRITICAL: Add hasPassword method for UI components
+   */
+  static hasPassword(groupId: string): boolean {
+    let hasValidPassword = false
+    const now = Date.now()
+
+    this.SESSIONS.forEach((session) => {
+      if (session.groupId === groupId && now <= session.expiresAt) {
+        hasValidPassword = true
+      }
+    })
+
+    return hasValidPassword
   }
 
   /**

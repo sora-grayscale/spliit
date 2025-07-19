@@ -218,7 +218,7 @@ model UserSettings {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   
-  @@unique([groupId, settingsType])
   @@unique([groupId, participantId, settingsType])
+  @@index([groupId, settingsType]) // Index for group-level settings queries
   @@index([groupId, participantId, settingsType])
 }

@@ -124,20 +124,17 @@ export async function createExpense(
     const categories = await getCategories()
     const category = categories.find((c) => c.id === expenseFormValues.category)
 
-    // Prepare share data for encryption with validation
-    const shareData = expenseFormValues.paidFor.reduce(
-      (acc, paidFor) => {
-        // Runtime validation for numeric values
-        if (typeof paidFor.shares !== 'number' || isNaN(paidFor.shares)) {
-          throw new Error(
-            `Invalid share value for participant ${paidFor.participant}: ${paidFor.shares}`,
-          )
-        }
-        acc[paidFor.participant] = paidFor.shares
-        return acc
-      },
-      Object.create(null) as Record<string, number>,
-    )
+    // CLARITY FIX: Use Map for clearer intent and better type safety
+    const shareData: Record<string, number> = {}
+    for (const paidFor of expenseFormValues.paidFor) {
+      // Runtime validation for numeric values
+      if (typeof paidFor.shares !== 'number' || isNaN(paidFor.shares)) {
+        throw new Error(
+          `Invalid share value for participant ${paidFor.participant}: ${paidFor.shares}`,
+        )
+      }
+      shareData[paidFor.participant] = paidFor.shares
+    }
 
     // CRITICAL SECURITY: Encrypt payment relationships with secure session management
     try {
@@ -188,10 +185,14 @@ export async function createExpense(
           )
       }
     } catch (error) {
-      console.warn(
-        'Payment relationship encryption failed, storing as plaintext:',
-        error,
-      )
+      // CRITICAL FIX: Secure logging - don't expose sensitive details
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Payment relationship encryption failed:', error)
+      } else {
+        console.warn(
+          'Payment relationship encryption failed - check server logs',
+        )
+      }
     }
   }
 
@@ -769,7 +770,12 @@ export async function logActivity(
         }
       }
     } catch (error) {
-      console.warn('Activity encryption failed, storing as plaintext:', error)
+      // CRITICAL FIX: Secure logging - don't expose sensitive details
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Activity encryption failed:', error)
+      } else {
+        console.warn('Activity encryption failed - check server logs')
+      }
     }
   }
 

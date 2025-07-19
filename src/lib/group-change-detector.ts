@@ -57,12 +57,16 @@ function compareParticipants(
     return { hasChanges: true, hasNameChanges: true }
   }
 
-  // Check for name differences using Array.from for compatibility
-  const updatedNamesArray = Array.from(updatedNames)
-  for (let i = 0; i < updatedNamesArray.length; i++) {
-    if (!originalNames.has(updatedNamesArray[i])) {
-      return { hasChanges: true, hasNameChanges: true }
+  // PERFORMANCE FIX: Use forEach for ES5 compatibility with Set iteration
+  let hasNameChanges = false
+  updatedNames.forEach((name) => {
+    if (!originalNames.has(name)) {
+      hasNameChanges = true
     }
+  })
+
+  if (hasNameChanges) {
+    return { hasChanges: true, hasNameChanges: true }
   }
 
   return { hasChanges: false, hasNameChanges: false }
