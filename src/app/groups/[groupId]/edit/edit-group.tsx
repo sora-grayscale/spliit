@@ -1,11 +1,11 @@
 'use client'
 
-import { GroupForm } from '@/components/group-form'
 import {
   deleteRecentGroup,
   unarchiveGroup,
   unstarGroup,
 } from '@/app/groups/recent-groups-helpers'
+import { GroupForm } from '@/components/group-form'
 import { useToast } from '@/components/ui/use-toast'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'

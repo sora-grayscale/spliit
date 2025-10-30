@@ -11,4 +11,3 @@ export const deleteGroupProcedure = baseProcedure
   .mutation(async ({ input: { groupId } }) => {
     await deleteGroup(groupId)
   })
-
