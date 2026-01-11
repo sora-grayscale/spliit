@@ -1,6 +1,11 @@
 import dayjs from 'dayjs'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import useSWR, { Fetcher } from 'swr'
+import {
+  base64ToKey,
+  generateMasterKey,
+  keyToBase64,
+} from './crypto'
 
 export function useMediaQuery(query: string): boolean {
   const getMatches = (query: string): boolean => {
@@ -123,5 +128,84 @@ export function useCurrencyRate(
     error,
     isLoading,
     refresh: mutate,
+  }
+}
+
+/**
+ * Hook to manage encryption key from URL fragment
+ * The key is stored in the URL hash and never sent to the server
+ */
+export function useEncryptionKey() {
+  const [encryptionKey, setEncryptionKey] = useState<Uint8Array | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Read key from URL fragment on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const hash = window.location.hash.slice(1)
+    if (hash) {
+      try {
+        const key = base64ToKey(hash)
+        if (key.length === 16) {
+          setEncryptionKey(key)
+          setError(null)
+        } else {
+          setError('Invalid encryption key length')
+        }
+      } catch {
+        setError('Invalid encryption key format')
+      }
+    }
+    setIsLoading(false)
+
+    // Listen for hash changes
+    const handleHashChange = () => {
+      const newHash = window.location.hash.slice(1)
+      if (newHash) {
+        try {
+          const key = base64ToKey(newHash)
+          if (key.length === 16) {
+            setEncryptionKey(key)
+            setError(null)
+          }
+        } catch {
+          // Ignore invalid hashes
+        }
+      }
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
+  // Generate a new key and update URL
+  const generateKey = useCallback(() => {
+    const newKey = generateMasterKey()
+    setEncryptionKey(newKey)
+    setError(null)
+
+    // Update URL without navigation
+    const base64Key = keyToBase64(newKey)
+    const newUrl = `${window.location.pathname}${window.location.search}#${base64Key}`
+    window.history.replaceState(null, '', newUrl)
+
+    return newKey
+  }, [])
+
+  // Get the key as base64 string
+  const getKeyBase64 = useCallback(() => {
+    if (!encryptionKey) return null
+    return keyToBase64(encryptionKey)
+  }, [encryptionKey])
+
+  return {
+    encryptionKey,
+    isLoading,
+    error,
+    hasKey: encryptionKey !== null,
+    generateKey,
+    getKeyBase64,
   }
 }

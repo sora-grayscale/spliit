@@ -448,5 +448,13 @@
     "other": {
       "heading": "Other currencies"
     }
+  },
+  "Encryption": {
+    "required": {
+      "title": "Encrypted Group",
+      "description": "This group is end-to-end encrypted. You need the special link with the encryption key to access it.",
+      "help": "Ask the person who shared this group with you to send the complete link including the encryption key.",
+      "backToGroups": "Back to Groups"
+    }
   }
 }
