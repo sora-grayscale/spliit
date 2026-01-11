@@ -3,11 +3,13 @@ import {
   Activity,
   ActivityItem,
 } from '@/app/groups/[groupId]/activity/activity-item'
+import { useEncryption } from '@/components/encryption-provider'
 import { Skeleton } from '@/components/ui/skeleton'
+import { decryptActivities } from '@/lib/encrypt-helpers'
 import { trpc } from '@/trpc/client'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useTranslations } from 'next-intl'
-import { forwardRef, useEffect } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useCurrentGroup } from '../current-group-context'
 
@@ -86,10 +88,11 @@ ActivitiesLoading.displayName = 'ActivitiesLoading'
 export function ActivityList() {
   const t = useTranslations('Activity')
   const { group, groupId } = useCurrentGroup()
+  const { encryptionKey, isLoading: isKeyLoading, hasKey } = useEncryption()
 
   const {
     data: activitiesData,
-    isLoading,
+    isLoading: isQueryLoading,
     fetchNextPage,
   } = trpc.groups.activities.list.useInfiniteQuery(
     { groupId, limit: PAGE_SIZE },
@@ -97,14 +100,71 @@ export function ActivityList() {
   )
   const { ref: loadingRef, inView } = useInView()
 
-  const activities = activitiesData?.pages.flatMap((page) => page.activities)
+  // Memoize raw activities
+  const rawActivities = useMemo(
+    () => activitiesData?.pages.flatMap((page) => page.activities),
+    [activitiesData?.pages]
+  )
   const hasMore = activitiesData?.pages.at(-1)?.hasMore ?? false
+
+  // Decrypt activities
+  const [decryptedActivities, setDecryptedActivities] = useState<
+    typeof rawActivities
+  >(undefined)
+  const lastDecryptedRef = useRef<{ key: string; withKey: boolean } | null>(null)
+
+  useEffect(() => {
+    const activityIds = rawActivities?.map((a) => a.id).join(',') || ''
+    const shouldDecryptWithKey = hasKey && encryptionKey !== null
+    const stableKey = `${activityIds}`
+
+    // Skip if already processed with same state
+    if (
+      lastDecryptedRef.current?.key === stableKey &&
+      lastDecryptedRef.current?.withKey === shouldDecryptWithKey
+    ) {
+      return
+    }
+
+    async function decrypt() {
+      if (!rawActivities) {
+        setDecryptedActivities(undefined)
+        return
+      }
+
+      // If no encryption key, use original data
+      if (!isKeyLoading && !hasKey) {
+        setDecryptedActivities(rawActivities)
+        lastDecryptedRef.current = { key: stableKey, withKey: false }
+        return
+      }
+
+      if (!encryptionKey) {
+        return // Still loading
+      }
+
+      try {
+        const decrypted = await decryptActivities(rawActivities, encryptionKey)
+        setDecryptedActivities(decrypted)
+        lastDecryptedRef.current = { key: stableKey, withKey: true }
+      } catch (error) {
+        console.warn('Failed to decrypt activities:', error)
+        setDecryptedActivities(rawActivities)
+        lastDecryptedRef.current = { key: stableKey, withKey: true }
+      }
+    }
+
+    decrypt()
+  }, [rawActivities, encryptionKey, isKeyLoading, hasKey])
+
+  const activities = decryptedActivities
+  const isLoading = isQueryLoading || isKeyLoading || !activities || !group
 
   useEffect(() => {
     if (inView && hasMore && !isLoading) fetchNextPage()
   }, [fetchNextPage, hasMore, inView, isLoading])
 
-  if (isLoading || !activities || !group) return <ActivitiesLoading />
+  if (isLoading) return <ActivitiesLoading />
 
   const groupedActivitiesByDate = getGroupedActivitiesByDate(activities)
 

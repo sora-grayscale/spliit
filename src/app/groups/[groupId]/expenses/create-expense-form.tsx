@@ -1,7 +1,10 @@
 'use client'
+import { useEncryption } from '@/components/encryption-provider'
+import { encryptExpenseFormValues } from '@/lib/encrypt-helpers'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { trpc } from '@/trpc/client'
 import { useRouter } from 'next/navigation'
+import { useCurrentGroup } from '../current-group-context'
 import { ExpenseForm } from './expense-form'
 
 export function CreateExpenseForm({
@@ -12,11 +15,13 @@ export function CreateExpenseForm({
   expenseId?: string
   runtimeFeatureFlags: RuntimeFeatureFlags
 }) {
-  const { data: groupData } = trpc.groups.get.useQuery({ groupId })
-  const group = groupData?.group
+  // Use decrypted group data from context
+  const { group } = useCurrentGroup()
 
   const { data: categoriesData } = trpc.categories.list.useQuery()
   const categories = categoriesData?.categories
+
+  const { encryptionKey } = useEncryption()
 
   const { mutateAsync: createExpenseMutateAsync } =
     trpc.groups.expenses.create.useMutation()
@@ -31,9 +36,14 @@ export function CreateExpenseForm({
       group={group}
       categories={categories}
       onSubmit={async (expenseFormValues, participantId) => {
+        // Encrypt expense data if encryption key is available
+        const dataToSend = encryptionKey
+          ? await encryptExpenseFormValues(expenseFormValues, encryptionKey)
+          : expenseFormValues
+
         await createExpenseMutateAsync({
           groupId,
-          expenseFormValues,
+          expenseFormValues: dataToSend,
           participantId,
         })
         utils.groups.expenses.invalidate()
