@@ -75,7 +75,7 @@ async function main() {
         expenseIdsMapping[expenseRow.id] = id
         expenses.push({
           id,
-          amount: Math.round(expenseRow.amount * 100),
+          amount: String(Math.round(expenseRow.amount * 100)), // Amount stored as string
           groupId: groupRow.id,
           title: expenseRow.description,
           categoryId: 1,

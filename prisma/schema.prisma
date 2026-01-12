@@ -47,8 +47,8 @@ model Expense {
   title            String
   category         Category?         @relation(fields: [categoryId], references: [id])
   categoryId       Int               @default(0)
-  amount           Int
-  originalAmount   Int?
+  amount           String            // Encrypted amount (cents as string or encrypted)
+  originalAmount   String?           // Encrypted original amount
   originalCurrency String?
   conversionRate   Decimal?
   paidBy           Participant       @relation(fields: [paidById], references: [id], onDelete: Cascade)
@@ -110,7 +110,7 @@ model ExpensePaidFor {
   participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   expenseId     String
   participantId String
-  shares        Int         @default(1)
+  shares        String      @default("1") // Encrypted shares (or plain number as string)
 
   @@id([expenseId, participantId])
 }

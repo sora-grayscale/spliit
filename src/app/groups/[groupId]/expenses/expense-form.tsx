@@ -111,10 +111,13 @@ const getDefaultSplittingOptions = (
 
   return {
     splitMode: parsedDefaultSplitMode.splitMode,
-    paidFor: parsedDefaultSplitMode.paidFor.map((paidFor) => ({
-      participant: paidFor.participant,
-      shares: (paidFor.shares / 100).toString() as any, // Convert to string for consistent schema handling
-    })),
+    paidFor: parsedDefaultSplitMode.paidFor.map((paidFor) => {
+      const numShares = typeof paidFor.shares === 'string' ? parseFloat(paidFor.shares) : paidFor.shares
+      return {
+        participant: paidFor.participant,
+        shares: (numShares / 100).toString() as any, // Convert to string for consistent schema handling
+      }
+    }),
   }
 }
 
@@ -195,12 +198,15 @@ export function ExpenseForm({
           conversionRate: expense.conversionRate?.toNumber(),
           category: expense.categoryId,
           paidBy: expense.paidById,
-          paidFor: expense.paidFor.map(({ participantId, shares }) => ({
-            participant: participantId,
-            shares: (expense.splitMode === 'BY_AMOUNT'
-              ? amountAsDecimal(shares, groupCurrency)
-              : (shares / 100).toString()) as any, // Convert to string to ensure consistent handling
-          })),
+          paidFor: expense.paidFor.map(({ participantId, shares }) => {
+            const numShares = typeof shares === 'string' ? parseFloat(shares) : shares
+            return {
+              participant: participantId,
+              shares: (expense.splitMode === 'BY_AMOUNT'
+                ? amountAsDecimal(numShares, groupCurrency)
+                : (numShares / 100).toString()) as any, // Convert to string to ensure consistent handling
+            }
+          }),
           splitMode: expense.splitMode,
           saveDefaultSplittingOptions: false,
           isReimbursement: expense.isReimbursement,
@@ -386,7 +392,8 @@ export function ExpenseForm({
 
   useEffect(() => {
     if (!form.getFieldState('originalAmount').isTouched) return
-    const originalAmount = form.getValues('originalAmount') ?? 0
+    const rawOriginalAmount = form.getValues('originalAmount')
+    const originalAmount = typeof rawOriginalAmount === 'string' ? parseFloat(rawOriginalAmount) : rawOriginalAmount ?? 0
     const conversionRate = form.getValues('conversionRate')
 
     if (conversionRate && originalAmount) {

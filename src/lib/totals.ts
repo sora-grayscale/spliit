@@ -1,36 +1,66 @@
 import { getGroupExpenses } from '@/lib/api'
 
+/**
+ * Helper to convert amount to number (handles string or number)
+ */
+function toNumber(val: string | number): number {
+  if (typeof val === 'number') return val
+  return parseFloat(val) || 0
+}
+
+/**
+ * Generic expense type for totals calculation
+ */
+export interface ExpenseForTotals {
+  amount: string | number
+  splitMode: 'EVENLY' | 'BY_SHARES' | 'BY_PERCENTAGE' | 'BY_AMOUNT'
+  isReimbursement: boolean
+  paidBy: { id: string }
+  paidFor: Array<{
+    shares: string | number
+    participant: { id: string }
+  }>
+}
+
 export function getTotalGroupSpending(
-  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>,
+  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>> | ExpenseForTotals[],
 ): number {
   return expenses.reduce(
     (total, expense) =>
-      expense.isReimbursement ? total : total + expense.amount,
+      expense.isReimbursement ? total : total + toNumber(expense.amount),
     0,
   )
 }
 
 export function getTotalActiveUserPaidFor(
   activeUserId: string | null,
-  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>,
+  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>> | ExpenseForTotals[],
 ): number {
   return expenses.reduce(
     (total, expense) =>
       expense.paidBy.id === activeUserId && !expense.isReimbursement
-        ? total + expense.amount
+        ? total + toNumber(expense.amount)
         : total,
     0,
   )
 }
 
-type Expense = NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>[number]
+/**
+ * Generic type for expense that can be used with calculateShare
+ */
+type ExpenseForShare = {
+  amount: string | number
+  splitMode: 'EVENLY' | 'BY_SHARES' | 'BY_PERCENTAGE' | 'BY_AMOUNT'
+  isReimbursement: boolean
+  paidFor: Array<{
+    shares: string | number
+    participant: { id: string }
+  }>
+}
 
 export function calculateShare(
   participantId: string | null,
-  expense: Pick<
-    Expense,
-    'amount' | 'paidFor' | 'splitMode' | 'isReimbursement'
-  >,
+  expense: ExpenseForShare,
 ): number {
   if (expense.isReimbursement) return 0
 
@@ -41,25 +71,26 @@ export function calculateShare(
 
   if (!userPaidFor) return 0
 
-  const shares = Number(userPaidFor.shares)
+  const shares = toNumber(userPaidFor.shares)
+  const expenseAmount = toNumber(expense.amount)
 
   switch (expense.splitMode) {
     case 'EVENLY':
       // Divide the total expense evenly among all participants
-      return expense.amount / paidFors.length
+      return expenseAmount / paidFors.length
     case 'BY_AMOUNT':
       // Directly add the user's share if the split mode is BY_AMOUNT
       return shares
     case 'BY_PERCENTAGE':
       // Calculate the user's share based on their percentage of the total expense
-      return (expense.amount * shares) / 10000 // Assuming shares are out of 10000 for percentage
+      return (expenseAmount * shares) / 10000 // Assuming shares are out of 10000 for percentage
     case 'BY_SHARES':
       // Calculate the user's share based on their shares relative to the total shares
       const totalShares = paidFors.reduce(
-        (sum, paidFor) => sum + Number(paidFor.shares),
+        (sum, paidFor) => sum + toNumber(paidFor.shares),
         0,
       )
-      return (expense.amount * shares) / totalShares
+      return (expenseAmount * shares) / totalShares
     default:
       return 0
   }
@@ -67,7 +98,7 @@ export function calculateShare(
 
 export function getTotalActiveUserShare(
   activeUserId: string | null,
-  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>,
+  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>> | ExpenseForTotals[],
 ): number {
   const total = expenses.reduce(
     (sum, expense) => sum + calculateShare(activeUserId, expense),

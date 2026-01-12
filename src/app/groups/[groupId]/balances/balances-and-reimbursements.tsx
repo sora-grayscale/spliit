@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useBalances } from '@/lib/hooks/useBalances'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
@@ -20,19 +21,19 @@ import { useCurrentGroup } from '../current-group-context'
 export default function BalancesAndReimbursements() {
   const utils = trpc.useUtils()
   const { groupId, group } = useCurrentGroup()
-  const { data: balancesData, isLoading: balancesAreLoading } =
-    trpc.groups.balances.list.useQuery({
-      groupId,
-    })
+
+  // Use client-side balance calculation (supports encrypted amounts)
+  const { balances, reimbursements, isLoading: balancesAreLoading } = useBalances(groupId)
+
   const t = useTranslations('Balances')
 
   useEffect(() => {
     // Until we use tRPC more widely and can invalidate the cache on expense
     // update, it's easier and safer to invalidate the cache on page load.
-    utils.groups.balances.invalidate()
+    utils.groups.expenses.invalidate()
   }, [utils])
 
-  const isLoading = balancesAreLoading || !balancesData || !group
+  const isLoading = balancesAreLoading || !group
 
   return (
     <>
@@ -46,7 +47,7 @@ export default function BalancesAndReimbursements() {
             <BalancesLoading participantCount={group?.participants.length} />
           ) : (
             <BalancesList
-              balances={balancesData.balances}
+              balances={balances}
               participants={group?.participants}
               currency={getCurrencyFromGroup(group)}
             />
@@ -65,7 +66,7 @@ export default function BalancesAndReimbursements() {
             />
           ) : (
             <ReimbursementList
-              reimbursements={balancesData.reimbursements}
+              reimbursements={reimbursements}
               participants={group?.participants}
               currency={getCurrencyFromGroup(group)}
               groupId={groupId}

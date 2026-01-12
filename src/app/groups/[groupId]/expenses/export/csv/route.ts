@@ -102,50 +102,61 @@ export async function GET(
 
   const currency = getCurrencyFromGroup(group)
 
-  const expenses = group.expenses.map((expense) => ({
-    date: formatDate(expense.expenseDate),
-    title: expense.title,
-    categoryName: expense.category?.name || '',
-    currency: group.currencyCode ?? group.currency,
-    amount: formatAmountAsDecimal(expense.amount, currency),
-    originalAmount: expense.originalAmount
-      ? formatAmountAsDecimal(
-          expense.originalAmount,
-          getCurrency(expense.originalCurrency),
-        )
-      : null,
-    originalCurrency: expense.originalCurrency,
-    conversionRate: expense.conversionRate
-      ? expense.conversionRate.toString()
-      : null,
-    isReimbursement: expense.isReimbursement ? 'Yes' : 'No',
-    splitMode: splitModeLabel[expense.splitMode],
-    ...Object.fromEntries(
-      group.participants.map((participant) => {
-        const { totalShares, participantShare } = expense.paidFor.reduce(
-          (acc, { participantId, shares }) => {
-            acc.totalShares += shares
-            if (participantId === participant.id) {
-              acc.participantShare = shares
-            }
-            return acc
-          },
-          { totalShares: 0, participantShare: 0 },
-        )
+  // Helper to convert string amounts to numbers (for encrypted groups, this will return 0)
+  const toNumber = (val: string | number): number => {
+    if (typeof val === 'number') return val
+    const num = parseFloat(val)
+    return isNaN(num) ? 0 : num
+  }
 
-        const isPaidByParticipant = expense.paidById === participant.id
-        const participantAmountShare = +formatAmountAsDecimal(
-          (expense.amount / totalShares) * participantShare,
-          currency,
-        )
+  const expenses = group.expenses.map((expense) => {
+    const expenseAmount = toNumber(expense.amount)
 
-        return [
-          participant.name,
-          participantAmountShare * (isPaidByParticipant ? 1 : -1),
-        ]
-      }),
-    ),
-  }))
+    return {
+      date: formatDate(expense.expenseDate),
+      title: expense.title,
+      categoryName: expense.category?.name || '',
+      currency: group.currencyCode ?? group.currency,
+      amount: formatAmountAsDecimal(expenseAmount, currency),
+      originalAmount: expense.originalAmount
+        ? formatAmountAsDecimal(
+            toNumber(expense.originalAmount),
+            getCurrency(expense.originalCurrency),
+          )
+        : null,
+      originalCurrency: expense.originalCurrency,
+      conversionRate: expense.conversionRate
+        ? expense.conversionRate.toString()
+        : null,
+      isReimbursement: expense.isReimbursement ? 'Yes' : 'No',
+      splitMode: splitModeLabel[expense.splitMode],
+      ...Object.fromEntries(
+        group.participants.map((participant) => {
+          const { totalShares, participantShare } = expense.paidFor.reduce(
+            (acc, { participantId, shares }) => {
+              acc.totalShares += toNumber(shares)
+              if (participantId === participant.id) {
+                acc.participantShare = toNumber(shares)
+              }
+              return acc
+            },
+            { totalShares: 0, participantShare: 0 },
+          )
+
+          const isPaidByParticipant = expense.paidById === participant.id
+          const participantAmountShare = +formatAmountAsDecimal(
+            (expenseAmount / totalShares) * participantShare,
+            currency,
+          )
+
+          return [
+            participant.name,
+            participantAmountShare * (isPaidByParticipant ? 1 : -1),
+          ]
+        }),
+      ),
+    }
+  })
 
   const json2csvParser = new Parser({ fields })
   const csv = json2csvParser.parse(expenses)
