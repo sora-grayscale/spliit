@@ -42,14 +42,24 @@
 
 ## What's Encrypted
 
-| Data              | Encrypted |
-| ----------------- | :-------: |
-| Group name        |    Yes    |
-| Group description |    Yes    |
-| Participant names |    Yes    |
-| Expense titles    |    Yes    |
-| Expense notes     |    Yes    |
-| Expense amounts   |    Yes    |
+**All sensitive user data is encrypted client-side before being sent to the server.**
+
+| Data                | Encrypted |
+| ------------------- | :-------: |
+| Group name          |    ✅     |
+| Group description   |    ✅     |
+| Group currency      |    ✅     |
+| Group currency code |    ✅     |
+| Participant names   |    ✅     |
+| Expense titles      |    ✅     |
+| Expense notes       |    ✅     |
+| Expense amounts     |    ✅     |
+| Expense category    |    ✅     |
+| Original currency   |    ✅     |
+| Split shares        |    ✅     |
+| Activity log data   |    ✅     |
+
+**The server cannot decrypt any of this data** - encryption keys exist only in the URL fragment (never sent to the server) and optionally in your browser's localStorage.
 
 ## Features
 

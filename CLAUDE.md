@@ -308,6 +308,7 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 - [x] encryptExpenseFormValues: encrypts originalCurrency
 - [x] decryptExpense: decrypts originalCurrency (handles legacy plain values)
 - [x] Backward compatibility for unencrypted legacy data
+- [x] schemas.ts: Removed length validation for currency fields (encrypted strings are longer)
 - [x] Tests for currency encryption (117 total tests passing)
 
 ## Security Considerations
