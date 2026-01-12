@@ -20,18 +20,17 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useMediaQuery } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
-import { trpc } from '@/trpc/client'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { useTranslations } from 'next-intl'
 import { ComponentProps, useEffect, useState } from 'react'
+import { useCurrentGroup } from '../current-group-context'
 
 export function ActiveUserModal({ groupId }: { groupId: string }) {
   const t = useTranslations('Expenses.ActiveUserModal')
   const [open, setOpen] = useState(false)
   const isDesktop = useMediaQuery('(min-width: 768px)')
-  const { data: groupData } = trpc.groups.get.useQuery({ groupId })
-
-  const group = groupData?.group
+  // Use decrypted group data from context instead of fetching directly
+  const { group } = useCurrentGroup()
 
   useEffect(() => {
     if (!group) return

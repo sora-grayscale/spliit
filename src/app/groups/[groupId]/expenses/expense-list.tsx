@@ -1,15 +1,17 @@
 'use client'
 import { ExpenseCard } from '@/app/groups/[groupId]/expenses/expense-card'
 import { getGroupExpensesAction } from '@/app/groups/[groupId]/expenses/expense-list-fetch-action'
+import { useEncryption } from '@/components/encryption-provider'
 import { Button } from '@/components/ui/button'
 import { SearchBar } from '@/components/ui/search-bar'
 import { Skeleton } from '@/components/ui/skeleton'
+import { decryptExpenses } from '@/lib/encrypt-helpers'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { forwardRef, useEffect, useMemo, useState } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useDebounce } from 'use-debounce'
 import { useCurrentGroup } from '../current-group-context'
@@ -106,6 +108,7 @@ const ExpenseListForSearch = ({
 }) => {
   const utils = trpc.useUtils()
   const { group } = useCurrentGroup()
+  const { encryptionKey, isLoading: isKeyLoading, hasKey } = useEncryption()
 
   useEffect(() => {
     // Until we use tRPC more widely and can invalidate the cache on expense
@@ -124,23 +127,98 @@ const ExpenseListForSearch = ({
     { groupId, limit: PAGE_SIZE, filter: searchText },
     { getNextPageParam: ({ nextCursor }) => nextCursor },
   )
-  const expenses = data?.pages.flatMap((page) => page.expenses)
+
+  // Memoize rawExpenses to avoid reference changes triggering infinite loops
+  const rawExpenses = useMemo(
+    () => data?.pages.flatMap((page) => page.expenses),
+    [data?.pages]
+  )
   const hasMore = data?.pages.at(-1)?.hasMore ?? false
 
-  const isLoading = expensesAreLoading || !expenses || !group
+  // Decrypt expenses using useMemo instead of useEffect to avoid infinite loops
+  const expenses = useMemo(() => {
+    if (!rawExpenses) return undefined
+
+    // If no encryption key and not loading, use raw data
+    if (!isKeyLoading && !hasKey) {
+      return rawExpenses
+    }
+
+    // If still loading key or no key yet, return undefined
+    if (!encryptionKey) {
+      return undefined
+    }
+
+    // Note: We can't use async in useMemo, so we return raw and decrypt in effect
+    return rawExpenses
+  }, [rawExpenses, encryptionKey, isKeyLoading, hasKey])
+
+  // Handle async decryption
+  const [decryptedExpenses, setDecryptedExpenses] = useState<
+    typeof rawExpenses
+  >(undefined)
+  const lastDecryptedRef = useRef<{ key: string; withKey: boolean } | null>(null)
+
+  useEffect(() => {
+    const expenseIds = rawExpenses?.map((e) => e.id).join(',') || ''
+    const shouldDecryptWithKey = hasKey && encryptionKey !== null
+
+    // Skip if already processed with same state
+    if (
+      lastDecryptedRef.current?.key === expenseIds &&
+      lastDecryptedRef.current?.withKey === shouldDecryptWithKey
+    ) {
+      return
+    }
+
+    async function decrypt() {
+      if (!rawExpenses) {
+        setDecryptedExpenses(undefined)
+        return
+      }
+
+      // If no encryption key, use original data
+      if (!isKeyLoading && !hasKey) {
+        setDecryptedExpenses(rawExpenses)
+        lastDecryptedRef.current = { key: expenseIds, withKey: false }
+        return
+      }
+
+      if (!encryptionKey) {
+        return // Still loading
+      }
+
+      try {
+        const decrypted = await decryptExpenses(rawExpenses, encryptionKey)
+        setDecryptedExpenses(decrypted)
+        lastDecryptedRef.current = { key: expenseIds, withKey: true }
+      } catch (error) {
+        console.warn('Failed to decrypt expenses:', error)
+        setDecryptedExpenses(rawExpenses)
+        lastDecryptedRef.current = { key: expenseIds, withKey: true }
+      }
+    }
+
+    decrypt()
+  }, [rawExpenses, encryptionKey, isKeyLoading, hasKey])
+
+  const displayExpenses = decryptedExpenses
+
+  const isLoading =
+    expensesAreLoading || isKeyLoading || !displayExpenses || !group
 
   useEffect(() => {
     if (inView && hasMore && !isLoading) fetchNextPage()
   }, [fetchNextPage, hasMore, inView, isLoading])
 
   const groupedExpensesByDate = useMemo(
-    () => (expenses ? getGroupedExpensesByDate(expenses) : {}),
-    [expenses],
+    () => (displayExpenses ? getGroupedExpensesByDate(displayExpenses) : {}),
+    [displayExpenses],
   )
 
   if (isLoading) return <ExpensesLoading />
 
-  if (expenses.length === 0)
+  if (displayExpenses.length === 0)
     return (
       <p className="px-6 text-sm py-6">
         {t('noExpenses')}{' '}

@@ -1,3 +1,5 @@
+'use client'
+
 import {
   RecentGroup,
   archiveGroup,
@@ -21,6 +23,27 @@ import { Calendar, MoreHorizontal, Star, Users } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useMemo } from 'react'
+
+// localStorage key prefix for encryption keys
+const STORAGE_KEY_PREFIX = 'spliit-e2ee-key-'
+
+/**
+ * Get the group URL with encryption key if available
+ */
+function getGroupUrl(groupId: string): string {
+  if (typeof window === 'undefined') return `/groups/${groupId}/expenses`
+
+  try {
+    const keyBase64 = localStorage.getItem(`${STORAGE_KEY_PREFIX}${groupId}`)
+    if (keyBase64) {
+      return `/groups/${groupId}/expenses#${keyBase64}`
+    }
+  } catch (error) {
+    console.warn('Failed to get encryption key from localStorage:', error)
+  }
+  return `/groups/${groupId}/expenses`
+}
 
 export function RecentGroupListCard({
   group,
@@ -40,6 +63,9 @@ export function RecentGroupListCard({
   const toast = useToast()
   const t = useTranslations('Groups')
 
+  // Get URL with encryption key if available
+  const groupUrl = useMemo(() => getGroupUrl(group.id), [group.id])
+
   return (
     <li key={group.id}>
       <Button
@@ -49,12 +75,12 @@ export function RecentGroupListCard({
       >
         <div
           className="text-base"
-          onClick={() => router.push(`/groups/${group.id}`)}
+          onClick={() => router.push(groupUrl)}
         >
           <div className="w-full flex flex-col gap-1">
             <div className="text-base flex gap-2 justify-between">
               <Link
-                href={`/groups/${group.id}`}
+                href={groupUrl}
                 className="flex-1 overflow-hidden text-ellipsis"
               >
                 {group.name}

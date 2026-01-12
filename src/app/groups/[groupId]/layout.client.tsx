@@ -1,20 +1,41 @@
 'use client'
 
+import {
+  EncryptionProvider,
+  useEncryption,
+} from '@/components/encryption-provider'
+import { EncryptionRequired } from '@/components/encryption-required'
 import { useToast } from '@/components/ui/use-toast'
+import { decryptGroup, looksEncrypted } from '@/lib/encrypt-helpers'
 import { trpc } from '@/trpc/client'
+import { AppRouterOutput } from '@/trpc/routers/_app'
 import { useTranslations } from 'next-intl'
-import { PropsWithChildren, useEffect } from 'react'
+import { PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react'
 import { CurrentGroupProvider } from './current-group-context'
 import { GroupHeader } from './group-header'
 import { SaveGroupLocally } from './save-recent-group'
 
-export function GroupLayoutClient({
+type Group = NonNullable<AppRouterOutput['groups']['get']['group']>
+
+function GroupLayoutInner({
   groupId,
   children,
 }: PropsWithChildren<{ groupId: string }>) {
-  const { data, isLoading } = trpc.groups.get.useQuery({ groupId })
+  const { data, isLoading: isQueryLoading } = trpc.groups.get.useQuery({
+    groupId,
+  })
   const t = useTranslations('Groups.NotFound')
   const { toast } = useToast()
+  const { encryptionKey, isLoading: isKeyLoading, hasKey } = useEncryption()
+
+  const [decryptedGroup, setDecryptedGroup] = useState<Group | null>(null)
+  const [isDecrypting, setIsDecrypting] = useState(false)
+  const [needsEncryptionKey, setNeedsEncryptionKey] = useState(false)
+  // Track both group ID and whether we used encryption key
+  const lastDecryptedRef = useRef<{ id: string; withKey: boolean } | null>(null)
+
+  // Memoize group to avoid reference changes
+  const group = data?.group
 
   useEffect(() => {
     if (data && !data.group) {
@@ -23,12 +44,82 @@ export function GroupLayoutClient({
         variant: 'destructive',
       })
     }
-  }, [data])
+  }, [data, t, toast])
 
-  const props =
-    isLoading || !data?.group
-      ? { isLoading: true as const, groupId, group: undefined }
-      : { isLoading: false as const, groupId, group: data.group }
+  // Decrypt group data when both data and encryption key are available
+  useEffect(() => {
+    async function decrypt() {
+      if (!group) {
+        setDecryptedGroup(null)
+        lastDecryptedRef.current = null
+        setNeedsEncryptionKey(false)
+        return
+      }
+
+      // Check if we need to re-decrypt (different group or encryption state changed)
+      const shouldDecryptWithKey = hasKey && encryptionKey !== null
+      const alreadyDecrypted = lastDecryptedRef.current?.id === group.id
+      const keyStateMatches = lastDecryptedRef.current?.withKey === shouldDecryptWithKey
+
+      if (alreadyDecrypted && keyStateMatches) {
+        return // Already decrypted with same key state
+      }
+
+      // Check if the group data looks encrypted
+      const groupLooksEncrypted = looksEncrypted(group.name)
+
+      // If no encryption key and finished loading
+      if (!isKeyLoading && !hasKey) {
+        if (groupLooksEncrypted) {
+          // Group is encrypted but we don't have the key
+          setNeedsEncryptionKey(true)
+          setDecryptedGroup(null)
+          return
+        }
+        // Legacy/unencrypted group
+        setDecryptedGroup(group)
+        lastDecryptedRef.current = { id: group.id, withKey: false }
+        setNeedsEncryptionKey(false)
+        return
+      }
+
+      if (!encryptionKey) {
+        return // Still loading key
+      }
+
+      setIsDecrypting(true)
+      setNeedsEncryptionKey(false)
+      try {
+        const decrypted = await decryptGroup(group, encryptionKey)
+        setDecryptedGroup(decrypted)
+        lastDecryptedRef.current = { id: group.id, withKey: true }
+      } catch (error) {
+        console.warn('Failed to decrypt group, using original data:', error)
+        setDecryptedGroup(group)
+        lastDecryptedRef.current = { id: group.id, withKey: true }
+      } finally {
+        setIsDecrypting(false)
+      }
+    }
+
+    decrypt()
+  }, [group?.id, encryptionKey, isKeyLoading, hasKey, group])
+
+  const isLoading = isQueryLoading || isKeyLoading || isDecrypting
+
+  // Memoize props before any conditional returns (React hooks rule)
+  const props = useMemo(
+    () =>
+      isLoading || !decryptedGroup
+        ? { isLoading: true as const, groupId, group: undefined }
+        : { isLoading: false as const, groupId, group: decryptedGroup },
+    [isLoading, decryptedGroup, groupId]
+  )
+
+  // Show encryption required screen
+  if (needsEncryptionKey) {
+    return <EncryptionRequired groupId={groupId} />
+  }
 
   if (isLoading) {
     return (
@@ -45,5 +136,16 @@ export function GroupLayoutClient({
       {children}
       <SaveGroupLocally />
     </CurrentGroupProvider>
+  )
+}
+
+export function GroupLayoutClient({
+  groupId,
+  children,
+}: PropsWithChildren<{ groupId: string }>) {
+  return (
+    <EncryptionProvider>
+      <GroupLayoutInner groupId={groupId}>{children}</GroupLayoutInner>
+    </EncryptionProvider>
   )
 }
