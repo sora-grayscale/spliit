@@ -70,8 +70,10 @@ export async function createExpense(
       groupId,
       expenseDate: expenseFormValues.expenseDate,
       categoryId: expenseFormValues.category,
-      amount: expenseFormValues.amount,
-      originalAmount: expenseFormValues.originalAmount,
+      amount: String(expenseFormValues.amount), // Convert to string for DB storage
+      originalAmount: expenseFormValues.originalAmount !== undefined
+        ? String(expenseFormValues.originalAmount)
+        : null,
       originalCurrency: expenseFormValues.originalCurrency,
       conversionRate: expenseFormValues.conversionRate,
       title: expenseFormValues.title,
@@ -89,7 +91,7 @@ export async function createExpense(
         createMany: {
           data: expenseFormValues.paidFor.map((paidFor) => ({
             participantId: paidFor.participant,
-            shares: paidFor.shares,
+            shares: String(paidFor.shares), // Convert to string for DB storage
           })),
         },
       },
@@ -209,8 +211,10 @@ export async function updateExpense(
     where: { id: expenseId },
     data: {
       expenseDate: expenseFormValues.expenseDate,
-      amount: expenseFormValues.amount,
-      originalAmount: expenseFormValues.originalAmount,
+      amount: String(expenseFormValues.amount), // Convert to string for DB storage
+      originalAmount: expenseFormValues.originalAmount !== undefined
+        ? String(expenseFormValues.originalAmount)
+        : null,
       originalCurrency: expenseFormValues.originalCurrency,
       conversionRate: expenseFormValues.conversionRate,
       title: expenseFormValues.title,
@@ -228,7 +232,7 @@ export async function updateExpense(
           )
           .map((paidFor) => ({
             participantId: paidFor.participant,
-            shares: paidFor.shares,
+            shares: String(paidFor.shares), // Convert to string for DB storage
           })),
         update: expenseFormValues.paidFor.map((paidFor) => ({
           where: {
@@ -238,7 +242,7 @@ export async function updateExpense(
             },
           },
           data: {
-            shares: paidFor.shares,
+            shares: String(paidFor.shares), // Convert to string for DB storage
           },
         })),
         deleteMany: existingExpense.paidFor.filter(

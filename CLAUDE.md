@@ -27,6 +27,7 @@ anon-spliit is a privacy-focused fork of Spliit. All user data is **end-to-end e
 ```
 src/lib/crypto.ts              # Core crypto utilities
 src/lib/encrypt-helpers.ts     # Encryption/decryption helpers
+src/lib/hooks/useBalances.ts   # Client-side balance calculation with decryption
 src/components/encryption-provider.tsx  # React context for encryption
 src/lib/hooks/use-group-url.ts # URL navigation with key preservation
 ```
@@ -107,15 +108,15 @@ src/lib/hooks/use-group-url.ts # URL navigation with key preservation
 - [ ] Cron job to soft-delete inactive groups
 
 #### Issue #3: Amount Encryption (Complete E2EE)
-**Status**: TODO
+**Status**: DONE
 **Priority**: HIGH
 **Link**: https://github.com/sora-grayscale/spliit/issues/3
 
-- Encrypt amounts on client before sending
-- Decrypt on client for display/calculation
-- Server stores only encrypted values
-- Balance calculation done client-side
-- All financial data fully encrypted
+- [x] Encrypt amounts on client before sending
+- [x] Decrypt on client for display/calculation
+- [x] Server stores only encrypted values (String type in DB)
+- [x] Balance calculation done client-side (useBalances hook)
+- [x] All financial data fully encrypted (amount, originalAmount, shares)
 
 #### Issue #2: Password Protection
 **Status**: TODO
@@ -164,6 +165,21 @@ src/lib/hooks/use-group-url.ts # URL navigation with key preservation
 - Proper attribution to original project
 
 ### Completed
+
+#### Amount Encryption (Issue #3) - DONE
+- [x] Schema: amount, originalAmount, shares changed to String
+- [x] encryptExpenseFormValues: encrypts amounts and shares
+- [x] decryptExpense: decrypts amounts and shares
+- [x] Client-side balance calculation (useBalances hook)
+- [x] listAll tRPC procedure for balance calculation
+- [x] UI components updated for string amounts
+
+#### Group Deletion (Issue #6, PR #9) - MERGED
+- [x] Delete button with confirmation dialog
+- [x] Soft delete with grace period (7 days)
+- [x] Deleted group screen with restore/delete options
+- [x] "Scheduled for deletion" section in groups list
+- [x] Share button includes encryption key
 
 #### Basic E2EE (PR #1) - MERGED
 - [x] Group name encryption

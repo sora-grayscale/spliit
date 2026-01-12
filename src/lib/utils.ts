@@ -63,10 +63,11 @@ export function formatCategoryForAIPrompt(category: Category) {
  */
 export function formatCurrency(
   currency: Currency,
-  amount: number,
+  amount: number | string,
   locale: string,
   fractions?: boolean,
 ) {
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : amount
   const format = new Intl.NumberFormat(locale, {
     minimumFractionDigits: currency.decimal_digits,
     maximumFractionDigits: currency.decimal_digits,
@@ -75,7 +76,7 @@ export function formatCurrency(
     currency: currency.code.length ? currency.code : 'EUR',
   })
   const formatted = format.format(
-    fractions ? amount : amountAsDecimal(amount, currency),
+    fractions ? numAmount : amountAsDecimal(numAmount, currency),
   )
   if (currency.code.length) {
     return formatted
@@ -110,11 +111,12 @@ export function getCurrencyFromGroup(
  * @param round Whether to round the amount to the nearest minor unit (e.g.: 1.5612 € => 1.56 €)
  */
 export function amountAsDecimal(
-  amount: number,
+  amount: number | string,
   currency: Currency,
   round = false,
 ) {
-  const decimal = amount / 10 ** currency.decimal_digits
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : amount
+  const decimal = numAmount / 10 ** currency.decimal_digits
   if (round) {
     return Number(decimal.toFixed(currency.decimal_digits))
   }
@@ -129,8 +131,9 @@ export function amountAsDecimal(
  *
  * @param amount The amount in decimal major units (always an integer)
  */
-export function amountAsMinorUnits(amount: number, currency: Currency) {
-  return Math.round(amount * 10 ** currency.decimal_digits)
+export function amountAsMinorUnits(amount: number | string, currency: Currency) {
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : amount
+  return Math.round(numAmount * 10 ** currency.decimal_digits)
 }
 
 /**
@@ -139,8 +142,9 @@ export function amountAsMinorUnits(amount: number, currency: Currency) {
  *
  * @param amount The amount, as the number of minor units of currency (cents for most currencies)
  */
-export function formatAmountAsDecimal(amount: number, currency: Currency) {
-  return amountAsDecimal(amount, currency).toFixed(currency.decimal_digits)
+export function formatAmountAsDecimal(amount: number | string, currency: Currency) {
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : amount
+  return amountAsDecimal(numAmount, currency).toFixed(currency.decimal_digits)
 }
 
 export function formatFileSize(size: number, locale: string) {

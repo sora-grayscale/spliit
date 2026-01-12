@@ -13,39 +13,63 @@ export type Reimbursement = {
   amount: number
 }
 
+/**
+ * Helper to convert amount to number (handles string or number)
+ */
+function toNumber(val: string | number): number {
+  if (typeof val === 'number') return val
+  return parseFloat(val) || 0
+}
+
+/**
+ * Generic expense type for balance calculation
+ * This supports both server-side (raw DB data) and client-side (decrypted) data
+ */
+export interface ExpenseForBalance {
+  amount: string | number
+  splitMode: 'EVENLY' | 'BY_SHARES' | 'BY_PERCENTAGE' | 'BY_AMOUNT'
+  paidBy: { id: string }
+  paidFor: Array<{
+    shares: string | number
+    participant: { id: string }
+  }>
+}
+
 export function getBalances(
-  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>,
+  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>> | ExpenseForBalance[],
 ): Balances {
   const balances: Balances = {}
 
   for (const expense of expenses) {
     const paidBy = expense.paidBy.id
     const paidFors = expense.paidFor
+    const expenseAmount = toNumber(expense.amount)
 
     if (!balances[paidBy]) balances[paidBy] = { paid: 0, paidFor: 0, total: 0 }
-    balances[paidBy].paid += expense.amount
+    balances[paidBy].paid += expenseAmount
 
     const totalPaidForShares = paidFors.reduce(
-      (sum, paidFor) => sum + paidFor.shares,
+      (sum, paidFor) => sum + toNumber(paidFor.shares),
       0,
     )
-    let remaining = expense.amount
+    let remaining = expenseAmount
     paidFors.forEach((paidFor, index) => {
       if (!balances[paidFor.participant.id])
         balances[paidFor.participant.id] = { paid: 0, paidFor: 0, total: 0 }
 
       const isLast = index === paidFors.length - 1
+      const shareAmount = toNumber(paidFor.shares)
 
       const [shares, totalShares] = match(expense.splitMode)
         .with('EVENLY', () => [1, paidFors.length])
-        .with('BY_SHARES', () => [paidFor.shares, totalPaidForShares])
-        .with('BY_PERCENTAGE', () => [paidFor.shares, totalPaidForShares])
-        .with('BY_AMOUNT', () => [paidFor.shares, totalPaidForShares])
+        .with('BY_SHARES', () => [shareAmount, totalPaidForShares])
+        .with('BY_PERCENTAGE', () => [shareAmount, totalPaidForShares])
+        .with('BY_AMOUNT', () => [shareAmount, totalPaidForShares])
         .exhaustive()
 
       const dividedAmount = isLast
         ? remaining
-        : (expense.amount * shares) / totalShares
+        : (expenseAmount * shares) / totalShares
       remaining -= dividedAmount
       balances[paidFor.participant.id].paidFor += dividedAmount
     })

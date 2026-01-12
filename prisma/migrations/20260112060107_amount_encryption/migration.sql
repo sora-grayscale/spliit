@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "Expense" ALTER COLUMN "amount" SET DATA TYPE TEXT,
+ALTER COLUMN "originalAmount" SET DATA TYPE TEXT;
+
+-- AlterTable
+ALTER TABLE "ExpensePaidFor" ALTER COLUMN "shares" SET DEFAULT '1',
+ALTER COLUMN "shares" SET DATA TYPE TEXT;
