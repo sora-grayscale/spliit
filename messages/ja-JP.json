@@ -63,6 +63,12 @@
     "archive": "グループをアーカイブ",
     "unarchive": "グループのアーカイブを解除",
     "removeRecent": "最近のグループから削除",
+    "scheduledDeletion": "削除予定",
+    "ScheduledDeletion": {
+      "daysRemaining": "{count, plural, =0 {本日期限切れ} =1 {残り1日} other {残り#日}}",
+      "restore": "復元",
+      "deleteNow": "今すぐ削除"
+    },
     "RecentRemovedToast": {
       "title": "グループが削除されました",
       "description": "グループは最近のグループリストから削除されました。",
@@ -126,6 +132,16 @@
       "createDescription": "すべての金額および残高はこの通貨で表示されます。",
       "editDescription": "すべての金額および残高はこの通貨で表示されます。これを変更しても、既に入力された支出は変換されません。ただし、現在の通貨と変更先の通貨で小数単位（例：米ドルから日本円へ）の扱いが異なる場合は例外です",
       "customOption": "カスタム"
+    },
+    "Delete": {
+      "button": "このグループを削除",
+      "title": "グループを削除しますか？",
+      "description": "すべての支出、参加者、アクティビティ履歴が削除されます。",
+      "gracePeriodNotice": "グループは完全に削除されるまで{days}日間復元可能です。",
+      "confirmLabel": "確認のため「{name}」と入力してください：",
+      "cancel": "キャンセル",
+      "confirm": "削除",
+      "deleting": "削除中…"
     }
   },
   "ExpenseForm": {
@@ -341,6 +357,19 @@
   },
   "Settings": {
     "title": "設定"
+  },
+  "GroupDeleted": {
+    "title": "グループが削除されました",
+    "description": "グループ「{name}」は削除予定としてマークされています。",
+    "daysRemaining": "{count, plural, =0 {本日期限切れ} =1 {残り1日} other {残り#日}}",
+    "restore": "グループを復元",
+    "restoring": "復元中…",
+    "deleteNow": "今すぐ完全削除",
+    "permanentDeleteTitle": "完全に削除しますか？",
+    "permanentDeleteDescription": "グループを即座に完全削除します。この操作は取り消せません。",
+    "cancel": "キャンセル",
+    "confirmDelete": "完全削除",
+    "deleting": "削除中…"
   },
   "Share": {
     "title": "共有",

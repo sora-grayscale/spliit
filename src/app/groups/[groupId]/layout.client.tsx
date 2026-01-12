@@ -12,6 +12,7 @@ import { AppRouterOutput } from '@/trpc/routers/_app'
 import { useTranslations } from 'next-intl'
 import { PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react'
 import { CurrentGroupProvider } from './current-group-context'
+import { GroupDeletedScreen } from './group-deleted-screen'
 import { GroupHeader } from './group-header'
 import { SaveGroupLocally } from './save-recent-group'
 
@@ -119,6 +120,17 @@ function GroupLayoutInner({
   // Show encryption required screen
   if (needsEncryptionKey) {
     return <EncryptionRequired groupId={groupId} />
+  }
+
+  // Show deleted group screen
+  if (decryptedGroup?.deletedAt) {
+    return (
+      <GroupDeletedScreen
+        groupId={groupId}
+        groupName={decryptedGroup.name}
+        deletedAt={decryptedGroup.deletedAt}
+      />
+    )
   }
 
   if (isLoading) {
