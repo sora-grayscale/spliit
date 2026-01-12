@@ -59,9 +59,11 @@ describe('encrypt-helpers', () => {
       expect(encrypted.participants[0].name).not.toBe('Alice')
       expect(encrypted.participants[1].name).not.toBe('Bob')
 
-      // Check that non-sensitive values are preserved
-      expect(encrypted.currency).toBe(groupFormValues.currency)
-      expect(encrypted.currencyCode).toBe(groupFormValues.currencyCode)
+      // Check that currency values are encrypted (Issue #22)
+      expect(encrypted.currency).not.toBe(groupFormValues.currency)
+      expect(encrypted.currencyCode).not.toBe(groupFormValues.currencyCode)
+      expect(looksEncrypted(encrypted.currency)).toBe(true)
+      expect(looksEncrypted(encrypted.currencyCode!)).toBe(true)
 
       // Decrypt and verify
       const groupData = {
@@ -79,6 +81,8 @@ describe('encrypt-helpers', () => {
 
       expect(decrypted.name).toBe(groupFormValues.name)
       expect(decrypted.information).toBe(groupFormValues.information)
+      expect(decrypted.currency).toBe('$')
+      expect(decrypted.currencyCode).toBe('USD')
       expect(decrypted.participants[0].name).toBe('Alice')
       expect(decrypted.participants[1].name).toBe('Bob')
     })
@@ -95,6 +99,10 @@ describe('encrypt-helpers', () => {
       const encrypted = await encryptGroupFormValues(groupFormValues, key)
       expect(encrypted.information).toBeUndefined()
 
+      // Currency should still be encrypted (Issue #22)
+      expect(encrypted.currency).not.toBe('€')
+      expect(looksEncrypted(encrypted.currency)).toBe(true)
+
       const groupData = {
         id: 'test-id',
         name: encrypted.name,
@@ -110,6 +118,36 @@ describe('encrypt-helpers', () => {
       const decrypted = await decryptGroup(groupData, key)
       expect(decrypted.name).toBe('Minimal Group')
       expect(decrypted.information).toBeNull()
+      expect(decrypted.currency).toBe('€')
+      expect(decrypted.currencyCode).toBe('EUR')
+    })
+
+    it('should handle group without currencyCode (Issue #22)', async () => {
+      const key = generateMasterKey()
+      const groupFormValues = {
+        name: 'Group without currencyCode',
+        currency: '¥',
+        participants: [{ name: 'Test' }],
+      }
+
+      const encrypted = await encryptGroupFormValues(groupFormValues, key)
+      expect(encrypted.currencyCode).toBeNull()
+
+      const groupData = {
+        id: 'test-id',
+        name: encrypted.name,
+        information: null,
+        currency: encrypted.currency,
+        currencyCode: null,
+        participants: encrypted.participants.map((p, i) => ({
+          id: `${i + 1}`,
+          name: p.name,
+        })),
+      }
+
+      const decrypted = await decryptGroup(groupData, key)
+      expect(decrypted.currency).toBe('¥')
+      expect(decrypted.currencyCode).toBeNull()
     })
   })
 
@@ -303,6 +341,118 @@ describe('encrypt-helpers', () => {
     })
   })
 
+  describe('currency encryption (Issue #22)', () => {
+    it('should encrypt and decrypt originalCurrency', async () => {
+      const key = generateMasterKey()
+      const expenseFormValues = {
+        title: 'International Purchase',
+        amount: 100,
+        expenseDate: new Date('2024-01-15'),
+        category: 0,
+        splitMode: 'EVENLY' as const,
+        paidFor: [] as { participant: string; shares: number }[],
+        paidBy: '1',
+        isReimbursement: false,
+        documents: [] as {
+          id: string
+          url: string
+          width: number
+          height: number
+        }[],
+        saveDefaultSplittingOptions: false,
+        recurrenceRule: 'NONE' as const,
+        originalCurrency: 'EUR',
+        originalAmount: 90,
+      }
+
+      const encrypted = await encryptExpenseFormValues(expenseFormValues, key)
+
+      // originalCurrency should be encrypted
+      expect(encrypted.originalCurrency).not.toBe('EUR')
+      expect(looksEncrypted(encrypted.originalCurrency!)).toBe(true)
+
+      // Decrypt and verify
+      const decrypted = await decryptExpense(
+        {
+          title: encrypted.title,
+          amount: encrypted.amount,
+          originalCurrency: encrypted.originalCurrency,
+          originalAmount: encrypted.originalAmount,
+        },
+        key,
+      )
+
+      expect(decrypted.originalCurrency).toBe('EUR')
+    })
+
+    it('should handle expense without originalCurrency', async () => {
+      const key = generateMasterKey()
+      const expenseFormValues = {
+        title: 'Local Purchase',
+        amount: 50,
+        expenseDate: new Date('2024-01-15'),
+        category: 0,
+        splitMode: 'EVENLY' as const,
+        paidFor: [] as { participant: string; shares: number }[],
+        paidBy: '1',
+        isReimbursement: false,
+        documents: [] as {
+          id: string
+          url: string
+          width: number
+          height: number
+        }[],
+        saveDefaultSplittingOptions: false,
+        recurrenceRule: 'NONE' as const,
+      }
+
+      const encrypted = await encryptExpenseFormValues(expenseFormValues, key)
+      expect(encrypted.originalCurrency).toBeUndefined()
+
+      const decrypted = await decryptExpense(
+        {
+          title: encrypted.title,
+          amount: encrypted.amount,
+          originalCurrency: null,
+        },
+        key,
+      )
+
+      expect(decrypted.originalCurrency).toBeNull()
+    })
+
+    it('should handle various currency symbols and codes', async () => {
+      const key = generateMasterKey()
+      const currencies = ['$', '€', '¥', '£', '₩', 'USD', 'EUR', 'JPY', 'GBP']
+
+      for (const currency of currencies) {
+        const groupFormValues = {
+          name: 'Test',
+          currency: currency,
+          participants: [{ name: 'Test' }],
+        }
+
+        const encrypted = await encryptGroupFormValues(groupFormValues, key)
+        expect(looksEncrypted(encrypted.currency)).toBe(true)
+
+        const groupData = {
+          id: 'test-id',
+          name: encrypted.name,
+          information: null,
+          currency: encrypted.currency,
+          currencyCode: null,
+          participants: encrypted.participants.map((p, i) => ({
+            id: `${i + 1}`,
+            name: p.name,
+          })),
+        }
+
+        const decrypted = await decryptGroup(groupData, key)
+        expect(decrypted.currency).toBe(currency)
+      }
+    })
+  })
+
   describe('backward compatibility', () => {
     it('should handle unencrypted legacy data', async () => {
       const key = generateMasterKey()
@@ -352,6 +502,42 @@ describe('encrypt-helpers', () => {
 
       // Should parse and return as number
       expect(decrypted.categoryId).toBe(10)
+    })
+
+    it('should handle legacy unencrypted currency (Issue #22)', async () => {
+      const key = generateMasterKey()
+
+      // Simulate legacy group with unencrypted currency
+      const legacyGroup = {
+        id: 'test-id',
+        name: 'Test Group', // Plain text (not encrypted)
+        information: null,
+        currency: '$', // Plain currency symbol (legacy)
+        currencyCode: 'USD', // Plain currency code (legacy)
+        participants: [{ id: '1', name: 'Alice' }], // Plain text
+      }
+
+      const decrypted = await decryptGroup(legacyGroup, key)
+
+      // Should return original data since decryption fails
+      expect(decrypted.currency).toBe('$')
+      expect(decrypted.currencyCode).toBe('USD')
+    })
+
+    it('should handle legacy unencrypted originalCurrency (Issue #22)', async () => {
+      const key = generateMasterKey()
+
+      // Simulate legacy expense with unencrypted originalCurrency
+      const legacyExpense = {
+        title: 'Plain text title',
+        amount: 50,
+        originalCurrency: 'EUR', // Plain currency code (legacy)
+      }
+
+      const decrypted = await decryptExpense(legacyExpense, key)
+
+      // Should return original data since it's not encrypted
+      expect(decrypted.originalCurrency).toBe('EUR')
     })
   })
 })

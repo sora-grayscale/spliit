@@ -7,8 +7,9 @@ export const groupFormSchema = z
   .object({
     name: z.string().min(2, 'min2').max(50, 'max50'),
     information: z.string().optional(),
-    currency: z.string().min(1, 'min1').max(5, 'max5'),
-    currencyCode: z.union([z.string().length(3).nullish(), z.literal('')]), // ISO-4217 currency code
+    // Currency fields can be encrypted strings (Issue #22)
+    currency: z.string().min(1, 'min1'), // No max - encrypted strings are longer
+    currencyCode: z.union([z.string().nullish(), z.literal('')]), // ISO-4217 code or encrypted string
     participants: z
       .array(
         z.object({

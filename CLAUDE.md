@@ -24,13 +24,13 @@
 - **Zero-knowledge server**: The server never sees unencrypted data
 - **URL fragment key storage**: Encryption key in `#<base64key>` format (never sent to server)
 - **localStorage persistence**: Keys saved per-group for convenience
-- **Everything encrypted**: Group names, participant names, expense titles, notes, amounts, categories
+- **Everything encrypted**: Group names, participant names, expense titles, notes, amounts, categories, currency
 
 ### Key Files
 
 ```
 src/lib/crypto.ts              # Core crypto utilities (PBKDF2, key derivation, password generation)
-src/lib/encrypt-helpers.ts     # Encryption/decryption helpers (amount, category, title, notes)
+src/lib/encrypt-helpers.ts     # Encryption/decryption helpers (amount, category, currency, title, notes)
 src/lib/totals.ts              # Stats calculation utilities
 src/lib/hooks/useBalances.ts   # Client-side balance calculation with decryption
 src/lib/auto-delete.ts         # Auto-delete inactive groups (Issue #10)
@@ -297,10 +297,18 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 - [x] decryptExpense: decrypts categoryId (handles legacy plain number/string values)
 - [x] CategoryIcon: Static CATEGORY_MAP for categoryId to grouping/name lookup
 - [x] getCategoryInfo helper function for category metadata
-- [x] Updated all components using CategoryIcon (expense-card, category-selector, etc.)
-- [x] CSV/JSON export updated to use categoryId
-- [x] Migration: 20260112225207_encrypt_category_for_e2ee
-- [x] Tests for category encryption and backward compatibility (111 total tests passing)
+
+#### Currency Encryption (Issue #22) - DONE
+
+- [x] Group.currency: encrypted (e.g., "$", "€", "¥")
+- [x] Group.currencyCode: encrypted (e.g., "USD", "EUR", "JPY")
+- [x] Expense.originalCurrency: encrypted (for multi-currency expenses)
+- [x] encryptGroupFormValues: encrypts currency and currencyCode
+- [x] decryptGroup: decrypts currency/currencyCode (handles legacy plain values)
+- [x] encryptExpenseFormValues: encrypts originalCurrency
+- [x] decryptExpense: decrypts originalCurrency (handles legacy plain values)
+- [x] Backward compatibility for unencrypted legacy data
+- [x] Tests for currency encryption (117 total tests passing)
 
 ## Security Considerations
 

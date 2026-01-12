@@ -24,8 +24,8 @@ export interface EncryptedExpenseData {
 export interface EncryptedGroupFormValues {
   name: string // encrypted
   information?: string // encrypted
-  currency: string // not encrypted (needed for display)
-  currencyCode?: string | null // not encrypted
+  currency: string // encrypted (Issue #22)
+  currencyCode?: string | null // encrypted (Issue #22)
   participants: Array<{
     id?: string
     name: string // encrypted
@@ -56,6 +56,12 @@ export async function encryptGroupFormValues(
     ? await encrypt(values.information, encryptionKey)
     : undefined
 
+  // Encrypt currency fields (Issue #22 - E2EE for currency)
+  const encryptedCurrency = await encrypt(values.currency, encryptionKey)
+  const encryptedCurrencyCode = values.currencyCode
+    ? await encrypt(values.currencyCode, encryptionKey)
+    : null
+
   const encryptedParticipants = await Promise.all(
     values.participants.map(async (p) => ({
       id: p.id,
@@ -66,8 +72,8 @@ export async function encryptGroupFormValues(
   return {
     name: encryptedName,
     information: encryptedInformation,
-    currency: values.currency,
-    currencyCode: values.currencyCode,
+    currency: encryptedCurrency,
+    currencyCode: encryptedCurrencyCode,
     participants: encryptedParticipants,
   }
 }
@@ -91,6 +97,16 @@ export async function decryptGroup<
       ? await decrypt(group.information, encryptionKey)
       : null
 
+    // Decrypt currency fields (Issue #22 - E2EE for currency)
+    // Handle backward compatibility for legacy unencrypted data
+    const decryptedCurrency = looksEncrypted(group.currency)
+      ? await decrypt(group.currency, encryptionKey)
+      : group.currency
+    const decryptedCurrencyCode =
+      group.currencyCode && looksEncrypted(group.currencyCode)
+        ? await decrypt(group.currencyCode, encryptionKey)
+        : group.currencyCode
+
     const decryptedParticipants = await Promise.all(
       group.participants.map(async (p) => ({
         ...p,
@@ -102,6 +118,8 @@ export async function decryptGroup<
       ...group,
       name: decryptedName,
       information: decryptedInformation,
+      currency: decryptedCurrency,
+      currencyCode: decryptedCurrencyCode,
       participants: decryptedParticipants,
     }
   } catch (error) {
@@ -123,7 +141,7 @@ export function looksEncrypted(value: string): boolean {
 
 /**
  * Encrypt expense form values before sending to server
- * This encrypts title, notes, category, amount, originalAmount, and shares
+ * This encrypts title, notes, category, amount, originalAmount, originalCurrency, and shares
  */
 export async function encryptExpenseFormValues(
   values: ExpenseFormValues,
@@ -158,6 +176,11 @@ export async function encryptExpenseFormValues(
     encryptedOriginalAmount = await encryptNumber(origAmountNum, encryptionKey)
   }
 
+  // Encrypt originalCurrency if present (Issue #22 - E2EE for currency)
+  const encryptedOriginalCurrency = values.originalCurrency
+    ? await encrypt(values.originalCurrency, encryptionKey)
+    : undefined
+
   // Encrypt shares for each paidFor entry
   const encryptedPaidFor = await Promise.all(
     values.paidFor.map(async (pf) => {
@@ -178,13 +201,14 @@ export async function encryptExpenseFormValues(
     category: encryptedCategory as unknown as number, // Type assertion for schema compatibility
     amount: encryptedAmount as unknown as number, // Type assertion for schema compatibility
     originalAmount: encryptedOriginalAmount as unknown as number | undefined,
+    originalCurrency: encryptedOriginalCurrency,
     paidFor: encryptedPaidFor as unknown as ExpenseFormValues['paidFor'],
   }
 }
 
 /**
  * Decrypt expense data received from server
- * This decrypts title, notes, category, amount, originalAmount, and shares
+ * This decrypts title, notes, category, amount, originalAmount, originalCurrency, and shares
  */
 export async function decryptExpense<
   T extends {
@@ -193,6 +217,7 @@ export async function decryptExpense<
     categoryId?: string | number // Can be encrypted string or legacy integer
     amount: string | number
     originalAmount?: string | number | null
+    originalCurrency?: string | null // Can be encrypted or legacy plain text (Issue #22)
     paidFor?: Array<{
       shares: string | number
       participant?: { id: string; name: string }
@@ -259,6 +284,14 @@ export async function decryptExpense<
       }
     }
 
+    // Decrypt originalCurrency if present (Issue #22 - E2EE for currency)
+    let decryptedOriginalCurrency: string | null = null
+    if (expense.originalCurrency) {
+      decryptedOriginalCurrency = looksEncrypted(expense.originalCurrency)
+        ? await decrypt(expense.originalCurrency, encryptionKey)
+        : expense.originalCurrency
+    }
+
     const result: Record<string, unknown> = {
       ...expense,
       title: decryptedTitle,
@@ -266,6 +299,7 @@ export async function decryptExpense<
       categoryId: decryptedCategoryId,
       amount: decryptedAmount,
       originalAmount: decryptedOriginalAmount,
+      originalCurrency: decryptedOriginalCurrency,
     }
 
     // Decrypt paidBy participant name if present
@@ -334,6 +368,7 @@ export async function decryptExpenses<
     categoryId?: string | number
     amount: string | number
     originalAmount?: string | number | null
+    originalCurrency?: string | null
     paidFor?: Array<{
       shares: string | number
       participant?: { id: string; name: string }
