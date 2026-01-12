@@ -96,7 +96,15 @@ src/lib/hooks/use-group-url.ts # URL navigation with key preservation
 - [x] "Scheduled for deletion" section in groups list
 - [x] Auto-cleanup of permanently deleted groups from localStorage
 - [x] Share button includes encryption key in URL
-- [ ] Auto-delete inactive groups (optional, configurable) - future enhancement
+
+#### Issue #10: Auto-delete Inactive Groups
+**Status**: TODO
+**Priority**: LOW
+**Link**: https://github.com/sora-grayscale/spliit/issues/10
+
+- [ ] Environment variable configuration (`AUTO_DELETE_INACTIVE_DAYS`)
+- [ ] Track last activity date per group
+- [ ] Cron job to soft-delete inactive groups
 
 #### Issue #3: Amount Encryption (Complete E2EE)
 **Status**: TODO
