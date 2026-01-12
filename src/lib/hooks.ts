@@ -209,3 +209,6 @@ export function useEncryptionKey() {
     getKeyBase64,
   }
 }
+
+// Re-export from hooks directory
+export { useBalances } from './hooks/useBalances'

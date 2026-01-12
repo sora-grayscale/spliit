@@ -476,5 +476,43 @@
     "other": {
       "heading": "その他の通貨"
     }
+  },
+  "Encryption": {
+    "required": {
+      "title": "暗号化されたグループ",
+      "description": "このグループはエンドツーエンド暗号化されています。アクセスするには暗号化キーを含む特別なリンクが必要です。",
+      "help": "このグループを共有した人に、暗号化キーを含む完全なリンクを送ってもらってください。",
+      "backToGroups": "グループ一覧に戻る"
+    }
+  },
+  "PasswordPrompt": {
+    "title": "パスワード保護",
+    "description": "このグループはパスワードで保護されています。パスワードを入力してください。",
+    "label": "パスワード",
+    "placeholder": "パスワードを入力",
+    "hint": "ヒント",
+    "unlock": "解除",
+    "unlocking": "解除中...",
+    "errors": {
+      "empty": "パスワードを入力してください",
+      "invalid": "パスワードが正しくありません。再度お試しください。",
+      "tooManyAttempts": "試行回数が多すぎます。しばらくしてから再度お試しください。"
+    }
+  },
+  "PasswordField": {
+    "title": "パスワード保護",
+    "description": "パスワードを追加して、リンクとパスワードの両方を必要にします。",
+    "label": "パスワード（任意）",
+    "placeholder": "パスワードを入力",
+    "hintLabel": "パスワードヒント（任意）",
+    "hintPlaceholder": "例: 旅行の名前",
+    "generate": "生成",
+    "show": "表示",
+    "hide": "非表示",
+    "strength": {
+      "weak": "弱いパスワード",
+      "medium": "普通のパスワード",
+      "strong": "強いパスワード"
+    }
   }
 }

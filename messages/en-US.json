@@ -485,5 +485,35 @@
       "help": "Ask the person who shared this group with you to send the complete link including the encryption key.",
       "backToGroups": "Back to Groups"
     }
+  },
+  "PasswordPrompt": {
+    "title": "Password Protected",
+    "description": "This group is password protected. Enter the password to unlock.",
+    "label": "Password",
+    "placeholder": "Enter password",
+    "hint": "Hint",
+    "unlock": "Unlock",
+    "unlocking": "Unlocking...",
+    "errors": {
+      "empty": "Please enter a password",
+      "invalid": "Invalid password. Please try again.",
+      "tooManyAttempts": "Too many attempts. Please wait before trying again."
+    }
+  },
+  "PasswordField": {
+    "title": "Password Protection",
+    "description": "Add a password to require both the link and password to access this group.",
+    "label": "Password (optional)",
+    "placeholder": "Enter password",
+    "hintLabel": "Password hint (optional)",
+    "hintPlaceholder": "e.g., Trip name",
+    "generate": "Generate",
+    "show": "Show",
+    "hide": "Hide",
+    "strength": {
+      "weak": "Weak password",
+      "medium": "Medium password",
+      "strong": "Strong password"
+    }
   }
 }

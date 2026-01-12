@@ -20,6 +20,9 @@ export async function createGroup(groupFormValues: GroupFormValues) {
       information: groupFormValues.information,
       currency: groupFormValues.currency,
       currencyCode: groupFormValues.currencyCode,
+      // Password protection (Issue #2)
+      passwordSalt: groupFormValues.passwordSalt,
+      passwordHint: groupFormValues.passwordHint,
       participants: {
         createMany: {
           data: groupFormValues.participants.map(({ name }) => ({

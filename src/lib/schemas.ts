@@ -17,6 +17,10 @@ export const groupFormSchema = z
         }),
       )
       .min(1),
+    // Password protection (Issue #2)
+    password: z.string().optional(), // Used only during creation, not stored
+    passwordHint: z.string().max(100, 'max100').optional(),
+    passwordSalt: z.string().optional(), // Base64 encoded salt, stored in DB
   })
   .superRefine(({ participants }, ctx) => {
     participants.forEach((participant, i) => {

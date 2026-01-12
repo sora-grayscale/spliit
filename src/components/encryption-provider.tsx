@@ -1,5 +1,6 @@
 'use client'
 
+import { PasswordPrompt } from '@/components/password-prompt'
 import {
   base64ToKey,
   decrypt,
@@ -23,6 +24,8 @@ import {
 
 // localStorage key prefix for encryption keys
 const STORAGE_KEY_PREFIX = 'spliit-e2ee-key-'
+// sessionStorage key prefix for password-derived keys
+const SESSION_PWD_KEY_PREFIX = 'spliit-pwd-key-'
 
 /**
  * Extract groupId from current URL path
@@ -68,6 +71,8 @@ function loadKeyFromStorage(groupId: string): Uint8Array | null {
 interface EncryptionContextValue {
   /** The encryption key (null if not available) */
   encryptionKey: Uint8Array | null
+  /** The URL key for sharing (same as encryptionKey for non-password groups) */
+  urlKey: Uint8Array | null
   /** Whether the key is still being loaded from URL */
   isLoading: boolean
   /** Error message if key is invalid */
@@ -76,8 +81,12 @@ interface EncryptionContextValue {
   hasKey: boolean
   /** Whether the group requires encryption but key is missing */
   needsKey: boolean
+  /** Whether the group requires password entry */
+  needsPassword: boolean
   /** Get the key as base64 string */
   getKeyBase64: () => string | null
+  /** Get the URL key as base64 string (for sharing) */
+  getUrlKeyBase64: () => string | null
   /** Encrypt a string */
   encryptString: (data: string) => Promise<string>
   /** Decrypt a string */
@@ -98,127 +107,258 @@ interface EncryptionProviderProps {
   children: ReactNode
   /** If true, generate a new key if none exists in URL */
   generateIfMissing?: boolean
+  /** Password salt for password-protected groups (base64 encoded) */
+  passwordSalt?: string | null
+  /** Encrypted password hint */
+  passwordHint?: string | null
+  /** Encrypted group name for password verification */
+  encryptedGroupName?: string | null
 }
 
 export function EncryptionProvider({
   children,
   generateIfMissing = false,
+  passwordSalt,
+  passwordHint,
+  encryptedGroupName,
 }: EncryptionProviderProps) {
   const [encryptionKey, setEncryptionKey] = useState<Uint8Array | null>(null)
+  const [urlKey, setUrlKey] = useState<Uint8Array | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [needsKey, setNeedsKey] = useState(false)
+  const [needsPassword, setNeedsPassword] = useState(false)
+  const [decryptedHint, setDecryptedHint] = useState<string | null>(null)
 
-  // Function to read key from URL hash and save to localStorage
-  const readKeyFromHash = useCallback(() => {
-    if (typeof window === 'undefined') return false
+  // Function to read URL key from hash
+  const readUrlKeyFromHash = useCallback(() => {
+    if (typeof window === 'undefined') return null
 
     const hash = window.location.hash.slice(1)
-    const groupId = getGroupIdFromPath()
+    if (!hash) return null
 
-    if (hash) {
-      try {
-        const key = base64ToKey(hash)
-        if (key.length === 16) {
-          // Save to localStorage for future access
-          if (groupId) {
-            saveKeyToStorage(groupId, key)
-          }
-          // Only update if key changed
-          setEncryptionKey((current) => {
-            if (current && keyToBase64(current) === keyToBase64(key)) {
-              return current
-            }
-            return key
-          })
-          setError(null)
-          setNeedsKey(false)
-          return true
-        } else {
-          setError('Invalid encryption key length')
-        }
-      } catch {
-        setError('Invalid encryption key format')
+    try {
+      const key = base64ToKey(hash)
+      if (key.length === 16) {
+        return key
       }
+    } catch {
+      // Invalid key format
     }
-    return false
+    return null
   }, [])
 
-  // Function to restore key from localStorage and update URL
-  const restoreKeyFromStorage = useCallback(() => {
-    if (typeof window === 'undefined') return false
+  // Function to restore URL key from localStorage
+  const restoreUrlKeyFromStorage = useCallback(() => {
+    if (typeof window === 'undefined') return null
 
     const groupId = getGroupIdFromPath()
-    if (!groupId) return false
+    if (!groupId) return null
 
-    const key = loadKeyFromStorage(groupId)
-    if (key) {
-      setEncryptionKey(key)
-      setError(null)
-      setNeedsKey(false)
-
-      // Update URL with key hash (without triggering navigation)
-      const keyBase64 = keyToBase64(key)
-      const newUrl = `${window.location.pathname}${window.location.search}#${keyBase64}`
-      window.history.replaceState(null, '', newUrl)
-      return true
-    }
-    return false
+    // For password-protected groups, we need to check if we have the combined key
+    // and extract the URL key from session storage
+    const savedKey = loadKeyFromStorage(groupId)
+    return savedKey
   }, [])
+
+  // Function to get password-derived key from session storage
+  const getSessionPasswordKey = useCallback(() => {
+    if (typeof window === 'undefined') return null
+
+    const groupId = getGroupIdFromPath()
+    if (!groupId) return null
+
+    try {
+      const keyBase64 = sessionStorage.getItem(`${SESSION_PWD_KEY_PREFIX}${groupId}`)
+      if (keyBase64) {
+        return base64ToKey(keyBase64)
+      }
+    } catch {
+      // Session storage not available or invalid key
+    }
+    return null
+  }, [])
+
+  // Handle password entry success
+  const handlePasswordSuccess = useCallback(
+    (combinedKey: Uint8Array) => {
+      setEncryptionKey(combinedKey)
+      setNeedsPassword(false)
+      setError(null)
+    },
+    []
+  )
 
   // Read key from URL fragment on mount and handle missing key
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // First try to read from URL hash
-    let hasKey = readKeyFromHash()
-
-    // If no key in URL, try to restore from localStorage
-    if (!hasKey) {
-      hasKey = restoreKeyFromStorage()
-    }
-
-    // If still no key and we should generate one
-    if (!hasKey && generateIfMissing) {
-      const newKey = generateMasterKey()
-      setEncryptionKey(newKey)
-      setError(null)
-      setNeedsKey(false)
-
-      // Save to localStorage
+    const initializeKey = async () => {
       const groupId = getGroupIdFromPath()
-      if (groupId) {
-        saveKeyToStorage(groupId, newKey)
+
+      // For password-protected groups, check if we have a session password key
+      // If yes, we can try to use the stored combined key directly
+      const sessionPwdKey = passwordSalt ? getSessionPasswordKey() : null
+
+      // First try to read URL key from hash
+      const hashUrlKey = readUrlKeyFromHash()
+
+      // Also check localStorage for saved key
+      const storedKey = restoreUrlKeyFromStorage()
+
+      // CASE 1: Password-protected group with session password key
+      // The stored key is already the combined key, use it directly
+      if (passwordSalt && sessionPwdKey && storedKey) {
+        setEncryptionKey(storedKey)
+        setNeedsPassword(false)
+        setNeedsKey(false)
+
+        // Update URL with the URL key from hash if available
+        if (hashUrlKey) {
+          setUrlKey(hashUrlKey)
+        }
+
+        setIsLoading(false)
+        return
       }
 
-      // Update URL without navigation
-      const base64Key = keyToBase64(newKey)
-      const newUrl = `${window.location.pathname}${window.location.search}#${base64Key}`
-      window.history.replaceState(null, '', newUrl)
+      // CASE 1.5: Password-protected group, just redirected from creation
+      // We have both URL key in hash AND combined key in localStorage
+      // This happens immediately after group creation before session expires
+      if (passwordSalt && hashUrlKey && storedKey) {
+        setEncryptionKey(storedKey)
+        setUrlKey(hashUrlKey)
+        setNeedsPassword(false)
+        setNeedsKey(false)
+        setIsLoading(false)
+        return
+      }
+
+      // CASE 2: Password-protected group but no session password key
+      // We need the URL key to derive the combined key after password entry
+      if (passwordSalt) {
+        const urlKeyToUse = hashUrlKey || null
+        if (urlKeyToUse) {
+          setUrlKey(urlKeyToUse)
+          setNeedsPassword(true)
+          setNeedsKey(false)
+
+          // Decrypt password hint if available
+          if (passwordHint) {
+            try {
+              const hint = await decrypt(passwordHint, urlKeyToUse)
+              setDecryptedHint(hint)
+            } catch {
+              // Failed to decrypt hint
+            }
+          }
+        } else {
+          // No URL key available, need key
+          setNeedsKey(true)
+        }
+
+        setIsLoading(false)
+        return
+      }
+
+      // CASE 3: Non-password group
+      let currentKey = hashUrlKey
+
+      if (!currentKey) {
+        currentKey = storedKey
+
+        // If we have a key from storage, update the URL
+        if (currentKey) {
+          const keyBase64 = keyToBase64(currentKey)
+          const newUrl = `${window.location.pathname}${window.location.search}#${keyBase64}`
+          window.history.replaceState(null, '', newUrl)
+        }
+      } else {
+        // Save URL key to localStorage
+        if (groupId) {
+          saveKeyToStorage(groupId, currentKey)
+        }
+      }
+
+      // If still no key and we should generate one
+      if (!currentKey && generateIfMissing) {
+        currentKey = generateMasterKey()
+        setError(null)
+
+        // Save to localStorage
+        if (groupId) {
+          saveKeyToStorage(groupId, currentKey)
+        }
+
+        // Update URL without navigation
+        const base64Key = keyToBase64(currentKey)
+        const newUrl = `${window.location.pathname}${window.location.search}#${base64Key}`
+        window.history.replaceState(null, '', newUrl)
+      }
+
+      if (currentKey) {
+        setEncryptionKey(currentKey)
+        setUrlKey(currentKey)
+        setNeedsKey(false)
+      } else {
+        setNeedsKey(true)
+      }
+
+      setIsLoading(false)
     }
 
-    setIsLoading(false)
+    initializeKey()
 
-    // Listen for hash changes
-    const handleHashChange = () => {
-      readKeyFromHash()
+    // Listen for hash changes (mainly for non-password groups)
+    const handleHashChange = async () => {
+      // For password-protected groups, don't auto-process hash changes
+      if (passwordSalt) return
+
+      const newUrlKey = readUrlKeyFromHash()
+      if (newUrlKey) {
+        setUrlKey(newUrlKey)
+        setEncryptionKey(newUrlKey)
+        const groupId = getGroupIdFromPath()
+        if (groupId) {
+          saveKeyToStorage(groupId, newUrlKey)
+        }
+      }
     }
 
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
-  }, [generateIfMissing, readKeyFromHash, restoreKeyFromStorage])
+  }, [generateIfMissing, passwordSalt, passwordHint, readUrlKeyFromHash, restoreUrlKeyFromStorage, getSessionPasswordKey])
 
   // Also check hash periodically in case hashchange event didn't fire
+  // This is mainly for non-password groups
   useEffect(() => {
     if (typeof window === 'undefined') return
+    // Skip for password-protected groups - handled by main initialization
+    if (passwordSalt) return
 
     const checkHash = () => {
       const hash = window.location.hash.slice(1)
       if (hash && !encryptionKey) {
-        readKeyFromHash()
+        const newUrlKey = readUrlKeyFromHash()
+        if (newUrlKey) {
+          setUrlKey(newUrlKey)
+          setEncryptionKey(newUrlKey)
+          const groupId = getGroupIdFromPath()
+          if (groupId) {
+            saveKeyToStorage(groupId, newUrlKey)
+          }
+        }
       } else if (!hash && !encryptionKey) {
         // Try to restore from localStorage
-        restoreKeyFromStorage()
+        const restoredKey = restoreUrlKeyFromStorage()
+        if (restoredKey) {
+          setUrlKey(restoredKey)
+          setEncryptionKey(restoredKey)
+          // Update URL with key
+          const keyBase64 = keyToBase64(restoredKey)
+          const newUrl = `${window.location.pathname}${window.location.search}#${keyBase64}`
+          window.history.replaceState(null, '', newUrl)
+        }
       }
     }
 
@@ -228,12 +368,17 @@ export function EncryptionProvider({
     // Check again after a short delay (for navigation timing)
     const timer = setTimeout(checkHash, 100)
     return () => clearTimeout(timer)
-  }, [encryptionKey, readKeyFromHash, restoreKeyFromStorage])
+  }, [encryptionKey, passwordSalt, readUrlKeyFromHash, restoreUrlKeyFromStorage])
 
   const getKeyBase64 = useCallback(() => {
     if (!encryptionKey) return null
     return keyToBase64(encryptionKey)
   }, [encryptionKey])
+
+  const getUrlKeyBase64 = useCallback(() => {
+    if (!urlKey) return null
+    return keyToBase64(urlKey)
+  }, [urlKey])
 
   const encryptString = useCallback(
     async (data: string) => {
@@ -286,11 +431,14 @@ export function EncryptionProvider({
   const value = useMemo<EncryptionContextValue>(
     () => ({
       encryptionKey,
+      urlKey,
       isLoading,
       error,
       hasKey: encryptionKey !== null,
       needsKey,
+      needsPassword,
       getKeyBase64,
+      getUrlKeyBase64,
       encryptString,
       decryptString,
       encryptNum,
@@ -300,10 +448,13 @@ export function EncryptionProvider({
     }),
     [
       encryptionKey,
+      urlKey,
       isLoading,
       error,
       needsKey,
+      needsPassword,
       getKeyBase64,
+      getUrlKeyBase64,
       encryptString,
       decryptString,
       encryptNum,
@@ -313,9 +464,23 @@ export function EncryptionProvider({
     ]
   )
 
+  // Get groupId for password prompt
+  const groupId = typeof window !== 'undefined' ? getGroupIdFromPath() : null
+
   return (
     <EncryptionContext.Provider value={value}>
-      {children}
+      {needsPassword && passwordSalt && urlKey && groupId ? (
+        <PasswordPrompt
+          groupId={groupId}
+          passwordSalt={passwordSalt}
+          passwordHint={decryptedHint}
+          urlKey={urlKey}
+          encryptedGroupName={encryptedGroupName}
+          onSuccess={handlePasswordSuccess}
+        />
+      ) : (
+        children
+      )}
     </EncryptionContext.Provider>
   )
 }
@@ -337,6 +502,10 @@ export function useRequireEncryption() {
 
   if (encryption.isLoading) {
     return { ...encryption, status: 'loading' as const }
+  }
+
+  if (encryption.needsPassword) {
+    return { ...encryption, status: 'needs-password' as const }
   }
 
   if (!encryption.hasKey) {

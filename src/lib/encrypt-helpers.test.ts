@@ -137,15 +137,16 @@ describe('encrypt-helpers', () => {
       // Check that sensitive values are encrypted
       expect(encrypted.title).not.toBe(expenseFormValues.title)
       expect(encrypted.notes).not.toBe(expenseFormValues.notes)
+      expect(encrypted.amount).not.toBe(expenseFormValues.amount) // Amount is also encrypted
 
       // Check that non-sensitive values are preserved
-      expect(encrypted.amount).toBe(expenseFormValues.amount)
       expect(encrypted.category).toBe(expenseFormValues.category)
 
-      // Decrypt and verify
-      const decrypted = await decryptExpense(encrypted, key)
+      // Decrypt and verify (use type assertion since encrypted has different paidFor structure)
+      const decrypted = await decryptExpense(encrypted as unknown as Parameters<typeof decryptExpense>[0], key)
       expect(decrypted.title).toBe('Dinner')
       expect(decrypted.notes).toBe('Great restaurant')
+      expect(decrypted.amount).toBe(50)
     })
 
     it('should handle expense without notes', async () => {
@@ -167,7 +168,7 @@ describe('encrypt-helpers', () => {
       const encrypted = await encryptExpenseFormValues(expenseFormValues, key)
       expect(encrypted.notes).toBeUndefined()
 
-      const decrypted = await decryptExpense(encrypted, key)
+      const decrypted = await decryptExpense(encrypted as unknown as Parameters<typeof decryptExpense>[0], key)
       expect(decrypted.title).toBe('Coffee')
       expect(decrypted.notes).toBeUndefined()
     })
@@ -178,9 +179,9 @@ describe('encrypt-helpers', () => {
       const key = generateMasterKey()
 
       const expenses = [
-        { title: await encrypt('Expense 1', key), notes: null },
-        { title: await encrypt('Expense 2', key), notes: await encrypt('Note', key) },
-        { title: await encrypt('Expense 3', key), notes: undefined },
+        { title: await encrypt('Expense 1', key), notes: null, amount: 100 },
+        { title: await encrypt('Expense 2', key), notes: await encrypt('Note', key), amount: 200 },
+        { title: await encrypt('Expense 3', key), notes: undefined, amount: 300 },
       ]
 
       const decrypted = await decryptExpenses(expenses, key)
@@ -200,6 +201,7 @@ describe('encrypt-helpers', () => {
       const legacyExpense = {
         title: 'Plain text title',
         notes: 'Plain text notes',
+        amount: 50,
       }
 
       const decrypted = await decryptExpense(legacyExpense, key)
@@ -207,6 +209,7 @@ describe('encrypt-helpers', () => {
       // Should return original data since decryption fails
       expect(decrypted.title).toBe('Plain text title')
       expect(decrypted.notes).toBe('Plain text notes')
+      expect(decrypted.amount).toBe(50)
     })
   })
 })
