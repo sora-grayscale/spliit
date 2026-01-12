@@ -12,7 +12,7 @@
   },
   "Footer": {
     "madeIn": "Montrealen egina, Quebec 🇨🇦",
-    "builtBy": "<author>Sebastien Castiel</author> eta <source>laguntzaileek</source> egina"
+    "forkedFrom": "Forked from <original>Spliit</original>"
   },
   "Expenses": {
     "title": "Gastuak",

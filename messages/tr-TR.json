@@ -12,7 +12,7 @@
   },
   "Footer": {
     "madeIn": "Montréal, Québec 🇨🇦'da yapıldı",
-    "builtBy": "<author>Sebastien Castiel</author> ve <source>katkıda bulunanlar</source> tarafından geliştirildi"
+    "forkedFrom": "Forked from <original>Spliit</original>"
   },
   "Expenses": {
     "title": "Masraflar",

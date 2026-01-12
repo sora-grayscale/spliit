@@ -148,11 +148,6 @@ function Content({
                     {txt}
                   </a>
                 ),
-                author: (txt) => (
-                  <a href="https://scastiel.dev" target="_blank" rel="noopener">
-                    {txt}
-                  </a>
-                ),
               })}
             </span>
             <span>

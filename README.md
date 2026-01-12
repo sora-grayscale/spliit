@@ -22,7 +22,7 @@
 
 ---
 
-**anon-spliit** is a privacy-focused fork of [Spliit](https://github.com/spliit-app/spliit) by Sebastien Castiel. All user data is **end-to-end encrypted (E2EE)** - the server stores only encrypted blobs and never sees your actual data.
+**anon-spliit** is a privacy-focused fork of [Spliit](https://github.com/spliit-app/spliit). All user data is **end-to-end encrypted (E2EE)** - the server stores only encrypted blobs and never sees your actual data.
 
 ## Why anon-spliit?
 
@@ -33,23 +33,23 @@
 
 ## Privacy Features
 
-| Feature | Description |
-|---------|-------------|
-| **E2E Encryption** | AES-128-GCM encryption with keys stored in URL fragments |
-| **Zero-Knowledge Server** | Server only stores encrypted data |
-| **Password Protection** | Optional PBKDF2-based password for additional security |
-| **No Tracking** | No analytics, no cookies, no fingerprinting |
+| Feature                   | Description                                              |
+| ------------------------- | -------------------------------------------------------- |
+| **E2E Encryption**        | AES-128-GCM encryption with keys stored in URL fragments |
+| **Zero-Knowledge Server** | Server only stores encrypted data                        |
+| **Password Protection**   | Optional PBKDF2-based password for additional security   |
+| **No Tracking**           | No analytics, no cookies, no fingerprinting              |
 
 ## What's Encrypted
 
-| Data | Encrypted |
-|------|:---------:|
-| Group name | Yes |
-| Group description | Yes |
-| Participant names | Yes |
-| Expense titles | Yes |
-| Expense notes | Yes |
-| Expense amounts | Yes |
+| Data              | Encrypted |
+| ----------------- | :-------: |
+| Group name        |    Yes    |
+| Group description |    Yes    |
+| Participant names |    Yes    |
+| Expense titles    |    Yes    |
+| Expense notes     |    Yes    |
+| Expense amounts   |    Yes    |
 
 ## Features
 
@@ -61,6 +61,7 @@
 - Progressive Web App (PWA) - install on mobile
 - Dark mode support
 - Multi-language (English, Japanese, and more)
+- **Private Instance Mode** - Restrict access to whitelisted users
 
 ## Quick Start
 
@@ -94,15 +95,42 @@ cp container.env.example container.env
 pnpm run start-container
 ```
 
+## Private Instance Mode
+
+For self-hosted deployments, you can restrict access to whitelisted users only.
+
+### Setup
+
+```bash
+# Enable private instance mode
+PRIVATE_INSTANCE=true
+
+# Initial admin credentials
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=your-secure-password
+
+# NextAuth.js configuration
+NEXTAUTH_SECRET=your-secret-key
+NEXTAUTH_URL=https://your-domain.com
+```
+
+### Features
+
+- **Admin Dashboard** - Manage whitelisted users at `/admin`
+- **Initial Password** - Users receive a generated password that must be changed on first login
+- **Password Reset** - Admins can reset user passwords
+- **Shared Group Access** - Shared links still work without authentication (protected by encryption key)
+- **Group Creation** - Only whitelisted users can create new groups
+
 ## Tech Stack
 
-| Category | Technology |
-|----------|------------|
-| Frontend | Next.js 16, React, TypeScript, TailwindCSS |
-| Backend | tRPC, Prisma ORM |
-| Database | PostgreSQL |
+| Category   | Technology                                 |
+| ---------- | ------------------------------------------ |
+| Frontend   | Next.js 16, React, TypeScript, TailwindCSS |
+| Backend    | tRPC, Prisma ORM                           |
+| Database   | PostgreSQL                                 |
 | Encryption | Web Crypto API (AES-128-GCM, HKDF, PBKDF2) |
-| UI | shadcn/ui |
+| UI         | shadcn/ui                                  |
 
 ## Security
 
@@ -149,7 +177,7 @@ If you find anon-spliit useful:
 
 ## Attribution
 
-This project is a fork of [Spliit](https://github.com/spliit-app/spliit) by [Sebastien Castiel](https://scastiel.dev). The original project is an excellent expense splitting app - this fork adds end-to-end encryption for enhanced privacy.
+This project is a fork of [Spliit](https://github.com/spliit-app/spliit). The original project is an excellent expense splitting app - this fork adds end-to-end encryption for enhanced privacy.
 
 ## License
 

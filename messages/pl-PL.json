@@ -12,7 +12,7 @@
   },
   "Footer": {
     "madeIn": "Stworzone w Montréalu, Québec 🇨🇦",
-    "builtBy": "Napisane przez <author>Sebastien Castiela</author> i <source>kontrybutorów</source>"
+    "forkedFrom": "Forked from <original>Spliit</original>"
   },
   "Expenses": {
     "title": "Wydatki",

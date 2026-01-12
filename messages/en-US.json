@@ -12,7 +12,7 @@
   },
   "Footer": {
     "tagline": "Anonymous bill splitting with E2EE",
-    "forkedFrom": "Forked from <original>Spliit</original> by <author>Sebastien Castiel</author>",
+    "forkedFrom": "Forked from <original>Spliit</original>",
     "maintainedBy": "Maintained by <maintainer>sora-grayscale</maintainer>",
     "support": "Support",
     "sponsor": "Sponsor on GitHub"
