@@ -9,6 +9,10 @@ const envSchema = z
   .object({
     POSTGRES_URL_NON_POOLING: z.string().url(),
     POSTGRES_PRISMA_URL: z.string().url(),
+    // Auto-delete settings (Issue #10)
+    AUTO_DELETE_INACTIVE_DAYS: z.coerce.number().int().min(0).default(90),
+    DELETE_GRACE_PERIOD_DAYS: z.coerce.number().int().min(1).default(7),
+    CRON_SECRET: z.string().optional(),
     NEXT_PUBLIC_BASE_URL: z
       .string()
       .optional()
