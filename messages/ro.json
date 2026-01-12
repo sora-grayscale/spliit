@@ -12,7 +12,7 @@
   },
   "Footer": {
     "madeIn": "Dezvoltat în Montréal, Québec 🇨🇦",
-    "builtBy": "Dezvoltat de către <author>Sebastien Castiel</author> și <source>contribuitori</source>"
+    "forkedFrom": "Forked from <original>Spliit</original>"
   },
   "Expenses": {
     "title": "Cheltuieli",

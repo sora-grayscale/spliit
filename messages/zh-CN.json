@@ -12,7 +12,7 @@
   },
   "Footer": {
     "madeIn": "Made in Montréal, Québec 🇨🇦",
-    "builtBy": "由 <author>Sebastien Castiel</author> 以及 <source>社区贡献者们</source> 共同构建"
+    "forkedFrom": "Forked from <original>Spliit</original>"
   },
   "Expenses": {
     "title": "消费",

@@ -12,7 +12,7 @@
   },
   "Footer": {
     "madeIn": "Vyrobeno v Montréalu, Québec 🇨🇦",
-    "builtBy": "Vytvořil <author>Sebastien Castiel</author> a <source>další přispěvatelé</source>"
+    "forkedFrom": "Forked from <original>Spliit</original>"
   },
   "Expenses": {
     "title": "Výdaje",

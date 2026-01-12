@@ -12,7 +12,7 @@
   },
   "Footer": {
     "madeIn": "Hecho en Montréal, Québec 🇨🇦",
-    "builtBy": "Construido por <author>Sebastien Castiel</author> y <source>colaboradores</source>"
+    "forkedFrom": "Forked from <original>Spliit</original>"
   },
   "Expenses": {
     "title": "Gastos",

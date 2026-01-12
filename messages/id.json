@@ -12,7 +12,7 @@
   },
   "Footer": {
     "madeIn": "Dibuat di Montréal, Québec 🇨🇦",
-    "builtBy": "Dibuat oleh <author>Sebastien Castiel</author> dan <source>kontributor lainnya</source>"
+    "forkedFrom": "Forked from <original>Spliit</original>"
   },
   "Expenses": {
     "title": "Pengeluaran",

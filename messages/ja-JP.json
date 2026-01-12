@@ -12,7 +12,7 @@
   },
   "Footer": {
     "tagline": "E2EEによる匿名の割り勘",
-    "forkedFrom": "<author>Sebastien Castiel</author>の<original>Spliit</original>からフォーク",
+    "forkedFrom": "<original>Spliit</original>からフォーク",
     "maintainedBy": "<maintainer>sora-grayscale</maintainer>がメンテナンス",
     "support": "サポート",
     "sponsor": "GitHubでスポンサー"

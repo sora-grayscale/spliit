@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-**anon-spliit** is a privacy-focused fork of [Spliit](https://github.com/spliit-app/spliit) by Sebastien Castiel. All user data is **end-to-end encrypted (E2EE)** - the server never sees unencrypted data. The encryption key is stored in the URL fragment and never sent to the server.
+**anon-spliit** is a privacy-focused fork of [Spliit](https://github.com/spliit-app/spliit). All user data is **end-to-end encrypted (E2EE)** - the server never sees unencrypted data. The encryption key is stored in the URL fragment and never sent to the server.
 
 **Repository**: https://github.com/sora-grayscale/spliit
 **Twitter/X**: [@sora_grayscale](https://x.com/sora_grayscale)
@@ -12,6 +12,7 @@
 ## Architecture
 
 ### Tech Stack
+
 - **Frontend**: Next.js 16 (App Router), React, TypeScript, TailwindCSS
 - **Backend**: tRPC, Prisma ORM
 - **Database**: PostgreSQL
@@ -19,12 +20,14 @@
 - **Deployment**: Vercel, Docker/Podman
 
 ### E2EE Design Philosophy
+
 - **Zero-knowledge server**: The server never sees unencrypted data
 - **URL fragment key storage**: Encryption key in `#<base64key>` format (never sent to server)
 - **localStorage persistence**: Keys saved per-group for convenience
 - **Everything encrypted**: Group names, participant names, expense titles, notes, amounts
 
 ### Key Files
+
 ```
 src/lib/crypto.ts              # Core crypto utilities (PBKDF2, key derivation, password generation)
 src/lib/encrypt-helpers.ts     # Encryption/decryption helpers
@@ -37,15 +40,18 @@ src/lib/hooks/use-group-url.ts # URL navigation with key preservation
 src/app/groups/[groupId]/stats/totals.tsx  # Client-side stats with decryption
 src/app/api/cron/auto-delete/route.ts  # Cron endpoint for auto-deletion
 src/lib/auth.ts                    # NextAuth.js configuration (Issue #4)
-src/middleware.ts                  # Route protection middleware (Issue #4)
+src/proxy.ts                       # Route protection proxy (Issue #4, Next.js 16)
 src/app/admin/                     # Admin dashboard (Issue #4)
 src/components/auth-provider.tsx   # NextAuth SessionProvider wrapper
 src/components/user-menu.tsx       # User dropdown menu component
+src/components/password-change-guard.tsx  # Force password change redirect
+src/__tests__/private-instance.test.ts    # Private instance mode tests
 ```
 
 ## Development Rules
 
 ### 1. Version Control with jj (Jujutsu)
+
 - Use `jj` instead of `git` for version control
 - Leverage parallel development with multiple changes
 - Common commands:
@@ -58,12 +64,14 @@ src/components/user-menu.tsx       # User dropdown menu component
   ```
 
 ### 2. Branch/PR Strategy
+
 - **1 feature = 1 branch = 1 PR**
 - Keep PRs small and focused
 - Use descriptive branch names: `feature/password-protection`, `feature/amount-encryption`
 - Always base new features on `main`
 
 ### 3. Testing Requirements
+
 - **All features must have tests**
 - Run tests before pushing: `pnpm test`
 - Test encryption thoroughly:
@@ -73,6 +81,7 @@ src/components/user-menu.tsx       # User dropdown menu component
 - Security tests for crypto operations
 
 ### 4. Code Quality
+
 - **TypeScript strict mode**: No `any` types without justification
 - Run type check: `npx tsc --noEmit`
 - Keep code maintainable and readable
@@ -80,12 +89,14 @@ src/components/user-menu.tsx       # User dropdown menu component
 - Use meaningful variable names
 
 ### 5. Code Review & Refactoring
+
 - Regular code reviews on PRs
 - Refactor when code becomes complex
 - Keep functions small and focused
 - DRY principle but avoid premature abstraction
 
 ### 6. Documentation
+
 - **Update CLAUDE.md** with every significant change
 - Keep feature specifications current
 - Document environment variables
@@ -96,6 +107,7 @@ src/components/user-menu.tsx       # User dropdown menu component
 ### Priority: HIGH
 
 #### Issue #6: Group Deletion
+
 **Status**: DONE
 **Priority**: HIGH
 **Link**: https://github.com/sora-grayscale/spliit/issues/6
@@ -110,6 +122,7 @@ src/components/user-menu.tsx       # User dropdown menu component
 - [x] Share button includes encryption key in URL
 
 #### Issue #10: Auto-delete Inactive Groups
+
 **Status**: DONE
 **Priority**: LOW
 **Link**: https://github.com/sora-grayscale/spliit/issues/10
@@ -123,6 +136,7 @@ src/components/user-menu.tsx       # User dropdown menu component
 - [x] Unit tests for auto-delete functionality
 
 #### Issue #3: Amount Encryption (Complete E2EE)
+
 **Status**: DONE
 **Priority**: HIGH
 **Link**: https://github.com/sora-grayscale/spliit/issues/3
@@ -134,6 +148,7 @@ src/components/user-menu.tsx       # User dropdown menu component
 - [x] All financial data fully encrypted (amount, originalAmount, shares)
 
 #### Issue #2: Password Protection
+
 **Status**: DONE
 **Priority**: HIGH
 **Link**: https://github.com/sora-grayscale/spliit/issues/2
@@ -148,6 +163,7 @@ src/components/user-menu.tsx       # User dropdown menu component
 ### Priority: LOW
 
 #### Issue #4: Private Instance Mode
+
 **Status**: DONE
 **Priority**: LOW
 **Link**: https://github.com/sora-grayscale/spliit/issues/4
@@ -155,12 +171,18 @@ src/components/user-menu.tsx       # User dropdown menu component
 - [x] Admin user with NextAuth.js authentication (Credentials provider)
 - [x] Initial admin creation via environment variables (ADMIN_EMAIL, ADMIN_PASSWORD)
 - [x] Whitelist-based access control (email-based)
-- [x] Admin dashboard for user management
+- [x] Admin dashboard for user management (add/remove/reset password)
+- [x] Initial password generation with forced change on first login
+- [x] Password change API with security validations
 - [x] No auth required for shared group access (/groups/[groupId])
+- [x] Only /groups/create requires authentication
 - [x] PRIVATE_INSTANCE=false maintains current public behavior
 - [x] Self-hosted friendly
+- [x] Security: Never trust client-sent mustChangePassword values
+- [x] Security: Email format validation, Prisma select for data protection
 
 #### Issue #5: Docker/Podman Deployment
+
 **Status**: TODO
 **Priority**: LOW
 **Link**: https://github.com/sora-grayscale/spliit/issues/5
@@ -172,6 +194,7 @@ src/components/user-menu.tsx       # User dropdown menu component
 - Podman compatibility
 
 #### Issue #7: Rebrand to anon-spliit
+
 **Status**: DONE
 **Priority**: LOW
 **Link**: https://github.com/sora-grayscale/spliit/issues/7
@@ -185,6 +208,7 @@ src/components/user-menu.tsx       # User dropdown menu component
 ### Completed
 
 #### Rebrand to anon-spliit (Issue #7) - DONE
+
 - [x] New privacy-focused logo (icon + CSS text approach)
 - [x] Small icon for header/footer (anon-spliit-small.png)
 - [x] Updated package.json with new name and metadata
@@ -197,6 +221,7 @@ src/components/user-menu.tsx       # User dropdown menu component
 - [x] Hero section with blur animation on landing page
 
 #### Password Protection (Issue #2) - DONE
+
 - [x] Schema: passwordSalt, passwordHint added to Group
 - [x] PBKDF2 key derivation (100,000 iterations)
 - [x] Password prompt component with rate limiting
@@ -208,6 +233,7 @@ src/components/user-menu.tsx       # User dropdown menu component
 - [x] Stats calculation moved to client-side (works with encrypted data)
 
 #### Amount Encryption (Issue #3) - DONE
+
 - [x] Schema: amount, originalAmount, shares changed to String
 - [x] encryptExpenseFormValues: encrypts amounts and shares
 - [x] decryptExpense: decrypts amounts and shares
@@ -216,6 +242,7 @@ src/components/user-menu.tsx       # User dropdown menu component
 - [x] UI components updated for string amounts
 
 #### Group Deletion (Issue #6, PR #9) - MERGED
+
 - [x] Delete button with confirmation dialog
 - [x] Soft delete with grace period (7 days)
 - [x] Deleted group screen with restore/delete options
@@ -223,6 +250,7 @@ src/components/user-menu.tsx       # User dropdown menu component
 - [x] Share button includes encryption key
 
 #### Basic E2EE (PR #1) - MERGED
+
 - [x] Group name encryption
 - [x] Participant name encryption
 - [x] Expense title/notes encryption
@@ -231,33 +259,40 @@ src/components/user-menu.tsx       # User dropdown menu component
 - [x] Error screen for missing encryption key
 
 #### Private Instance Mode (Issue #4) - DONE
-- [x] Prisma schema: Admin and WhitelistUser models
-- [x] NextAuth.js v5 (beta) with Credentials provider
-- [x] JWT-based session strategy
+
+- [x] Prisma schema: Admin and WhitelistUser models with password fields
+- [x] NextAuth.js v5 with Credentials provider
+- [x] JWT-based session strategy with isAdmin/mustChangePassword claims
 - [x] bcryptjs password hashing (12 rounds)
-- [x] Middleware-based route protection
-- [x] Sign in/error pages
+- [x] proxy.ts route protection (Next.js 16 convention)
+- [x] Sign in/error/change-password pages
 - [x] Admin dashboard with stats and user management
-- [x] Whitelist user CRUD API endpoints
-- [x] Admin initialization API (/api/admin/init)
+- [x] Whitelist user CRUD API endpoints (POST, GET, DELETE, PATCH)
+- [x] Password reset functionality for admins
+- [x] Initial password generation with forced change on first login
+- [x] PasswordChangeGuard component for redirect enforcement
 - [x] UserMenu component in header (shows when authenticated)
-- [x] AuthProvider wrapper in layout
+- [x] AuthProvider wrapper in layout (conditional on PRIVATE_INSTANCE)
+- [x] Security tests (107 total tests passing)
 
 ## Security Considerations
 
 ### Encryption
+
 - Use Web Crypto API (native browser implementation)
 - AES-128-GCM for authenticated encryption
 - HKDF SHA-256 for key derivation
 - Unique IV for each encryption operation
 
 ### Key Management
+
 - Never log encryption keys
 - Clear keys from memory when not needed
 - Validate key format before use
 - Handle decryption failures gracefully
 
 ### Password Handling
+
 - Use PBKDF2 with high iteration count (100,000+)
 - Salt passwords before hashing
 - Never store plaintext passwords
@@ -343,5 +378,5 @@ docker-compose.yml
 
 ## License
 
-This project is a fork of [Spliit](https://github.com/spliit-app/spliit) by Sebastien Castiel.
+This project is a fork of [Spliit](https://github.com/spliit-app/spliit).
 See LICENSE file for details.
