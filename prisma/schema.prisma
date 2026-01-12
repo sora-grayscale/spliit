@@ -135,3 +135,24 @@ enum ActivityType {
   UPDATE_EXPENSE
   DELETE_EXPENSE
 }
+
+// Private Instance Mode (Issue #4)
+model Admin {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  password           String   // bcrypt hashed
+  name               String?
+  mustChangePassword Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model WhitelistUser {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  password           String?  // bcrypt hashed (null until first login setup)
+  name               String?
+  mustChangePassword Boolean  @default(true) // Must change on first login
+  addedById          String   // Admin who added this user
+  createdAt          DateTime @default(now())
+}

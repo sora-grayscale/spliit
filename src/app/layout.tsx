@@ -1,10 +1,13 @@
 import { ApplePwaSplash } from '@/app/apple-pwa-splash'
+import { AuthProvider } from '@/components/auth-provider'
 import { LocaleSwitcher } from '@/components/locale-switcher'
+import { PasswordChangeGuard } from '@/components/password-change-guard'
 import { ProgressBar } from '@/components/progress-bar'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Toaster } from '@/components/ui/toaster'
+import { UserMenu } from '@/components/user-menu'
 import { env } from '@/lib/env'
 import { TRPCProvider } from '@/trpc/client'
 import type { Metadata, Viewport } from 'next'
@@ -63,7 +66,13 @@ export const viewport: Viewport = {
   themeColor: '#047857',
 }
 
-function Content({ children }: { children: React.ReactNode }) {
+function Content({
+  children,
+  isPrivateInstance,
+}: {
+  children: React.ReactNode
+  isPrivateInstance: boolean
+}) {
   const t = useTranslations()
   return (
     <TRPCProvider>
@@ -103,6 +112,9 @@ function Content({ children }: { children: React.ReactNode }) {
             </li>
             <li>
               <ThemeToggle />
+            </li>
+            <li>
+              <UserMenu enabled={isPrivateInstance} />
             </li>
           </ul>
         </div>
@@ -189,22 +201,30 @@ export default async function RootLayout({
 }) {
   const locale = await getLocale()
   const messages = await getMessages()
+  const isPrivateInstance = env.PRIVATE_INSTANCE === true
+
   return (
     <html lang={locale} suppressHydrationWarning>
       <ApplePwaSplash icon="/anon-spliit.png" color="#027756" />
       <body className="min-h-[100dvh] flex flex-col items-stretch bg-slate-50 bg-opacity-30 dark:bg-background">
         <NextIntlClientProvider messages={messages}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <Suspense>
-              <ProgressBar />
-            </Suspense>
-            <Content>{children}</Content>
-          </ThemeProvider>
+          <AuthProvider enabled={isPrivateInstance}>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <Suspense>
+                <ProgressBar />
+              </Suspense>
+              <PasswordChangeGuard enabled={isPrivateInstance}>
+                <Content isPrivateInstance={isPrivateInstance}>
+                  {children}
+                </Content>
+              </PasswordChangeGuard>
+            </ThemeProvider>
+          </AuthProvider>
         </NextIntlClientProvider>
       </body>
     </html>

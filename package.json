@@ -24,6 +24,7 @@
     "generate-currency-data": "ts-node -T ./src/scripts/generateCurrencyData.ts"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
     "@formatjs/intl-localematcher": "^0.5.4",
     "@hookform/resolvers": "^3.3.2",
     "@json2csv/plainjs": "^7.0.6",
@@ -46,6 +47,7 @@
     "@trpc/client": "^11.0.0-rc.586",
     "@trpc/react-query": "^11.0.0-rc.586",
     "@trpc/server": "^11.0.0-rc.586",
+    "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.0",
     "client-only": "^0.0.1",
     "clsx": "^2.0.0",
@@ -58,6 +60,7 @@
     "nanoid": "^5.0.4",
     "negotiator": "^0.6.3",
     "next": "^16.0.7",
+    "next-auth": "5.0.0-beta.30",
     "next-intl": "^4.5.8",
     "next-s3-upload": "^0.3.4",
     "next-themes": "^0.2.1",
@@ -86,6 +89,7 @@
     "@testing-library/jest-dom": "^6.4.8",
     "@testing-library/react": "^16.3.0",
     "@total-typescript/ts-reset": "^0.5.1",
+    "@types/bcryptjs": "^3.0.0",
     "@types/content-disposition": "^0.5.8",
     "@types/deepmerge": "^2.1.0",
     "@types/jest": "^29.5.12",
