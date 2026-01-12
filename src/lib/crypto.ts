@@ -229,3 +229,154 @@ export function generateGroupUrl(groupId: string, key: Uint8Array): string {
   const base64Key = keyToBase64(key)
   return `/groups/${groupId}#${base64Key}`
 }
+
+// ============================================================
+// Password Protection (Issue #2)
+// ============================================================
+
+/**
+ * PBKDF2 iterations - high count for security
+ * 100,000 iterations is recommended minimum for PBKDF2-SHA256
+ */
+const PBKDF2_ITERATIONS = 100000
+
+/**
+ * Generate a random salt for PBKDF2 (16 bytes)
+ */
+export function generateSalt(): Uint8Array {
+  if (!isClient) {
+    throw new Error('Crypto API not available')
+  }
+  return crypto.getRandomValues(new Uint8Array(16))
+}
+
+/**
+ * Derive an encryption key from a password using PBKDF2
+ * @param password - User password
+ * @param salt - Random salt (should be stored with group)
+ * @returns 128-bit key as Uint8Array
+ */
+export async function deriveKeyFromPassword(
+  password: string,
+  salt: Uint8Array
+): Promise<Uint8Array> {
+  if (!isClient) {
+    throw new Error('Crypto API not available')
+  }
+
+  // Import password as key material
+  const passwordBuffer = new TextEncoder().encode(password)
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    passwordBuffer,
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  )
+
+  // Derive 128 bits (16 bytes) using PBKDF2
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: salt.buffer.slice(salt.byteOffset, salt.byteOffset + salt.byteLength),
+      iterations: PBKDF2_ITERATIONS,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    128 // 128 bits = 16 bytes
+  )
+
+  return new Uint8Array(derivedBits)
+}
+
+/**
+ * Combine two keys using XOR
+ * Used to combine URL key with password-derived key for double encryption
+ * @param key1 - First key (URL key)
+ * @param key2 - Second key (password-derived key)
+ * @returns Combined key
+ */
+export function combineKeys(key1: Uint8Array, key2: Uint8Array): Uint8Array {
+  if (key1.length !== key2.length) {
+    throw new Error('Keys must be the same length')
+  }
+  const combined = new Uint8Array(key1.length)
+  for (let i = 0; i < key1.length; i++) {
+    combined[i] = key1[i] ^ key2[i]
+  }
+  return combined
+}
+
+/**
+ * Generate a secure random password
+ * Uses a mix of lowercase, uppercase, digits, and symbols
+ * @param length - Password length (default: 16)
+ * @returns Secure random password string
+ */
+export function generateSecurePassword(length: number = 16): string {
+  if (!isClient) {
+    throw new Error('Crypto API not available')
+  }
+
+  // Character sets for password generation
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz'
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  const digits = '0123456789'
+  const symbols = '!@#$%^&*()_+-='
+  const allChars = lowercase + uppercase + digits + symbols
+
+  // Generate random bytes
+  const randomBytes = crypto.getRandomValues(new Uint8Array(length))
+
+  // Build password ensuring at least one of each type
+  let password = ''
+
+  // Ensure at least one character from each set
+  const ensureChars = [
+    lowercase[randomBytes[0] % lowercase.length],
+    uppercase[randomBytes[1] % uppercase.length],
+    digits[randomBytes[2] % digits.length],
+    symbols[randomBytes[3] % symbols.length],
+  ]
+
+  // Fill the rest with random characters from all sets
+  for (let i = 4; i < length; i++) {
+    password += allChars[randomBytes[i] % allChars.length]
+  }
+
+  // Add ensured characters at random positions
+  for (const char of ensureChars) {
+    const pos = Math.floor(Math.random() * (password.length + 1))
+    password = password.slice(0, pos) + char + password.slice(pos)
+  }
+
+  // Trim to exact length (in case we added more than needed)
+  return password.slice(0, length)
+}
+
+/**
+ * Validate password strength
+ * @param password - Password to validate
+ * @returns Object with validation result and message
+ */
+export function validatePasswordStrength(password: string): {
+  valid: boolean
+  message: string
+} {
+  if (password.length < 8) {
+    return { valid: false, message: 'Password must be at least 8 characters' }
+  }
+  if (password.length > 128) {
+    return { valid: false, message: 'Password must be less than 128 characters' }
+  }
+  if (!/[a-z]/.test(password)) {
+    return { valid: false, message: 'Password must contain a lowercase letter' }
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, message: 'Password must contain an uppercase letter' }
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, message: 'Password must contain a number' }
+  }
+  return { valid: true, message: 'Password is strong' }
+}

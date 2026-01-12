@@ -32,10 +32,11 @@ import {
 } from '@/components/ui/select'
 import { Locale } from '@/i18n/request'
 import { getGroup } from '@/lib/api'
+import { generateSecurePassword, validatePasswordStrength } from '@/lib/crypto'
 import { defaultCurrencyList, getCurrency } from '@/lib/currency'
 import { GroupFormValues, groupFormSchema } from '@/lib/schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Save, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, RefreshCw, Save, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -79,6 +80,8 @@ export function GroupForm({
             { name: t('Participants.Jane') },
             { name: t('Participants.Jack') },
           ],
+          password: '',
+          passwordHint: '',
         },
   })
   const { fields, append, remove } = useFieldArray({
@@ -88,6 +91,9 @@ export function GroupForm({
   })
 
   const [activeUser, setActiveUser] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const tPassword = useTranslations('PasswordField')
+
   useEffect(() => {
     if (activeUser === null) {
       const currentActiveUser =
@@ -97,6 +103,21 @@ export function GroupForm({
       setActiveUser(currentActiveUser)
     }
   }, [t, activeUser, fields, group?.id])
+
+  // Get password strength indicator
+  const passwordValue = form.watch('password') || ''
+  const passwordStrength = passwordValue
+    ? validatePasswordStrength(passwordValue)
+    : null
+
+  const handleGeneratePassword = () => {
+    const newPassword = generateSecurePassword(16)
+    form.setValue('password', newPassword, {
+      shouldValidate: true,
+      shouldDirty: true,
+    })
+    setShowPassword(true) // Show password after generating
+  }
 
   const updateActiveUser = () => {
     if (!activeUser) return
@@ -311,6 +332,93 @@ export function GroupForm({
             </Button>
           </CardFooter>
         </Card>
+
+        {/* Password Protection - Only show for new groups */}
+        {!group && (
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <KeyRound className="w-5 h-5" />
+                {tPassword('title')}
+              </CardTitle>
+              <CardDescription>{tPassword('description')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{tPassword('label')}</FormLabel>
+                    <FormControl>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            type={showPassword ? 'text' : 'password'}
+                            className="text-base pr-10"
+                            placeholder={tPassword('placeholder')}
+                            {...field}
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={handleGeneratePassword}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          {tPassword('generate')}
+                        </Button>
+                      </div>
+                    </FormControl>
+                    {passwordStrength && (
+                      <div
+                        className={`text-xs ${
+                          passwordStrength.valid
+                            ? 'text-green-600'
+                            : 'text-amber-600'
+                        }`}
+                      >
+                        {passwordStrength.valid
+                          ? tPassword('strength.strong')
+                          : passwordStrength.message}
+                      </div>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="passwordHint"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{tPassword('hintLabel')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        className="text-base"
+                        placeholder={tPassword('hintPlaceholder')}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="mb-4">
           <CardHeader>

@@ -25,11 +25,14 @@ anon-spliit is a privacy-focused fork of Spliit. All user data is **end-to-end e
 
 ### Key Files
 ```
-src/lib/crypto.ts              # Core crypto utilities
+src/lib/crypto.ts              # Core crypto utilities (PBKDF2, key derivation, password generation)
 src/lib/encrypt-helpers.ts     # Encryption/decryption helpers
+src/lib/totals.ts              # Stats calculation utilities
 src/lib/hooks/useBalances.ts   # Client-side balance calculation with decryption
-src/components/encryption-provider.tsx  # React context for encryption
+src/components/encryption-provider.tsx  # React context for encryption (handles password protection)
+src/components/password-prompt.tsx      # Password entry component with rate limiting
 src/lib/hooks/use-group-url.ts # URL navigation with key preservation
+src/app/groups/[groupId]/stats/totals.tsx  # Client-side stats with decryption
 ```
 
 ## Development Rules
@@ -119,15 +122,16 @@ src/lib/hooks/use-group-url.ts # URL navigation with key preservation
 - [x] All financial data fully encrypted (amount, originalAmount, shares)
 
 #### Issue #2: Password Protection
-**Status**: TODO
+**Status**: DONE
 **Priority**: HIGH
 **Link**: https://github.com/sora-grayscale/spliit/issues/2
 
-- Password-based key derivation (PBKDF2)
-- Password prompt on first access
-- Store password hint (optional)
-- Combine with URL key or replace it
-- Rate limiting for brute force protection
+- [x] Password-based key derivation (PBKDF2)
+- [x] Password prompt on first access
+- [x] Store password hint (optional, encrypted)
+- [x] Combine with URL key (double encryption)
+- [x] Rate limiting for brute force protection
+- [x] Secure password generation button
 
 ### Priority: LOW
 
@@ -165,6 +169,17 @@ src/lib/hooks/use-group-url.ts # URL navigation with key preservation
 - Proper attribution to original project
 
 ### Completed
+
+#### Password Protection (Issue #2) - DONE
+- [x] Schema: passwordSalt, passwordHint added to Group
+- [x] PBKDF2 key derivation (100,000 iterations)
+- [x] Password prompt component with rate limiting
+- [x] Secure password generation utility
+- [x] URL key + password key combination (XOR)
+- [x] EncryptionProvider handles password-protected groups
+- [x] Group creation form with optional password field
+- [x] Share button uses urlKey (not combined key) for correct sharing
+- [x] Stats calculation moved to client-side (works with encrypted data)
 
 #### Amount Encryption (Issue #3) - DONE
 - [x] Schema: amount, originalAmount, shares changed to String

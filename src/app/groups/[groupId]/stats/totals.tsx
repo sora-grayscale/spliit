@@ -3,20 +3,46 @@ import { TotalsGroupSpending } from '@/app/groups/[groupId]/stats/totals-group-s
 import { TotalsYourShare } from '@/app/groups/[groupId]/stats/totals-your-share'
 import { TotalsYourSpendings } from '@/app/groups/[groupId]/stats/totals-your-spending'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useActiveUser } from '@/lib/hooks'
+import { useActiveUser, useBalances } from '@/lib/hooks'
+import {
+  getTotalGroupSpending,
+  getTotalActiveUserPaidFor,
+  getTotalActiveUserShare,
+} from '@/lib/totals'
 import { getCurrencyFromGroup } from '@/lib/utils'
-import { trpc } from '@/trpc/client'
+import { useMemo } from 'react'
 import { useCurrentGroup } from '../current-group-context'
 
 export function Totals() {
   const { groupId, group } = useCurrentGroup()
   const activeUser = useActiveUser(groupId)
+  const { expenses, isLoading } = useBalances(groupId)
 
   const participantId =
     activeUser && activeUser !== 'None' ? activeUser : undefined
-  const { data } = trpc.groups.stats.get.useQuery({ groupId, participantId })
 
-  if (!data || !group)
+  // Calculate stats from decrypted expenses on client side
+  const stats = useMemo(() => {
+    if (!expenses || expenses.length === 0) {
+      return {
+        totalGroupSpendings: 0,
+        totalParticipantSpendings: undefined as number | undefined,
+        totalParticipantShare: undefined as number | undefined,
+      }
+    }
+
+    return {
+      totalGroupSpendings: getTotalGroupSpending(expenses),
+      totalParticipantSpendings: participantId
+        ? getTotalActiveUserPaidFor(participantId, expenses)
+        : undefined,
+      totalParticipantShare: participantId
+        ? getTotalActiveUserShare(participantId, expenses)
+        : undefined,
+    }
+  }, [expenses, participantId])
+
+  if (isLoading || !group)
     return (
       <div className="flex flex-col gap-7">
         {[0, 1, 2].map((index) => (
@@ -32,7 +58,7 @@ export function Totals() {
     totalGroupSpendings,
     totalParticipantShare,
     totalParticipantSpendings,
-  } = data
+  } = stats
 
   const currency = getCurrencyFromGroup(group)
 

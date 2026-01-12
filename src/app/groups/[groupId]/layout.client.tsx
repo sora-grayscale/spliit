@@ -155,8 +155,26 @@ export function GroupLayoutClient({
   groupId,
   children,
 }: PropsWithChildren<{ groupId: string }>) {
+  // Fetch group data to check for password protection
+  const { data: groupData, isLoading: isGroupLoading } = trpc.groups.get.useQuery({
+    groupId,
+  })
+
+  // Wait for group data to check for password protection
+  if (isGroupLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    )
+  }
+
   return (
-    <EncryptionProvider>
+    <EncryptionProvider
+      passwordSalt={groupData?.group?.passwordSalt}
+      passwordHint={groupData?.group?.passwordHint}
+      encryptedGroupName={groupData?.group?.name}
+    >
       <GroupLayoutInner groupId={groupId}>{children}</GroupLayoutInner>
     </EncryptionProvider>
   )

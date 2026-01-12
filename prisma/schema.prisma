@@ -22,6 +22,9 @@ model Group {
   activities   Activity[]
   createdAt    DateTime      @default(now())
   deletedAt    DateTime?
+  // Password protection (Issue #2)
+  passwordSalt String?       // Salt for PBKDF2 key derivation (base64 encoded)
+  passwordHint String?       // Encrypted password hint
 }
 
 model Participant {
