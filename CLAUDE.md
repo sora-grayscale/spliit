@@ -30,10 +30,12 @@ src/lib/crypto.ts              # Core crypto utilities (PBKDF2, key derivation, 
 src/lib/encrypt-helpers.ts     # Encryption/decryption helpers
 src/lib/totals.ts              # Stats calculation utilities
 src/lib/hooks/useBalances.ts   # Client-side balance calculation with decryption
+src/lib/auto-delete.ts         # Auto-delete inactive groups (Issue #10)
 src/components/encryption-provider.tsx  # React context for encryption (handles password protection)
 src/components/password-prompt.tsx      # Password entry component with rate limiting
 src/lib/hooks/use-group-url.ts # URL navigation with key preservation
 src/app/groups/[groupId]/stats/totals.tsx  # Client-side stats with decryption
+src/app/api/cron/auto-delete/route.ts  # Cron endpoint for auto-deletion
 ```
 
 ## Development Rules
@@ -103,13 +105,17 @@ src/app/groups/[groupId]/stats/totals.tsx  # Client-side stats with decryption
 - [x] Share button includes encryption key in URL
 
 #### Issue #10: Auto-delete Inactive Groups
-**Status**: TODO
+**Status**: DONE
 **Priority**: LOW
 **Link**: https://github.com/sora-grayscale/spliit/issues/10
 
-- [ ] Environment variable configuration (`AUTO_DELETE_INACTIVE_DAYS`)
-- [ ] Track last activity date per group
-- [ ] Cron job to soft-delete inactive groups
+- [x] Environment variable configuration (`AUTO_DELETE_INACTIVE_DAYS`, `DELETE_GRACE_PERIOD_DAYS`, `CRON_SECRET`)
+- [x] Track last activity date per group (using Activity table)
+- [x] Cron API endpoint (`/api/cron/auto-delete`)
+- [x] Soft-delete inactive groups automatically
+- [x] Permanent deletion of groups past grace period
+- [x] Vercel Cron configuration (daily at 3:00 AM UTC)
+- [x] Unit tests for auto-delete functionality
 
 #### Issue #3: Amount Encryption (Complete E2EE)
 **Status**: DONE
@@ -241,13 +247,15 @@ src/app/groups/[groupId]/stats/totals.tsx  # Client-side stats with decryption
 
 ```bash
 # Database
-DATABASE_URL=postgresql://user:pass@host:5432/db
+POSTGRES_PRISMA_URL=postgresql://user:pass@host:5432/db
+POSTGRES_URL_NON_POOLING=postgresql://user:pass@host:5432/db
 
-# Auto-deletion (Issue #6)
-AUTO_DELETE_DAYS=90              # Days of inactivity before auto-deletion
-DELETE_GRACE_PERIOD_DAYS=7       # Days before permanent deletion
+# Auto-deletion (Issue #10)
+AUTO_DELETE_INACTIVE_DAYS=90     # Days of inactivity before auto-deletion (0 to disable)
+DELETE_GRACE_PERIOD_DAYS=7       # Days before permanent deletion after soft-delete
+CRON_SECRET=                     # Secret for authenticating cron requests
 
-# Private Instance (Issue #4)
+# Private Instance (Issue #4) - TODO
 PRIVATE_INSTANCE=false           # Enable private instance mode
 ADMIN_EMAIL=admin@example.com    # Initial admin email
 REQUIRE_AUTH=false               # Require authentication for all users
