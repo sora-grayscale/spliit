@@ -24,16 +24,17 @@
 - **Zero-knowledge server**: The server never sees unencrypted data
 - **URL fragment key storage**: Encryption key in `#<base64key>` format (never sent to server)
 - **localStorage persistence**: Keys saved per-group for convenience
-- **Everything encrypted**: Group names, participant names, expense titles, notes, amounts
+- **Everything encrypted**: Group names, participant names, expense titles, notes, amounts, categories
 
 ### Key Files
 
 ```
 src/lib/crypto.ts              # Core crypto utilities (PBKDF2, key derivation, password generation)
-src/lib/encrypt-helpers.ts     # Encryption/decryption helpers
+src/lib/encrypt-helpers.ts     # Encryption/decryption helpers (amount, category, title, notes)
 src/lib/totals.ts              # Stats calculation utilities
 src/lib/hooks/useBalances.ts   # Client-side balance calculation with decryption
 src/lib/auto-delete.ts         # Auto-delete inactive groups (Issue #10)
+src/app/groups/[groupId]/expenses/category-icon.tsx  # Static category mapping for E2EE (Issue #19)
 src/components/encryption-provider.tsx  # React context for encryption (handles password protection)
 src/components/password-prompt.tsx      # Password entry component with rate limiting
 src/lib/hooks/use-group-url.ts # URL navigation with key preservation
@@ -146,6 +147,19 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 - [x] Server stores only encrypted values (String type in DB)
 - [x] Balance calculation done client-side (useBalances hook)
 - [x] All financial data fully encrypted (amount, originalAmount, shares)
+
+#### Issue #19: Category Encryption (Complete E2EE)
+
+**Status**: DONE
+**Priority**: HIGH
+**Link**: https://github.com/sora-grayscale/spliit/issues/19
+
+- [x] Encrypt category ID on client before sending
+- [x] Decrypt on client for display
+- [x] Server stores only encrypted categoryId (String type in DB)
+- [x] Removed FK relation between Expense and Category tables
+- [x] Static category mapping in CategoryIcon component
+- [x] Backward compatibility for legacy unencrypted categoryId values
 
 #### Issue #2: Password Protection
 
@@ -274,6 +288,19 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 - [x] UserMenu component in header (shows when authenticated)
 - [x] AuthProvider wrapper in layout (conditional on PRIVATE_INSTANCE)
 - [x] Security tests (107 total tests passing)
+
+#### Category Encryption (Issue #19) - DONE
+
+- [x] Schema: categoryId changed from Int to String (encrypted)
+- [x] Removed FK relation between Expense and Category tables
+- [x] encryptExpenseFormValues: encrypts category ID
+- [x] decryptExpense: decrypts categoryId (handles legacy plain number/string values)
+- [x] CategoryIcon: Static CATEGORY_MAP for categoryId to grouping/name lookup
+- [x] getCategoryInfo helper function for category metadata
+- [x] Updated all components using CategoryIcon (expense-card, category-selector, etc.)
+- [x] CSV/JSON export updated to use categoryId
+- [x] Migration: 20260112225207_encrypt_category_for_e2ee
+- [x] Tests for category encryption and backward compatibility (111 total tests passing)
 
 ## Security Considerations
 

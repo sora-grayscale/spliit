@@ -40,7 +40,8 @@ model Category {
   id       Int       @id @default(autoincrement())
   grouping String
   name     String
-  Expense  Expense[]
+  // Note: Expense relation removed for E2EE (Issue #19)
+  // categoryId is now encrypted, so FK relation is not possible
 }
 
 model Expense {
@@ -48,8 +49,9 @@ model Expense {
   group            Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
   expenseDate      DateTime          @default(dbgenerated("CURRENT_DATE")) @db.Date
   title            String
-  category         Category?         @relation(fields: [categoryId], references: [id])
-  categoryId       Int               @default(0)
+  // Category is now stored as encrypted string for E2EE (Issue #19)
+  // Legacy data may still have integer values as strings (e.g., "0", "1")
+  categoryId       String            @default("0") // Encrypted category ID
   amount           String            // Encrypted amount (cents as string or encrypted)
   originalAmount   String?           // Encrypted original amount
   originalCurrency String?

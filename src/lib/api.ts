@@ -72,7 +72,7 @@ export async function createExpense(
       id: expenseId,
       groupId,
       expenseDate: expenseFormValues.expenseDate,
-      categoryId: expenseFormValues.category,
+      categoryId: String(expenseFormValues.category), // Convert to string (can be encrypted string or number)
       amount: String(expenseFormValues.amount), // Convert to string for DB storage
       originalAmount:
         expenseFormValues.originalAmount !== undefined
@@ -223,7 +223,7 @@ export async function updateExpense(
       originalCurrency: expenseFormValues.originalCurrency,
       conversionRate: expenseFormValues.conversionRate,
       title: expenseFormValues.title,
-      categoryId: expenseFormValues.category,
+      categoryId: String(expenseFormValues.category), // Convert to string (can be encrypted string or number)
       paidById: expenseFormValues.paidBy,
       splitMode: expenseFormValues.splitMode,
       recurrenceRule: expenseFormValues.recurrenceRule,
@@ -395,7 +395,7 @@ export async function getGroupExpenses(
   return prisma.expense.findMany({
     select: {
       amount: true,
-      category: true,
+      categoryId: true,
       createdAt: true,
       expenseDate: true,
       id: true,
@@ -434,7 +434,7 @@ export async function getExpense(groupId: string, expenseId: string) {
     include: {
       paidBy: true,
       paidFor: true,
-      category: true,
+      // categoryId is a scalar field (encrypted string), not a relation - automatically included
       documents: true,
       recurringExpenseLink: true,
     },
@@ -512,7 +512,7 @@ async function createRecurringExpenses() {
           include: {
             paidBy: true,
             paidFor: true,
-            category: true,
+            // categoryId is a scalar field, automatically included
             documents: true,
           },
         },
@@ -535,7 +535,7 @@ async function createRecurringExpenses() {
       )
 
       const {
-        category,
+        // category relation removed for E2EE (Issue #19) - categoryId is now a scalar field
         paidBy,
         paidFor,
         documents,
@@ -580,7 +580,7 @@ async function createRecurringExpenses() {
             include: {
               paidFor: true,
               documents: true,
-              category: true,
+              // categoryId is a scalar field, automatically included
               paidBy: true,
             },
           })

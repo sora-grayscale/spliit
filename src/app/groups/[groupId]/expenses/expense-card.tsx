@@ -76,7 +76,7 @@ export function ExpenseCard({
       }}
     >
       <CategoryIcon
-        category={expense.category}
+        categoryId={expense.categoryId}
         className="w-4 h-4 mr-2 mt-0.5 text-muted-foreground"
       />
       <div className="flex-1">

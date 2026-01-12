@@ -185,7 +185,7 @@ function ReceiptDialogContent() {
                 receiptInfoCategory ? (
                   <div className="flex items-center">
                     <CategoryIcon
-                      category={receiptInfoCategory}
+                      categoryId={receiptInfoCategory.id}
                       className="inline w-4 h-4 mr-2"
                     />
                     <span className="mr-1">{receiptInfoCategory.grouping}</span>

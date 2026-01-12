@@ -1,3 +1,4 @@
+import { getCategoryInfo } from '@/app/groups/[groupId]/expenses/category-icon'
 import { getCurrency } from '@/lib/currency'
 import { formatAmountAsDecimal, getCurrencyFromGroup } from '@/lib/utils'
 import { Parser } from '@json2csv/plainjs'
@@ -38,7 +39,7 @@ export async function GET(
         select: {
           expenseDate: true,
           title: true,
-          category: { select: { name: true } },
+          categoryId: true,
           amount: true,
           originalAmount: true,
           originalCurrency: true,
@@ -115,7 +116,7 @@ export async function GET(
     return {
       date: formatDate(expense.expenseDate),
       title: expense.title,
-      categoryName: expense.category?.name || '',
+      categoryName: getCategoryInfo(expense.categoryId)?.name || '',
       currency: group.currencyCode ?? group.currency,
       amount: formatAmountAsDecimal(expenseAmount, currency),
       originalAmount: expense.originalAmount
