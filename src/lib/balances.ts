@@ -36,7 +36,9 @@ export interface ExpenseForBalance {
 }
 
 export function getBalances(
-  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>> | ExpenseForBalance[],
+  expenses:
+    | NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>
+    | ExpenseForBalance[],
 ): Balances {
   const balances: Balances = {}
 

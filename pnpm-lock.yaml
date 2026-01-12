@@ -92,6 +92,9 @@ importers:
       dayjs:
         specifier: ^1.11.10
         version: 1.11.19
+      deepmerge:
+        specifier: ^4.3.1
+        version: 4.3.1
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@19.2.3)
@@ -189,6 +192,9 @@ importers:
       '@types/content-disposition':
         specifier: ^0.5.8
         version: 0.5.9
+      '@types/deepmerge':
+        specifier: ^2.1.0
+        version: 2.2.3
       '@types/jest':
         specifier: ^29.5.12
         version: 29.5.14
@@ -216,6 +222,9 @@ importers:
       currency-list:
         specifier: ^1.0.8
         version: 1.0.8
+      decimal.js:
+        specifier: ^10.6.0
+        version: 10.6.0
       dotenv:
         specifier: ^16.3.1
         version: 16.6.1
@@ -2125,6 +2134,10 @@ packages:
 
   '@types/content-disposition@0.5.9':
     resolution: {integrity: sha512-8uYXI3Gw35MhiVYhG3s295oihrxRyytcRHjSjqnqZVDDy/xcGBRny7+Xj1Wgfhv5QzRtN2hB2dVRBUX9XW3UcQ==}
+
+  '@types/deepmerge@2.2.3':
+    resolution: {integrity: sha512-ct4srnukH/SHdVPyJIFV73YJIt9PTYTaqQbjrCvRrbc9LxHdGcJb132SuWwnDTPyx5UjCVS/I00wj0i5IXfqSA==}
+    deprecated: This is a stub types definition. deepmerge provides its own type definitions, so you do not need this installed.
 
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
@@ -7405,6 +7418,10 @@ snapshots:
       '@babel/types': 7.28.5
 
   '@types/content-disposition@0.5.9': {}
+
+  '@types/deepmerge@2.2.3':
+    dependencies:
+      deepmerge: 4.3.1
 
   '@types/estree@1.0.8': {}
 

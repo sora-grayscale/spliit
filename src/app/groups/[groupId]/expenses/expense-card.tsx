@@ -22,7 +22,10 @@ function Participants({
   participantCount: number
 }) {
   const t = useTranslations('ExpenseCard')
-  const amountNum = typeof expense.amount === 'string' ? parseFloat(expense.amount) : expense.amount
+  const amountNum =
+    typeof expense.amount === 'string'
+      ? parseFloat(expense.amount)
+      : expense.amount
   const key = amountNum > 0 ? 'paidBy' : 'receivedBy'
   const paidFor =
     expense.paidFor.length == participantCount && participantCount >= 4 ? (

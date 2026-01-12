@@ -1,8 +1,14 @@
 'use client'
 
 import { useEncryption } from '@/components/encryption-provider'
+import {
+  Balances,
+  getBalances,
+  getPublicBalances,
+  getSuggestedReimbursements,
+  Reimbursement,
+} from '@/lib/balances'
 import { decryptExpenses } from '@/lib/encrypt-helpers'
-import { getBalances, getSuggestedReimbursements, getPublicBalances, Balances, Reimbursement } from '@/lib/balances'
 import { trpc } from '@/trpc/client'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
@@ -20,10 +26,11 @@ export function useBalances(groupId: string) {
   const rawExpenses = expensesData?.expenses
 
   // Handle async decryption
-  const [decryptedExpenses, setDecryptedExpenses] = useState<
-    typeof rawExpenses
-  >(undefined)
-  const lastDecryptedRef = useRef<{ key: string; withKey: boolean } | null>(null)
+  const [decryptedExpenses, setDecryptedExpenses] =
+    useState<typeof rawExpenses>(undefined)
+  const lastDecryptedRef = useRef<{ key: string; withKey: boolean } | null>(
+    null,
+  )
 
   useEffect(() => {
     const expenseIds = rawExpenses?.map((e) => e.id).join(',') || ''
@@ -59,7 +66,10 @@ export function useBalances(groupId: string) {
         setDecryptedExpenses(decrypted)
         lastDecryptedRef.current = { key: expenseIds, withKey: true }
       } catch (error) {
-        console.warn('Failed to decrypt expenses for balance calculation:', error)
+        console.warn(
+          'Failed to decrypt expenses for balance calculation:',
+          error,
+        )
         setDecryptedExpenses(rawExpenses)
         lastDecryptedRef.current = { key: expenseIds, withKey: true }
       }
@@ -75,7 +85,8 @@ export function useBalances(groupId: string) {
     }
 
     const calculatedBalances = getBalances(decryptedExpenses)
-    const calculatedReimbursements = getSuggestedReimbursements(calculatedBalances)
+    const calculatedReimbursements =
+      getSuggestedReimbursements(calculatedBalances)
     const publicBalances = getPublicBalances(calculatedReimbursements)
 
     return {

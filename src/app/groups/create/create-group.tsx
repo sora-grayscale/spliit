@@ -41,7 +41,7 @@ export const CreateGroup = () => {
           // Derive key from password
           const passwordKey = await deriveKeyFromPassword(
             groupFormValues.password,
-            salt
+            salt,
           )
           passwordKeyBase64 = keyToBase64(passwordKey)
 
@@ -52,7 +52,7 @@ export const CreateGroup = () => {
           if (groupFormValues.passwordHint) {
             encryptedPasswordHint = await encrypt(
               groupFormValues.passwordHint,
-              urlKey // Use URL key to encrypt hint (so it can be shown before password entry)
+              urlKey, // Use URL key to encrypt hint (so it can be shown before password entry)
             )
           }
         }
@@ -61,7 +61,8 @@ export const CreateGroup = () => {
         const combinedKeyBase64 = keyToBase64(encryptionKey)
 
         // Prepare values for encryption (remove password field, add salt)
-        const { password, passwordHint, ...valuesWithoutPassword } = groupFormValues
+        const { password, passwordHint, ...valuesWithoutPassword } =
+          groupFormValues
         const valuesForEncryption = {
           ...valuesWithoutPassword,
           passwordSalt,
@@ -71,7 +72,7 @@ export const CreateGroup = () => {
         // Encrypt group data before sending to server
         const encryptedValues = await encryptGroupFormValues(
           valuesForEncryption,
-          encryptionKey
+          encryptionKey,
         )
 
         // Add password protection fields (not included by encryptGroupFormValues)
@@ -91,12 +92,18 @@ export const CreateGroup = () => {
         // This is done after group creation succeeds to avoid storing keys for failed creations
         try {
           // Save the combined key to localStorage (persistent)
-          localStorage.setItem(`${STORAGE_KEY_PREFIX}${groupId}`, combinedKeyBase64)
+          localStorage.setItem(
+            `${STORAGE_KEY_PREFIX}${groupId}`,
+            combinedKeyBase64,
+          )
 
           // If password was used, also save password-derived key to sessionStorage
           // This allows EncryptionProvider to verify the key combination
           if (passwordKeyBase64) {
-            sessionStorage.setItem(`${SESSION_PWD_KEY_PREFIX}${groupId}`, passwordKeyBase64)
+            sessionStorage.setItem(
+              `${SESSION_PWD_KEY_PREFIX}${groupId}`,
+              passwordKeyBase64,
+            )
           }
         } catch (error) {
           // Storage might be unavailable (private browsing, etc.)

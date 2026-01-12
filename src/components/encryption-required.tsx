@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Lock, ExternalLink } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 
@@ -37,9 +37,7 @@ export function EncryptionRequired({ groupId }: EncryptionRequiredProps) {
           </p>
           <div className="flex flex-col gap-2">
             <Button asChild variant="outline">
-              <Link href="/groups">
-                {t('required.backToGroups')}
-              </Link>
+              <Link href="/groups">{t('required.backToGroups')}</Link>
             </Button>
           </div>
         </CardContent>

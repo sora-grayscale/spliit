@@ -1,6 +1,9 @@
 'use client'
 
-import { RecentGroup, deleteRecentGroup } from '@/app/groups/recent-groups-helpers'
+import {
+  RecentGroup,
+  deleteRecentGroup,
+} from '@/app/groups/recent-groups-helpers'
 import { Button } from '@/components/ui/button'
 import { trpc } from '@/trpc/client'
 import { Loader2, RotateCcw, Trash2 } from 'lucide-react'
@@ -27,7 +30,8 @@ export function ScheduledDeletionCard({
   const [isPermanentlyDeleting, setIsPermanentlyDeleting] = useState(false)
 
   const { mutateAsync: restoreGroup } = trpc.groups.restore.useMutation()
-  const { mutateAsync: permanentDelete } = trpc.groups.permanentDelete.useMutation()
+  const { mutateAsync: permanentDelete } =
+    trpc.groups.permanentDelete.useMutation()
 
   // Calculate days remaining
   const deletedDate = new Date(deletedAt)
@@ -37,7 +41,9 @@ export function ScheduledDeletionCard({
   const now = new Date()
   const daysRemaining = Math.max(
     0,
-    Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    Math.ceil(
+      (expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+    ),
   )
 
   const handleRestore = async (e: React.MouseEvent) => {

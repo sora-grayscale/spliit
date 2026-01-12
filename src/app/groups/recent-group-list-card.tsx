@@ -73,10 +73,7 @@ export function RecentGroupListCard({
         className="h-fit w-full py-3 rounded-lg border bg-card shadow-sm"
         asChild
       >
-        <div
-          className="text-base"
-          onClick={() => router.push(groupUrl)}
-        >
+        <div className="text-base" onClick={() => router.push(groupUrl)}>
           <div className="w-full flex flex-col gap-1">
             <div className="text-base flex gap-2 justify-between">
               <Link

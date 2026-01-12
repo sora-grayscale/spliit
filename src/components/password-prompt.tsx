@@ -11,7 +11,13 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { base64ToKey, combineKeys, decrypt, deriveKeyFromPassword, keyToBase64 } from '@/lib/crypto'
+import {
+  base64ToKey,
+  combineKeys,
+  decrypt,
+  deriveKeyFromPassword,
+  keyToBase64,
+} from '@/lib/crypto'
 import { AlertCircle, Eye, EyeOff, KeyRound, Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
@@ -57,7 +63,7 @@ export function PasswordPrompt({
 
     // Clean old attempts
     const recentAttempts = attempts.filter(
-      (time) => now - time < RATE_LIMIT_WINDOW_MS
+      (time) => now - time < RATE_LIMIT_WINDOW_MS,
     )
     setAttempts(recentAttempts)
 
@@ -115,7 +121,10 @@ export function PasswordPrompt({
       localStorage.setItem(`spliit-e2ee-key-${groupId}`, keyBase64)
 
       // Also save password-derived key separately for session
-      sessionStorage.setItem(`spliit-pwd-key-${groupId}`, keyToBase64(passwordKey))
+      sessionStorage.setItem(
+        `spliit-pwd-key-${groupId}`,
+        keyToBase64(passwordKey),
+      )
 
       onSuccess(finalKey)
     } catch (err) {

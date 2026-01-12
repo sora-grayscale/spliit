@@ -5,9 +5,9 @@ import { TotalsYourSpendings } from '@/app/groups/[groupId]/stats/totals-your-sp
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUser, useBalances } from '@/lib/hooks'
 import {
-  getTotalGroupSpending,
   getTotalActiveUserPaidFor,
   getTotalActiveUserShare,
+  getTotalGroupSpending,
 } from '@/lib/totals'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { useMemo } from 'react'

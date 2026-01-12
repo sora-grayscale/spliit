@@ -5,8 +5,8 @@
  * The encryption key comes from the URL fragment and is never sent to the server.
  */
 
-import { encrypt, decrypt, encryptNumber, decryptNumber } from './crypto'
-import { GroupFormValues, ExpenseFormValues } from './schemas'
+import { decrypt, decryptNumber, encrypt, encryptNumber } from './crypto'
+import { ExpenseFormValues, GroupFormValues } from './schemas'
 
 // Type for expense data with encrypted amounts (stored in DB)
 export interface EncryptedExpenseData {
@@ -49,7 +49,7 @@ export interface DecryptedGroup {
  */
 export async function encryptGroupFormValues(
   values: GroupFormValues,
-  encryptionKey: Uint8Array
+  encryptionKey: Uint8Array,
 ): Promise<EncryptedGroupFormValues> {
   const encryptedName = await encrypt(values.name, encryptionKey)
   const encryptedInformation = values.information
@@ -60,7 +60,7 @@ export async function encryptGroupFormValues(
     values.participants.map(async (p) => ({
       id: p.id,
       name: await encrypt(p.name, encryptionKey),
-    }))
+    })),
   )
 
   return {
@@ -83,7 +83,7 @@ export async function decryptGroup<
     currency: string
     currencyCode: string | null
     participants: Array<{ id: string; name: string }>
-  }
+  },
 >(group: T, encryptionKey: Uint8Array): Promise<T> {
   try {
     const decryptedName = await decrypt(group.name, encryptionKey)
@@ -95,7 +95,7 @@ export async function decryptGroup<
       group.participants.map(async (p) => ({
         ...p,
         name: await decrypt(p.name, encryptionKey),
-      }))
+      })),
     )
 
     return {
@@ -127,7 +127,7 @@ export function looksEncrypted(value: string): boolean {
  */
 export async function encryptExpenseFormValues(
   values: ExpenseFormValues,
-  encryptionKey: Uint8Array
+  encryptionKey: Uint8Array,
 ): Promise<ExpenseFormValues> {
   const encryptedTitle = await encrypt(values.title, encryptionKey)
   const encryptedNotes = values.notes
@@ -135,28 +135,33 @@ export async function encryptExpenseFormValues(
     : undefined
 
   // Encrypt amount (convert to number first if needed, then encrypt)
-  const amountNum = typeof values.amount === 'string' ? parseFloat(values.amount) : values.amount
+  const amountNum =
+    typeof values.amount === 'string'
+      ? parseFloat(values.amount)
+      : values.amount
   const encryptedAmount = await encryptNumber(amountNum, encryptionKey)
 
   // Encrypt originalAmount if present
   let encryptedOriginalAmount: string | undefined
   if (values.originalAmount !== undefined && values.originalAmount !== '') {
-    const origAmountNum = typeof values.originalAmount === 'string'
-      ? parseFloat(values.originalAmount)
-      : values.originalAmount
+    const origAmountNum =
+      typeof values.originalAmount === 'string'
+        ? parseFloat(values.originalAmount)
+        : values.originalAmount
     encryptedOriginalAmount = await encryptNumber(origAmountNum, encryptionKey)
   }
 
   // Encrypt shares for each paidFor entry
   const encryptedPaidFor = await Promise.all(
     values.paidFor.map(async (pf) => {
-      const sharesNum = typeof pf.shares === 'string' ? parseFloat(pf.shares) : pf.shares
+      const sharesNum =
+        typeof pf.shares === 'string' ? parseFloat(pf.shares) : pf.shares
       const encryptedShares = await encryptNumber(sharesNum, encryptionKey)
       return {
         ...pf,
         shares: encryptedShares,
       }
-    })
+    }),
   )
 
   return {
@@ -179,16 +184,20 @@ export async function decryptExpense<
     notes?: string | null
     amount: string | number
     originalAmount?: string | number | null
-    paidFor?: Array<{ shares: string | number; participant?: { id: string; name: string } }>
-  }
+    paidFor?: Array<{
+      shares: string | number
+      participant?: { id: string; name: string }
+    }>
+  },
 >(expense: T, encryptionKey: Uint8Array): Promise<T> {
   try {
     const decryptedTitle = looksEncrypted(expense.title)
       ? await decrypt(expense.title, encryptionKey)
       : expense.title
-    const decryptedNotes = expense.notes && looksEncrypted(expense.notes)
-      ? await decrypt(expense.notes, encryptionKey)
-      : expense.notes
+    const decryptedNotes =
+      expense.notes && looksEncrypted(expense.notes)
+        ? await decrypt(expense.notes, encryptionKey)
+        : expense.notes
 
     // Decrypt amount
     let decryptedAmount: number
@@ -202,9 +211,18 @@ export async function decryptExpense<
 
     // Decrypt originalAmount if present
     let decryptedOriginalAmount: number | null = null
-    if (expense.originalAmount !== undefined && expense.originalAmount !== null) {
-      if (typeof expense.originalAmount === 'string' && looksEncrypted(expense.originalAmount)) {
-        decryptedOriginalAmount = await decryptNumber(expense.originalAmount, encryptionKey)
+    if (
+      expense.originalAmount !== undefined &&
+      expense.originalAmount !== null
+    ) {
+      if (
+        typeof expense.originalAmount === 'string' &&
+        looksEncrypted(expense.originalAmount)
+      ) {
+        decryptedOriginalAmount = await decryptNumber(
+          expense.originalAmount,
+          encryptionKey,
+        )
       } else if (typeof expense.originalAmount === 'string') {
         decryptedOriginalAmount = parseFloat(expense.originalAmount)
       } else {
@@ -224,7 +242,12 @@ export async function decryptExpense<
     const paidBy = (expense as Record<string, unknown>).paidBy as
       | { id: string; name: string }
       | undefined
-    if (paidBy && typeof paidBy === 'object' && 'name' in paidBy && looksEncrypted(paidBy.name)) {
+    if (
+      paidBy &&
+      typeof paidBy === 'object' &&
+      'name' in paidBy &&
+      looksEncrypted(paidBy.name)
+    ) {
       result.paidBy = {
         ...paidBy,
         name: await decrypt(paidBy.name, encryptionKey),
@@ -260,7 +283,7 @@ export async function decryptExpense<
             shares: decryptedShares,
             participant: decryptedParticipant,
           }
-        })
+        }),
       )
     }
 
@@ -280,8 +303,11 @@ export async function decryptExpenses<
     notes?: string | null
     amount: string | number
     originalAmount?: string | number | null
-    paidFor?: Array<{ shares: string | number; participant?: { id: string; name: string } }>
-  }
+    paidFor?: Array<{
+      shares: string | number
+      participant?: { id: string; name: string }
+    }>
+  },
 >(expenses: T[], encryptionKey: Uint8Array): Promise<T[]> {
   return Promise.all(expenses.map((e) => decryptExpense(e, encryptionKey)))
 }
@@ -292,7 +318,7 @@ export async function decryptExpenses<
 export async function decryptActivity<
   T extends {
     data: string | null
-  }
+  },
 >(activity: T, encryptionKey: Uint8Array): Promise<T> {
   if (!activity.data || !looksEncrypted(activity.data)) {
     return activity
@@ -315,7 +341,7 @@ export async function decryptActivity<
 export async function decryptActivities<
   T extends {
     data: string | null
-  }
+  },
 >(activities: T[], encryptionKey: Uint8Array): Promise<T[]> {
   return Promise.all(activities.map((a) => decryptActivity(a, encryptionKey)))
 }

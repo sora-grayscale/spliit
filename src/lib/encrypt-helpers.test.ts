@@ -2,15 +2,15 @@
  * @jest-environment jsdom
  */
 
+import { encrypt, generateMasterKey } from './crypto'
 import {
-  encryptGroupFormValues,
-  decryptGroup,
-  encryptExpenseFormValues,
   decryptExpense,
   decryptExpenses,
+  decryptGroup,
+  encryptExpenseFormValues,
+  encryptGroupFormValues,
   looksEncrypted,
 } from './encrypt-helpers'
-import { generateMasterKey, keyToBase64, base64ToKey, encrypt } from './crypto'
 
 describe('encrypt-helpers', () => {
   describe('looksEncrypted', () => {
@@ -127,7 +127,12 @@ describe('encrypt-helpers', () => {
         paidFor: [] as { participant: string; shares: number }[],
         paidBy: '1',
         isReimbursement: false,
-        documents: [] as { id: string; url: string; width: number; height: number }[],
+        documents: [] as {
+          id: string
+          url: string
+          width: number
+          height: number
+        }[],
         saveDefaultSplittingOptions: false,
         recurrenceRule: 'NONE' as const,
       }
@@ -143,7 +148,10 @@ describe('encrypt-helpers', () => {
       expect(encrypted.category).toBe(expenseFormValues.category)
 
       // Decrypt and verify (use type assertion since encrypted has different paidFor structure)
-      const decrypted = await decryptExpense(encrypted as unknown as Parameters<typeof decryptExpense>[0], key)
+      const decrypted = await decryptExpense(
+        encrypted as unknown as Parameters<typeof decryptExpense>[0],
+        key,
+      )
       expect(decrypted.title).toBe('Dinner')
       expect(decrypted.notes).toBe('Great restaurant')
       expect(decrypted.amount).toBe(50)
@@ -160,7 +168,12 @@ describe('encrypt-helpers', () => {
         paidFor: [] as { participant: string; shares: number }[],
         paidBy: '1',
         isReimbursement: false,
-        documents: [] as { id: string; url: string; width: number; height: number }[],
+        documents: [] as {
+          id: string
+          url: string
+          width: number
+          height: number
+        }[],
         saveDefaultSplittingOptions: false,
         recurrenceRule: 'NONE' as const,
       }
@@ -168,7 +181,10 @@ describe('encrypt-helpers', () => {
       const encrypted = await encryptExpenseFormValues(expenseFormValues, key)
       expect(encrypted.notes).toBeUndefined()
 
-      const decrypted = await decryptExpense(encrypted as unknown as Parameters<typeof decryptExpense>[0], key)
+      const decrypted = await decryptExpense(
+        encrypted as unknown as Parameters<typeof decryptExpense>[0],
+        key,
+      )
       expect(decrypted.title).toBe('Coffee')
       expect(decrypted.notes).toBeUndefined()
     })
@@ -180,8 +196,16 @@ describe('encrypt-helpers', () => {
 
       const expenses = [
         { title: await encrypt('Expense 1', key), notes: null, amount: 100 },
-        { title: await encrypt('Expense 2', key), notes: await encrypt('Note', key), amount: 200 },
-        { title: await encrypt('Expense 3', key), notes: undefined, amount: 300 },
+        {
+          title: await encrypt('Expense 2', key),
+          notes: await encrypt('Note', key),
+          amount: 200,
+        },
+        {
+          title: await encrypt('Expense 3', key),
+          notes: undefined,
+          amount: 300,
+        },
       ]
 
       const decrypted = await decryptExpenses(expenses, key)

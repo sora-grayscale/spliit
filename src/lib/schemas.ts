@@ -73,12 +73,20 @@ export const expenseFormSchema = z
       )
       .refine((amount) => {
         // Skip validation for encrypted strings (they start with special chars and are long)
-        if (typeof amount === 'string' && (amount.length > 20 || isNaN(Number(amount)))) return true
+        if (
+          typeof amount === 'string' &&
+          (amount.length > 20 || isNaN(Number(amount)))
+        )
+          return true
         const numAmount = typeof amount === 'string' ? Number(amount) : amount
         return numAmount != 0
       }, 'amountNotZero')
       .refine((amount) => {
-        if (typeof amount === 'string' && (amount.length > 20 || isNaN(Number(amount)))) return true
+        if (
+          typeof amount === 'string' &&
+          (amount.length > 20 || isNaN(Number(amount)))
+        )
+          return true
         const numAmount = typeof amount === 'string' ? Number(amount) : amount
         return numAmount <= 10_000_000_00
       }, 'amountTenMillion'),
@@ -91,13 +99,21 @@ export const expenseFormSchema = z
       .optional()
       .refine((amount) => {
         if (amount === undefined || amount === '') return true
-        if (typeof amount === 'string' && (amount.length > 20 || isNaN(Number(amount)))) return true
+        if (
+          typeof amount === 'string' &&
+          (amount.length > 20 || isNaN(Number(amount)))
+        )
+          return true
         const numAmount = typeof amount === 'string' ? Number(amount) : amount
         return numAmount != 0
       }, 'amountNotZero')
       .refine((amount) => {
         if (amount === undefined || amount === '') return true
-        if (typeof amount === 'string' && (amount.length > 20 || isNaN(Number(amount)))) return true
+        if (
+          typeof amount === 'string' &&
+          (amount.length > 20 || isNaN(Number(amount)))
+        )
+          return true
         const numAmount = typeof amount === 'string' ? Number(amount) : amount
         return numAmount <= 10_000_000_00
       }, 'amountTenMillion'),
@@ -124,10 +140,16 @@ export const expenseFormSchema = z
       .superRefine((paidFor, ctx) => {
         for (const { shares } of paidFor) {
           // Skip validation for encrypted strings (long and not parseable as numbers)
-          if (typeof shares === 'string' && (shares.length > 20 || isNaN(Number(shares.replace(/,/g, '.'))))) {
+          if (
+            typeof shares === 'string' &&
+            (shares.length > 20 || isNaN(Number(shares.replace(/,/g, '.'))))
+          ) {
             continue
           }
-          const shareNumber = typeof shares === 'string' ? Number(shares.replace(/,/g, '.')) : Number(shares)
+          const shareNumber =
+            typeof shares === 'string'
+              ? Number(shares.replace(/,/g, '.'))
+              : Number(shares)
           if (shareNumber <= 0) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
@@ -137,9 +159,10 @@ export const expenseFormSchema = z
         }
       }),
     splitMode: z
-      .enum<SplitMode, [SplitMode, ...SplitMode[]]>(
-        Object.values(SplitMode) as any,
-      )
+      .enum<
+        SplitMode,
+        [SplitMode, ...SplitMode[]]
+      >(Object.values(SplitMode) as any)
       .default('EVENLY'),
     saveDefaultSplittingOptions: z.boolean(),
     isReimbursement: z.boolean(),
@@ -155,19 +178,23 @@ export const expenseFormSchema = z
       .default([]),
     notes: z.string().optional(),
     recurrenceRule: z
-      .enum<RecurrenceRule, [RecurrenceRule, ...RecurrenceRule[]]>(
-        Object.values(RecurrenceRule) as any,
-      )
+      .enum<
+        RecurrenceRule,
+        [RecurrenceRule, ...RecurrenceRule[]]
+      >(Object.values(RecurrenceRule) as any)
       .default('NONE'),
   })
   .superRefine((expense, ctx) => {
     // Helper to check if a value looks encrypted (long string that's not a valid number)
     const isEncrypted = (val: string | number) =>
-      typeof val === 'string' && (val.length > 20 || isNaN(Number(val.replace(/,/g, '.'))))
+      typeof val === 'string' &&
+      (val.length > 20 || isNaN(Number(val.replace(/,/g, '.'))))
 
     // Skip validation if amounts are encrypted
     const amountIsEncrypted = isEncrypted(expense.amount)
-    const sharesAreEncrypted = expense.paidFor.some((pf) => isEncrypted(pf.shares))
+    const sharesAreEncrypted = expense.paidFor.some((pf) =>
+      isEncrypted(pf.shares),
+    )
 
     if (amountIsEncrypted || sharesAreEncrypted) {
       return // Skip numeric validations for encrypted data
@@ -215,7 +242,8 @@ export const expenseFormSchema = z
   .transform((expense) => {
     // Helper to check if a value looks encrypted
     const isEncrypted = (val: string | number) =>
-      typeof val === 'string' && (val.length > 20 || isNaN(Number(val.replace(/,/g, '.'))))
+      typeof val === 'string' &&
+      (val.length > 20 || isNaN(Number(val.replace(/,/g, '.'))))
 
     // If data is encrypted, don't transform - keep as-is for storage
     const amountIsEncrypted = isEncrypted(expense.amount)

@@ -172,14 +172,16 @@ src/app/groups/[groupId]/stats/totals.tsx  # Client-side stats with decryption
 ### Completed
 
 #### Rebrand to anon-spliit (Issue #7) - DONE
-- [x] New privacy-focused logo (shield with crossed-out eye)
+- [x] New privacy-focused logo (icon + CSS text approach)
+- [x] Small icon for header/footer (anon-spliit-small.png)
 - [x] Updated package.json with new name and metadata
-- [x] Updated meta tags (title, description, OG tags, Twitter)
+- [x] Updated meta tags (title, description, OG tags, Twitter @sora_grayscale)
 - [x] Updated manifest.ts for PWA
 - [x] Updated messages (en-US, ja-JP) with new branding
 - [x] New README.md with privacy features documentation
 - [x] LICENSE with proper attribution
 - [x] GitHub Sponsors link for donations
+- [x] Hero section with blur animation on landing page
 
 #### Password Protection (Issue #2) - DONE
 - [x] Schema: passwordSalt, passwordHint added to Group

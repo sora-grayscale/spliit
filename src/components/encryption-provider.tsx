@@ -169,7 +169,9 @@ export function EncryptionProvider({
     if (!groupId) return null
 
     try {
-      const keyBase64 = sessionStorage.getItem(`${SESSION_PWD_KEY_PREFIX}${groupId}`)
+      const keyBase64 = sessionStorage.getItem(
+        `${SESSION_PWD_KEY_PREFIX}${groupId}`,
+      )
       if (keyBase64) {
         return base64ToKey(keyBase64)
       }
@@ -180,14 +182,11 @@ export function EncryptionProvider({
   }, [])
 
   // Handle password entry success
-  const handlePasswordSuccess = useCallback(
-    (combinedKey: Uint8Array) => {
-      setEncryptionKey(combinedKey)
-      setNeedsPassword(false)
-      setError(null)
-    },
-    []
-  )
+  const handlePasswordSuccess = useCallback((combinedKey: Uint8Array) => {
+    setEncryptionKey(combinedKey)
+    setNeedsPassword(false)
+    setError(null)
+  }, [])
 
   // Read key from URL fragment on mount and handle missing key
   useEffect(() => {
@@ -327,7 +326,14 @@ export function EncryptionProvider({
 
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
-  }, [generateIfMissing, passwordSalt, passwordHint, readUrlKeyFromHash, restoreUrlKeyFromStorage, getSessionPasswordKey])
+  }, [
+    generateIfMissing,
+    passwordSalt,
+    passwordHint,
+    readUrlKeyFromHash,
+    restoreUrlKeyFromStorage,
+    getSessionPasswordKey,
+  ])
 
   // Also check hash periodically in case hashchange event didn't fire
   // This is mainly for non-password groups
@@ -368,7 +374,12 @@ export function EncryptionProvider({
     // Check again after a short delay (for navigation timing)
     const timer = setTimeout(checkHash, 100)
     return () => clearTimeout(timer)
-  }, [encryptionKey, passwordSalt, readUrlKeyFromHash, restoreUrlKeyFromStorage])
+  }, [
+    encryptionKey,
+    passwordSalt,
+    readUrlKeyFromHash,
+    restoreUrlKeyFromStorage,
+  ])
 
   const getKeyBase64 = useCallback(() => {
     if (!encryptionKey) return null
@@ -385,7 +396,7 @@ export function EncryptionProvider({
       if (!encryptionKey) throw new Error('No encryption key available')
       return encrypt(data, encryptionKey)
     },
-    [encryptionKey]
+    [encryptionKey],
   )
 
   const decryptString = useCallback(
@@ -393,7 +404,7 @@ export function EncryptionProvider({
       if (!encryptionKey) throw new Error('No encryption key available')
       return decrypt(encrypted, encryptionKey)
     },
-    [encryptionKey]
+    [encryptionKey],
   )
 
   const encryptNum = useCallback(
@@ -401,7 +412,7 @@ export function EncryptionProvider({
       if (!encryptionKey) throw new Error('No encryption key available')
       return encryptNumber(num, encryptionKey)
     },
-    [encryptionKey]
+    [encryptionKey],
   )
 
   const decryptNum = useCallback(
@@ -409,7 +420,7 @@ export function EncryptionProvider({
       if (!encryptionKey) throw new Error('No encryption key available')
       return decryptNumber(encrypted, encryptionKey)
     },
-    [encryptionKey]
+    [encryptionKey],
   )
 
   const encryptObj = useCallback(
@@ -417,7 +428,7 @@ export function EncryptionProvider({
       if (!encryptionKey) throw new Error('No encryption key available')
       return encryptObject(obj, encryptionKey)
     },
-    [encryptionKey]
+    [encryptionKey],
   )
 
   const decryptObj = useCallback(
@@ -425,7 +436,7 @@ export function EncryptionProvider({
       if (!encryptionKey) throw new Error('No encryption key available')
       return decryptObject<T>(encrypted, encryptionKey)
     },
-    [encryptionKey]
+    [encryptionKey],
   )
 
   const value = useMemo<EncryptionContextValue>(
@@ -461,7 +472,7 @@ export function EncryptionProvider({
       decryptNum,
       encryptObj,
       decryptObj,
-    ]
+    ],
   )
 
   // Get groupId for password prompt

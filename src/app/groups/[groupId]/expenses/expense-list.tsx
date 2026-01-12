@@ -131,7 +131,7 @@ const ExpenseListForSearch = ({
   // Memoize rawExpenses to avoid reference changes triggering infinite loops
   const rawExpenses = useMemo(
     () => data?.pages.flatMap((page) => page.expenses),
-    [data?.pages]
+    [data?.pages],
   )
   const hasMore = data?.pages.at(-1)?.hasMore ?? false
 
@@ -154,10 +154,11 @@ const ExpenseListForSearch = ({
   }, [rawExpenses, encryptionKey, isKeyLoading, hasKey])
 
   // Handle async decryption
-  const [decryptedExpenses, setDecryptedExpenses] = useState<
-    typeof rawExpenses
-  >(undefined)
-  const lastDecryptedRef = useRef<{ key: string; withKey: boolean } | null>(null)
+  const [decryptedExpenses, setDecryptedExpenses] =
+    useState<typeof rawExpenses>(undefined)
+  const lastDecryptedRef = useRef<{ key: string; withKey: boolean } | null>(
+    null,
+  )
 
   useEffect(() => {
     const expenseIds = rawExpenses?.map((e) => e.id).join(',') || ''
