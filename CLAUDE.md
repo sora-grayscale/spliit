@@ -6,7 +6,7 @@
 
 **anon-spliit** is a privacy-focused fork of [Spliit](https://github.com/spliit-app/spliit). All user data is **end-to-end encrypted (E2EE)** - the server never sees unencrypted data. The encryption key is stored in the URL fragment and never sent to the server.
 
-**Repository**: https://github.com/sora-grayscale/spliit
+**Repository**: https://github.com/sora-grayscale/anon-spliit
 **Twitter/X**: [@sora_grayscale](https://x.com/sora_grayscale)
 
 ## Architecture
@@ -111,7 +111,7 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 
 **Status**: DONE
 **Priority**: HIGH
-**Link**: https://github.com/sora-grayscale/spliit/issues/6
+**Link**: https://github.com/sora-grayscale/anon-spliit/issues/6
 
 - [x] Delete button with confirmation dialog (group name input required)
 - [x] Soft delete (sets `deletedAt` field)
@@ -126,7 +126,7 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 
 **Status**: DONE
 **Priority**: LOW
-**Link**: https://github.com/sora-grayscale/spliit/issues/10
+**Link**: https://github.com/sora-grayscale/anon-spliit/issues/10
 
 - [x] Environment variable configuration (`AUTO_DELETE_INACTIVE_DAYS`, `DELETE_GRACE_PERIOD_DAYS`, `CRON_SECRET`)
 - [x] Track last activity date per group (using Activity table)
@@ -140,7 +140,7 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 
 **Status**: DONE
 **Priority**: HIGH
-**Link**: https://github.com/sora-grayscale/spliit/issues/3
+**Link**: https://github.com/sora-grayscale/anon-spliit/issues/3
 
 - [x] Encrypt amounts on client before sending
 - [x] Decrypt on client for display/calculation
@@ -152,7 +152,7 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 
 **Status**: DONE
 **Priority**: HIGH
-**Link**: https://github.com/sora-grayscale/spliit/issues/19
+**Link**: https://github.com/sora-grayscale/anon-spliit/issues/19
 
 - [x] Encrypt category ID on client before sending
 - [x] Decrypt on client for display
@@ -165,7 +165,7 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 
 **Status**: DONE
 **Priority**: HIGH
-**Link**: https://github.com/sora-grayscale/spliit/issues/2
+**Link**: https://github.com/sora-grayscale/anon-spliit/issues/2
 
 - [x] Password-based key derivation (PBKDF2)
 - [x] Password prompt on first access
@@ -180,7 +180,7 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 
 **Status**: DONE
 **Priority**: LOW
-**Link**: https://github.com/sora-grayscale/spliit/issues/4
+**Link**: https://github.com/sora-grayscale/anon-spliit/issues/4
 
 - [x] Admin user with NextAuth.js authentication (Credentials provider)
 - [x] Initial admin creation via environment variables (ADMIN_EMAIL, ADMIN_PASSWORD)
@@ -199,7 +199,7 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 
 **Status**: TODO
 **Priority**: LOW
-**Link**: https://github.com/sora-grayscale/spliit/issues/5
+**Link**: https://github.com/sora-grayscale/anon-spliit/issues/5
 
 - Dockerfile for production build
 - docker-compose.yml with PostgreSQL
@@ -211,7 +211,7 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 
 **Status**: DONE
 **Priority**: LOW
-**Link**: https://github.com/sora-grayscale/spliit/issues/7
+**Link**: https://github.com/sora-grayscale/anon-spliit/issues/7
 
 - [x] Update app name and branding
 - [x] Update all links and references

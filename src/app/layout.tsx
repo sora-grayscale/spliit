@@ -176,7 +176,7 @@ function Content({
             {t('Footer.sponsor')}
           </a>
           <a
-            href="https://github.com/sora-grayscale/spliit"
+            href="https://github.com/sora-grayscale/anon-spliit"
             target="_blank"
             rel="noopener"
           >

@@ -83,8 +83,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/sora-grayscale/spliit.git
-cd spliit
+git clone https://github.com/sora-grayscale/anon-spliit.git
+cd anon-spliit
 
 # Start PostgreSQL
 ./scripts/start-local-db.sh
