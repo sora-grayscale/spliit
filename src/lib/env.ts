@@ -13,6 +13,15 @@ const envSchema = z
     AUTO_DELETE_INACTIVE_DAYS: z.coerce.number().int().min(0).default(90),
     DELETE_GRACE_PERIOD_DAYS: z.coerce.number().int().min(1).default(7),
     CRON_SECRET: z.string().optional(),
+    // Private Instance Mode (Issue #4)
+    PRIVATE_INSTANCE: z.preprocess(
+      interpretEnvVarAsBool,
+      z.boolean().default(false),
+    ),
+    ADMIN_EMAIL: z.string().email().optional(),
+    ADMIN_PASSWORD: z.string().optional(),
+    NEXTAUTH_SECRET: z.string().optional(),
+    NEXTAUTH_URL: z.string().url().optional(),
     NEXT_PUBLIC_BASE_URL: z
       .string()
       .optional()

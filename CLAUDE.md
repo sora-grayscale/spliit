@@ -36,6 +36,11 @@ src/components/password-prompt.tsx      # Password entry component with rate lim
 src/lib/hooks/use-group-url.ts # URL navigation with key preservation
 src/app/groups/[groupId]/stats/totals.tsx  # Client-side stats with decryption
 src/app/api/cron/auto-delete/route.ts  # Cron endpoint for auto-deletion
+src/lib/auth.ts                    # NextAuth.js configuration (Issue #4)
+src/middleware.ts                  # Route protection middleware (Issue #4)
+src/app/admin/                     # Admin dashboard (Issue #4)
+src/components/auth-provider.tsx   # NextAuth SessionProvider wrapper
+src/components/user-menu.tsx       # User dropdown menu component
 ```
 
 ## Development Rules
@@ -143,15 +148,17 @@ src/app/api/cron/auto-delete/route.ts  # Cron endpoint for auto-deletion
 ### Priority: LOW
 
 #### Issue #4: Private Instance Mode
-**Status**: TODO
+**Status**: DONE
 **Priority**: LOW
 **Link**: https://github.com/sora-grayscale/spliit/issues/4
 
-- Admin user with authentication
-- Whitelist-based access control
-- Shared users can view but not create groups
-- No auth required for shared group access
-- Self-hosted friendly
+- [x] Admin user with NextAuth.js authentication (Credentials provider)
+- [x] Initial admin creation via environment variables (ADMIN_EMAIL, ADMIN_PASSWORD)
+- [x] Whitelist-based access control (email-based)
+- [x] Admin dashboard for user management
+- [x] No auth required for shared group access (/groups/[groupId])
+- [x] PRIVATE_INSTANCE=false maintains current public behavior
+- [x] Self-hosted friendly
 
 #### Issue #5: Docker/Podman Deployment
 **Status**: TODO
@@ -223,6 +230,19 @@ src/app/api/cron/auto-delete/route.ts  # Cron endpoint for auto-deletion
 - [x] localStorage key persistence
 - [x] Error screen for missing encryption key
 
+#### Private Instance Mode (Issue #4) - DONE
+- [x] Prisma schema: Admin and WhitelistUser models
+- [x] NextAuth.js v5 (beta) with Credentials provider
+- [x] JWT-based session strategy
+- [x] bcryptjs password hashing (12 rounds)
+- [x] Middleware-based route protection
+- [x] Sign in/error pages
+- [x] Admin dashboard with stats and user management
+- [x] Whitelist user CRUD API endpoints
+- [x] Admin initialization API (/api/admin/init)
+- [x] UserMenu component in header (shows when authenticated)
+- [x] AuthProvider wrapper in layout
+
 ## Security Considerations
 
 ### Encryption
@@ -255,10 +275,12 @@ AUTO_DELETE_INACTIVE_DAYS=90     # Days of inactivity before auto-deletion (0 to
 DELETE_GRACE_PERIOD_DAYS=7       # Days before permanent deletion after soft-delete
 CRON_SECRET=                     # Secret for authenticating cron requests
 
-# Private Instance (Issue #4) - TODO
+# Private Instance (Issue #4)
 PRIVATE_INSTANCE=false           # Enable private instance mode
-ADMIN_EMAIL=admin@example.com    # Initial admin email
-REQUIRE_AUTH=false               # Require authentication for all users
+ADMIN_EMAIL=admin@example.com    # Initial admin email (required when PRIVATE_INSTANCE=true)
+ADMIN_PASSWORD=                  # Initial admin password (required when PRIVATE_INSTANCE=true)
+NEXTAUTH_SECRET=                 # NextAuth.js secret (required when PRIVATE_INSTANCE=true)
+NEXTAUTH_URL=http://localhost:3000  # NextAuth.js URL (required in production)
 ```
 
 ## Commands
