@@ -1,9 +1,6 @@
 'use client'
 import { useEncryption } from '@/components/encryption-provider'
-import {
-  decryptExpense,
-  encryptExpenseFormValues,
-} from '@/lib/encrypt-helpers'
+import { decryptExpense, encryptExpenseFormValues } from '@/lib/encrypt-helpers'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { trpc } from '@/trpc/client'
 import { useRouter } from 'next/navigation'
@@ -34,9 +31,8 @@ export function EditExpenseForm({
 
   const { encryptionKey, isLoading: isKeyLoading, hasKey } = useEncryption()
 
-  const [decryptedExpense, setDecryptedExpense] = useState<typeof expense>(
-    undefined
-  )
+  const [decryptedExpense, setDecryptedExpense] =
+    useState<typeof expense>(undefined)
   const lastDecryptedRef = useRef<{ id: string; withKey: boolean } | null>(null)
 
   // Decrypt expense when data and key are available

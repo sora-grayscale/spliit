@@ -1,11 +1,7 @@
 import dayjs from 'dayjs'
 import { useCallback, useEffect, useState } from 'react'
 import useSWR, { Fetcher } from 'swr'
-import {
-  base64ToKey,
-  generateMasterKey,
-  keyToBase64,
-} from './crypto'
+import { base64ToKey, generateMasterKey, keyToBase64 } from './crypto'
 
 export function useMediaQuery(query: string): boolean {
   const getMatches = (query: string): boolean => {

@@ -103,15 +103,16 @@ export function ActivityList() {
   // Memoize raw activities
   const rawActivities = useMemo(
     () => activitiesData?.pages.flatMap((page) => page.activities),
-    [activitiesData?.pages]
+    [activitiesData?.pages],
   )
   const hasMore = activitiesData?.pages.at(-1)?.hasMore ?? false
 
   // Decrypt activities
-  const [decryptedActivities, setDecryptedActivities] = useState<
-    typeof rawActivities
-  >(undefined)
-  const lastDecryptedRef = useRef<{ key: string; withKey: boolean } | null>(null)
+  const [decryptedActivities, setDecryptedActivities] =
+    useState<typeof rawActivities>(undefined)
+  const lastDecryptedRef = useRef<{ key: string; withKey: boolean } | null>(
+    null,
+  )
 
   useEffect(() => {
     const activityIds = rawActivities?.map((a) => a.id).join(',') || ''

@@ -2,10 +2,7 @@
 
 import { useEncryption } from '@/components/encryption-provider'
 import { GroupForm } from '@/components/group-form'
-import {
-  decryptGroup,
-  encryptGroupFormValues,
-} from '@/lib/encrypt-helpers'
+import { decryptGroup, encryptGroupFormValues } from '@/lib/encrypt-helpers'
 import { GroupFormValues } from '@/lib/schemas'
 import { trpc } from '@/trpc/client'
 import { useEffect, useRef, useState } from 'react'

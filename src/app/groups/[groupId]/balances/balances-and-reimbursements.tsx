@@ -23,7 +23,11 @@ export default function BalancesAndReimbursements() {
   const { groupId, group } = useCurrentGroup()
 
   // Use client-side balance calculation (supports encrypted amounts)
-  const { balances, reimbursements, isLoading: balancesAreLoading } = useBalances(groupId)
+  const {
+    balances,
+    reimbursements,
+    isLoading: balancesAreLoading,
+  } = useBalances(groupId)
 
   const t = useTranslations('Balances')
 

@@ -26,7 +26,8 @@ export function ShareButton({ group }: Props) {
   // Build URL with URL key hash if available (use urlKey for sharing, not combined key)
   const urlKeyBase64 = getUrlKeyBase64()
   const keyHash = urlKeyBase64 ? `#${urlKeyBase64}` : ''
-  const url = baseUrl && `${baseUrl}/groups/${group.id}/expenses?ref=share${keyHash}`
+  const url =
+    baseUrl && `${baseUrl}/groups/${group.id}/expenses?ref=share${keyHash}`
 
   return (
     <Popover>

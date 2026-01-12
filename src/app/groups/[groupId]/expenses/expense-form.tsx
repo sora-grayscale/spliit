@@ -112,7 +112,10 @@ const getDefaultSplittingOptions = (
   return {
     splitMode: parsedDefaultSplitMode.splitMode,
     paidFor: parsedDefaultSplitMode.paidFor.map((paidFor) => {
-      const numShares = typeof paidFor.shares === 'string' ? parseFloat(paidFor.shares) : paidFor.shares
+      const numShares =
+        typeof paidFor.shares === 'string'
+          ? parseFloat(paidFor.shares)
+          : paidFor.shares
       return {
         participant: paidFor.participant,
         shares: (numShares / 100).toString() as any, // Convert to string for consistent schema handling
@@ -199,7 +202,8 @@ export function ExpenseForm({
           category: expense.categoryId,
           paidBy: expense.paidById,
           paidFor: expense.paidFor.map(({ participantId, shares }) => {
-            const numShares = typeof shares === 'string' ? parseFloat(shares) : shares
+            const numShares =
+              typeof shares === 'string' ? parseFloat(shares) : shares
             return {
               participant: participantId,
               shares: (expense.splitMode === 'BY_AMOUNT'
@@ -215,64 +219,64 @@ export function ExpenseForm({
           recurrenceRule: expense.recurrenceRule ?? undefined,
         }
       : searchParams.get('reimbursement')
-      ? {
-          title: t('reimbursement'),
-          expenseDate: new Date(),
-          amount: amountAsDecimal(
-            Number(searchParams.get('amount')) || 0,
-            groupCurrency,
-          ),
-          originalCurrency: group.currencyCode,
-          originalAmount: undefined,
-          conversionRate: undefined,
-          category: 1, // category with Id 1 is Payment
-          paidBy: searchParams.get('from') ?? undefined,
-          paidFor: [
-            searchParams.get('to')
-              ? {
-                  participant: searchParams.get('to')!,
-                  shares: '1' as any, // String for consistent form handling
-                }
-              : undefined,
-          ],
-          isReimbursement: true,
-          splitMode: defaultSplittingOptions.splitMode,
-          saveDefaultSplittingOptions: false,
-          documents: [],
-          notes: '',
-          recurrenceRule: RecurrenceRule.NONE,
-        }
-      : {
-          title: searchParams.get('title') ?? '',
-          expenseDate: searchParams.get('date')
-            ? new Date(searchParams.get('date') as string)
-            : new Date(),
-          amount: Number(searchParams.get('amount')) || 0,
-          originalCurrency: group.currencyCode ?? undefined,
-          originalAmount: undefined,
-          conversionRate: undefined,
-          category: searchParams.get('categoryId')
-            ? Number(searchParams.get('categoryId'))
-            : 0, // category with Id 0 is General
-          // paid for all, split evenly
-          paidFor: defaultSplittingOptions.paidFor,
-          paidBy: getSelectedPayer(),
-          isReimbursement: false,
-          splitMode: defaultSplittingOptions.splitMode,
-          saveDefaultSplittingOptions: false,
-          documents: searchParams.get('imageUrl')
-            ? [
-                {
-                  id: randomId(),
-                  url: searchParams.get('imageUrl') as string,
-                  width: Number(searchParams.get('imageWidth')),
-                  height: Number(searchParams.get('imageHeight')),
-                },
-              ]
-            : [],
-          notes: '',
-          recurrenceRule: RecurrenceRule.NONE,
-        },
+        ? {
+            title: t('reimbursement'),
+            expenseDate: new Date(),
+            amount: amountAsDecimal(
+              Number(searchParams.get('amount')) || 0,
+              groupCurrency,
+            ),
+            originalCurrency: group.currencyCode,
+            originalAmount: undefined,
+            conversionRate: undefined,
+            category: 1, // category with Id 1 is Payment
+            paidBy: searchParams.get('from') ?? undefined,
+            paidFor: [
+              searchParams.get('to')
+                ? {
+                    participant: searchParams.get('to')!,
+                    shares: '1' as any, // String for consistent form handling
+                  }
+                : undefined,
+            ],
+            isReimbursement: true,
+            splitMode: defaultSplittingOptions.splitMode,
+            saveDefaultSplittingOptions: false,
+            documents: [],
+            notes: '',
+            recurrenceRule: RecurrenceRule.NONE,
+          }
+        : {
+            title: searchParams.get('title') ?? '',
+            expenseDate: searchParams.get('date')
+              ? new Date(searchParams.get('date') as string)
+              : new Date(),
+            amount: Number(searchParams.get('amount')) || 0,
+            originalCurrency: group.currencyCode ?? undefined,
+            originalAmount: undefined,
+            conversionRate: undefined,
+            category: searchParams.get('categoryId')
+              ? Number(searchParams.get('categoryId'))
+              : 0, // category with Id 0 is General
+            // paid for all, split evenly
+            paidFor: defaultSplittingOptions.paidFor,
+            paidBy: getSelectedPayer(),
+            isReimbursement: false,
+            splitMode: defaultSplittingOptions.splitMode,
+            saveDefaultSplittingOptions: false,
+            documents: searchParams.get('imageUrl')
+              ? [
+                  {
+                    id: randomId(),
+                    url: searchParams.get('imageUrl') as string,
+                    width: Number(searchParams.get('imageWidth')),
+                    height: Number(searchParams.get('imageHeight')),
+                  },
+                ]
+              : [],
+            notes: '',
+            recurrenceRule: RecurrenceRule.NONE,
+          },
   })
   const [isCategoryLoading, setCategoryLoading] = useState(false)
   const activeUserId = useActiveUser(group.id)
@@ -393,7 +397,10 @@ export function ExpenseForm({
   useEffect(() => {
     if (!form.getFieldState('originalAmount').isTouched) return
     const rawOriginalAmount = form.getValues('originalAmount')
-    const originalAmount = typeof rawOriginalAmount === 'string' ? parseFloat(rawOriginalAmount) : rawOriginalAmount ?? 0
+    const originalAmount =
+      typeof rawOriginalAmount === 'string'
+        ? parseFloat(rawOriginalAmount)
+        : (rawOriginalAmount ?? 0)
     const conversionRate = form.getValues('conversionRate')
 
     if (conversionRate && originalAmount) {
@@ -934,12 +941,12 @@ export function ExpenseForm({
                                                 'BY_PERCENTAGE'
                                                   ? Number(shares) * 100 // Convert percentage to basis points (e.g., 50% -> 5000)
                                                   : form.watch('splitMode') ===
-                                                    'BY_AMOUNT'
-                                                  ? amountAsMinorUnits(
-                                                      shares,
-                                                      groupCurrency,
-                                                    )
-                                                  : shares,
+                                                      'BY_AMOUNT'
+                                                    ? amountAsMinorUnits(
+                                                        shares,
+                                                        groupCurrency,
+                                                      )
+                                                    : shares,
                                               expenseId: '',
                                               participantId: '',
                                             }),

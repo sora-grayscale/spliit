@@ -23,7 +23,9 @@ export interface ExpenseForTotals {
 }
 
 export function getTotalGroupSpending(
-  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>> | ExpenseForTotals[],
+  expenses:
+    | NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>
+    | ExpenseForTotals[],
 ): number {
   return expenses.reduce(
     (total, expense) =>
@@ -34,7 +36,9 @@ export function getTotalGroupSpending(
 
 export function getTotalActiveUserPaidFor(
   activeUserId: string | null,
-  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>> | ExpenseForTotals[],
+  expenses:
+    | NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>
+    | ExpenseForTotals[],
 ): number {
   return expenses.reduce(
     (total, expense) =>
@@ -98,7 +102,9 @@ export function calculateShare(
 
 export function getTotalActiveUserShare(
   activeUserId: string | null,
-  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>> | ExpenseForTotals[],
+  expenses:
+    | NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>
+    | ExpenseForTotals[],
 ): number {
   const total = expenses.reduce(
     (sum, expense) => sum + calculateShare(activeUserId, expense),

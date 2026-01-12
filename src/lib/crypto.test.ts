@@ -4,16 +4,14 @@
  * which is available in browsers but limited in Jest/Node.js
  */
 
-import {
-  base64ToKey,
-  isEncrypted,
-  keyToBase64,
-} from './crypto'
+import { base64ToKey, isEncrypted, keyToBase64 } from './crypto'
 
 describe('crypto utilities', () => {
   describe('keyToBase64 and base64ToKey', () => {
     it('should convert key to base64 and back', () => {
-      const original = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])
+      const original = new Uint8Array([
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+      ])
       const base64 = keyToBase64(original)
       const restored = base64ToKey(base64)
 
@@ -22,7 +20,9 @@ describe('crypto utilities', () => {
 
     it('should produce URL-safe base64', () => {
       // Test with values that would produce + and / in standard base64
-      const key = new Uint8Array([62, 63, 62, 63, 62, 63, 62, 63, 62, 63, 62, 63, 62, 63, 62, 63])
+      const key = new Uint8Array([
+        62, 63, 62, 63, 62, 63, 62, 63, 62, 63, 62, 63, 62, 63, 62, 63,
+      ])
       const base64 = keyToBase64(key)
 
       // Should not contain +, /, or =
@@ -33,9 +33,14 @@ describe('crypto utilities', () => {
 
     it('should handle base64 with different padding scenarios', () => {
       const testCases = [
-        new Uint8Array([255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255]),
+        new Uint8Array([
+          255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+          255, 255,
+        ]),
         new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-        new Uint8Array([62, 63, 62, 63, 62, 63, 62, 63, 62, 63, 62, 63, 62, 63, 62, 63]),
+        new Uint8Array([
+          62, 63, 62, 63, 62, 63, 62, 63, 62, 63, 62, 63, 62, 63, 62, 63,
+        ]),
       ]
 
       for (const original of testCases) {
@@ -96,7 +101,9 @@ describe('crypto utilities', () => {
 
     it('should preserve all byte values 0-255', () => {
       // Test with a range of byte values
-      const key = new Uint8Array([0, 127, 128, 255, 1, 254, 2, 253, 64, 191, 32, 223, 16, 239, 8, 247])
+      const key = new Uint8Array([
+        0, 127, 128, 255, 1, 254, 2, 253, 64, 191, 32, 223, 16, 239, 8, 247,
+      ])
       const base64 = keyToBase64(key)
       const restored = base64ToKey(base64)
 

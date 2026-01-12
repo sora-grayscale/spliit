@@ -22,7 +22,7 @@ export function useGroupUrl() {
       }
       return path
     },
-    [getKeyBase64]
+    [getKeyBase64],
   )
 
   /**

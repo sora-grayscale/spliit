@@ -8,8 +8,7 @@
 // Check if we're in an environment with Web Crypto API
 // Works in browsers and in Node.js test environments with jsdom
 const isClient =
-  typeof globalThis !== 'undefined' &&
-  globalThis.crypto?.subtle !== undefined
+  typeof globalThis !== 'undefined' && globalThis.crypto?.subtle !== undefined
 
 /**
  * Generate a new random master key (128-bit)
@@ -52,19 +51,19 @@ export function base64ToKey(base64: string): Uint8Array {
  */
 export async function deriveKey(
   masterKey: Uint8Array,
-  purpose: 'data' | 'metadata' = 'data'
+  purpose: 'data' | 'metadata' = 'data',
 ): Promise<CryptoKey> {
   if (!isClient) {
     throw new Error('Crypto API not available')
   }
 
-  // Import the master key
+  // Import the master key - pass Uint8Array directly (accepted as BufferSource)
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    masterKey.buffer.slice(masterKey.byteOffset, masterKey.byteOffset + masterKey.byteLength),
+    new Uint8Array(masterKey),
     'HKDF',
     false,
-    ['deriveKey']
+    ['deriveKey'],
   )
 
   // Derive the actual encryption key
@@ -81,7 +80,7 @@ export async function deriveKey(
     keyMaterial,
     { name: 'AES-GCM', length: 128 },
     false,
-    ['encrypt', 'decrypt']
+    ['encrypt', 'decrypt'],
   )
 }
 
@@ -91,7 +90,7 @@ export async function deriveKey(
  */
 export async function encrypt(
   data: string,
-  masterKey: Uint8Array
+  masterKey: Uint8Array,
 ): Promise<string> {
   if (!isClient) {
     throw new Error('Crypto API not available')
@@ -104,7 +103,7 @@ export async function encrypt(
   const ciphertext = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     key,
-    encoded
+    encoded,
   )
 
   // Combine IV + ciphertext
@@ -120,7 +119,7 @@ export async function encrypt(
  */
 export async function decrypt(
   encryptedData: string,
-  masterKey: Uint8Array
+  masterKey: Uint8Array,
 ): Promise<string> {
   if (!isClient) {
     throw new Error('Crypto API not available')
@@ -136,7 +135,7 @@ export async function decrypt(
   const decrypted = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv },
     key,
-    ciphertext
+    ciphertext,
   )
 
   return new TextDecoder().decode(decrypted)
@@ -147,7 +146,7 @@ export async function decrypt(
  */
 export async function encryptNumber(
   num: number,
-  masterKey: Uint8Array
+  masterKey: Uint8Array,
 ): Promise<string> {
   return encrypt(num.toString(), masterKey)
 }
@@ -157,7 +156,7 @@ export async function encryptNumber(
  */
 export async function decryptNumber(
   encryptedData: string,
-  masterKey: Uint8Array
+  masterKey: Uint8Array,
 ): Promise<number> {
   const decrypted = await decrypt(encryptedData, masterKey)
   return parseInt(decrypted, 10)
@@ -168,7 +167,7 @@ export async function decryptNumber(
  */
 export async function encryptObject<T>(
   obj: T,
-  masterKey: Uint8Array
+  masterKey: Uint8Array,
 ): Promise<string> {
   return encrypt(JSON.stringify(obj), masterKey)
 }
@@ -178,7 +177,7 @@ export async function encryptObject<T>(
  */
 export async function decryptObject<T>(
   encryptedData: string,
-  masterKey: Uint8Array
+  masterKey: Uint8Array,
 ): Promise<T> {
   const decrypted = await decrypt(encryptedData, masterKey)
   return JSON.parse(decrypted) as T
@@ -258,7 +257,7 @@ export function generateSalt(): Uint8Array {
  */
 export async function deriveKeyFromPassword(
   password: string,
-  salt: Uint8Array
+  salt: Uint8Array,
 ): Promise<Uint8Array> {
   if (!isClient) {
     throw new Error('Crypto API not available')
@@ -271,19 +270,19 @@ export async function deriveKeyFromPassword(
     passwordBuffer,
     'PBKDF2',
     false,
-    ['deriveBits']
+    ['deriveBits'],
   )
 
   // Derive 128 bits (16 bytes) using PBKDF2
   const derivedBits = await crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
-      salt: salt.buffer.slice(salt.byteOffset, salt.byteOffset + salt.byteLength),
+      salt: new Uint8Array(salt),
       iterations: PBKDF2_ITERATIONS,
       hash: 'SHA-256',
     },
     keyMaterial,
-    128 // 128 bits = 16 bytes
+    128, // 128 bits = 16 bytes
   )
 
   return new Uint8Array(derivedBits)
@@ -344,9 +343,13 @@ export function generateSecurePassword(length: number = 16): string {
     password += allChars[randomBytes[i] % allChars.length]
   }
 
-  // Add ensured characters at random positions
-  for (const char of ensureChars) {
-    const pos = Math.floor(Math.random() * (password.length + 1))
+  // Add ensured characters at random positions using crypto
+  const positionBytes = crypto.getRandomValues(
+    new Uint8Array(ensureChars.length),
+  )
+  for (let i = 0; i < ensureChars.length; i++) {
+    const char = ensureChars[i]
+    const pos = positionBytes[i] % (password.length + 1)
     password = password.slice(0, pos) + char + password.slice(pos)
   }
 
@@ -367,13 +370,19 @@ export function validatePasswordStrength(password: string): {
     return { valid: false, message: 'Password must be at least 8 characters' }
   }
   if (password.length > 128) {
-    return { valid: false, message: 'Password must be less than 128 characters' }
+    return {
+      valid: false,
+      message: 'Password must be less than 128 characters',
+    }
   }
   if (!/[a-z]/.test(password)) {
     return { valid: false, message: 'Password must contain a lowercase letter' }
   }
   if (!/[A-Z]/.test(password)) {
-    return { valid: false, message: 'Password must contain an uppercase letter' }
+    return {
+      valid: false,
+      message: 'Password must contain an uppercase letter',
+    }
   }
   if (!/[0-9]/.test(password)) {
     return { valid: false, message: 'Password must contain a number' }

@@ -74,9 +74,10 @@ export async function createExpense(
       expenseDate: expenseFormValues.expenseDate,
       categoryId: expenseFormValues.category,
       amount: String(expenseFormValues.amount), // Convert to string for DB storage
-      originalAmount: expenseFormValues.originalAmount !== undefined
-        ? String(expenseFormValues.originalAmount)
-        : null,
+      originalAmount:
+        expenseFormValues.originalAmount !== undefined
+          ? String(expenseFormValues.originalAmount)
+          : null,
       originalCurrency: expenseFormValues.originalCurrency,
       conversionRate: expenseFormValues.conversionRate,
       title: expenseFormValues.title,
@@ -215,9 +216,10 @@ export async function updateExpense(
     data: {
       expenseDate: expenseFormValues.expenseDate,
       amount: String(expenseFormValues.amount), // Convert to string for DB storage
-      originalAmount: expenseFormValues.originalAmount !== undefined
-        ? String(expenseFormValues.originalAmount)
-        : null,
+      originalAmount:
+        expenseFormValues.originalAmount !== undefined
+          ? String(expenseFormValues.originalAmount)
+          : null,
       originalCurrency: expenseFormValues.originalCurrency,
       conversionRate: expenseFormValues.conversionRate,
       title: expenseFormValues.title,

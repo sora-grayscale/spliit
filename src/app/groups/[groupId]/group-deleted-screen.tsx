@@ -1,5 +1,6 @@
 'use client'
 
+import { deleteRecentGroup } from '@/app/groups/recent-groups-helpers'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -19,7 +20,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { deleteRecentGroup } from '@/app/groups/recent-groups-helpers'
 import { trpc } from '@/trpc/client'
 import { Loader2, RotateCcw, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
@@ -48,7 +48,8 @@ export function GroupDeletedScreen({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const { mutateAsync: restoreGroup } = trpc.groups.restore.useMutation()
-  const { mutateAsync: permanentDelete } = trpc.groups.permanentDelete.useMutation()
+  const { mutateAsync: permanentDelete } =
+    trpc.groups.permanentDelete.useMutation()
 
   // Calculate days remaining
   const deletedDate = new Date(deletedAt)
@@ -58,7 +59,9 @@ export function GroupDeletedScreen({
   const now = new Date()
   const daysRemaining = Math.max(
     0,
-    Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    Math.ceil(
+      (expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+    ),
   )
 
   const handleRestore = async () => {
@@ -129,7 +132,10 @@ export function GroupDeletedScreen({
             )}
           </Button>
 
-          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <Dialog
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+          >
             <DialogTrigger asChild>
               <Button
                 variant="outline"

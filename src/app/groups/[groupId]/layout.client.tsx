@@ -60,7 +60,8 @@ function GroupLayoutInner({
       // Check if we need to re-decrypt (different group or encryption state changed)
       const shouldDecryptWithKey = hasKey && encryptionKey !== null
       const alreadyDecrypted = lastDecryptedRef.current?.id === group.id
-      const keyStateMatches = lastDecryptedRef.current?.withKey === shouldDecryptWithKey
+      const keyStateMatches =
+        lastDecryptedRef.current?.withKey === shouldDecryptWithKey
 
       if (alreadyDecrypted && keyStateMatches) {
         return // Already decrypted with same key state
@@ -114,7 +115,7 @@ function GroupLayoutInner({
       isLoading || !decryptedGroup
         ? { isLoading: true as const, groupId, group: undefined }
         : { isLoading: false as const, groupId, group: decryptedGroup },
-    [isLoading, decryptedGroup, groupId]
+    [isLoading, decryptedGroup, groupId],
   )
 
   // Show encryption required screen
@@ -156,9 +157,10 @@ export function GroupLayoutClient({
   children,
 }: PropsWithChildren<{ groupId: string }>) {
   // Fetch group data to check for password protection
-  const { data: groupData, isLoading: isGroupLoading } = trpc.groups.get.useQuery({
-    groupId,
-  })
+  const { data: groupData, isLoading: isGroupLoading } =
+    trpc.groups.get.useQuery({
+      groupId,
+    })
 
   // Wait for group data to check for password protection
   if (isGroupLoading) {
