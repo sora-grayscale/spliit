@@ -1,7 +1,14 @@
 {
-  "name": "spliit2",
-  "version": "0.1.0",
+  "name": "anon-spliit",
+  "version": "1.0.0",
+  "description": "Anonymous bill splitting with end-to-end encryption. A privacy-focused fork of Spliit.",
   "private": true,
+  "author": "sora-grayscale",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sora-grayscale/spliit"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -4,9 +4,10 @@
 
 ## Project Overview
 
-anon-spliit is a privacy-focused fork of Spliit. All user data is **end-to-end encrypted (E2EE)** - the server never sees unencrypted data. The encryption key is stored in the URL fragment and never sent to the server.
+**anon-spliit** is a privacy-focused fork of [Spliit](https://github.com/spliit-app/spliit) by Sebastien Castiel. All user data is **end-to-end encrypted (E2EE)** - the server never sees unencrypted data. The encryption key is stored in the URL fragment and never sent to the server.
 
 **Repository**: https://github.com/sora-grayscale/spliit
+**Twitter/X**: [@sora_grayscale](https://x.com/sora_grayscale)
 
 ## Architecture
 
@@ -158,17 +159,27 @@ src/app/groups/[groupId]/stats/totals.tsx  # Client-side stats with decryption
 - Podman compatibility
 
 #### Issue #7: Rebrand to anon-spliit
-**Status**: TODO
+**Status**: DONE
 **Priority**: LOW
 **Link**: https://github.com/sora-grayscale/spliit/issues/7
 
-- Update app name and branding
-- Update all links and references
-- Add donation/sustainability links
-- Update documentation
-- Proper attribution to original project
+- [x] Update app name and branding
+- [x] Update all links and references
+- [x] Add donation/sustainability links (GitHub Sponsors)
+- [x] Update documentation
+- [x] Proper attribution to original project
 
 ### Completed
+
+#### Rebrand to anon-spliit (Issue #7) - DONE
+- [x] New privacy-focused logo (shield with crossed-out eye)
+- [x] Updated package.json with new name and metadata
+- [x] Updated meta tags (title, description, OG tags, Twitter)
+- [x] Updated manifest.ts for PWA
+- [x] Updated messages (en-US, ja-JP) with new branding
+- [x] New README.md with privacy features documentation
+- [x] LICENSE with proper attribution
+- [x] GitHub Sponsors link for donations
 
 #### Password Protection (Issue #2) - DONE
 - [x] Schema: passwordSalt, passwordHint added to Group

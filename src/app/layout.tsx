@@ -18,33 +18,33 @@ import './globals.css'
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_BASE_URL),
   title: {
-    default: 'Spliit · Share Expenses with Friends & Family',
-    template: '%s · Spliit',
+    default: 'anon-spliit · Anonymous Bill Splitting with E2EE',
+    template: '%s · anon-spliit',
   },
   description:
-    'Spliit is a minimalist web application to share expenses with friends and family. No ads, no account, no problem.',
+    'anon-spliit is a privacy-focused bill splitting app with end-to-end encryption. Your data stays private - the server never sees unencrypted information.',
   openGraph: {
-    title: 'Spliit · Share Expenses with Friends & Family',
+    title: 'anon-spliit · Anonymous Bill Splitting with E2EE',
     description:
-      'Spliit is a minimalist web application to share expenses with friends and family. No ads, no account, no problem.',
+      'Privacy-focused bill splitting with end-to-end encryption. No ads, no accounts, no data exposure.',
     images: `/banner.png`,
     type: 'website',
     url: '/',
   },
   twitter: {
     card: 'summary_large_image',
-    creator: '@scastiel',
-    site: '@scastiel',
+    creator: '@sora_grayscale',
+    site: '@sora_grayscale',
     images: `/banner.png`,
-    title: 'Spliit · Share Expenses with Friends & Family',
+    title: 'anon-spliit · Anonymous Bill Splitting with E2EE',
     description:
-      'Spliit is a minimalist web application to share expenses with friends and family. No ads, no account, no problem.',
+      'Privacy-focused bill splitting with end-to-end encryption. No ads, no accounts, no data exposure.',
   },
   appleWebApp: {
     capable: true,
-    title: 'Spliit',
+    title: 'anon-spliit',
   },
-  applicationName: 'Spliit',
+  applicationName: 'anon-spliit',
   icons: [
     {
       url: '/android-chrome-192x192.png',
@@ -72,14 +72,18 @@ function Content({ children }: { children: React.ReactNode }) {
           className="flex items-center gap-2 hover:scale-105 transition-transform"
           href="/"
         >
-          <h1>
+          <h1 className="flex items-center gap-1">
             <Image
-              src="/logo-with-text.png"
-              className="m-1 h-auto w-auto"
-              width={(35 * 522) / 180}
-              height={35}
-              alt="Spliit"
+              src="/anon-spliit-small.png"
+              className="h-10 w-auto"
+              width={73}
+              height={40}
+              alt="anon-spliit icon"
+              unoptimized
             />
+            <span className="font-bold tracking-tight text-lg text-primary">
+              anon spliit
+            </span>
           </h1>
         </Link>
         <div role="navigation" aria-label="Menu" className="flex">
@@ -109,28 +113,41 @@ function Content({ children }: { children: React.ReactNode }) {
       <footer className="sm:p-8 md:p-16 sm:mt-16 sm:text-sm md:text-base md:mt-32 bg-slate-50 dark:bg-card border-t p-6 mt-8 flex flex-col sm:flex-row sm:justify-between gap-4 text-xs [&_a]:underline">
         <div className="flex flex-col space-y-2">
           <div className="sm:text-lg font-semibold text-base flex space-x-2 items-center">
-            <Link className="flex items-center gap-2" href="/">
+            <Link className="flex items-center gap-1" href="/">
               <Image
-                src="/logo-with-text.png"
-                className="m-1 h-auto w-auto"
-                width={(35 * 522) / 180}
-                height={35}
-                alt="Spliit"
+                src="/anon-spliit-small.png"
+                className="h-8 w-auto"
+                width={58}
+                height={32}
+                alt="anon-spliit icon"
+                unoptimized
               />
+              <span className="font-bold tracking-tight text-primary">
+                anon spliit
+              </span>
             </Link>
           </div>
-          <div className="flex flex-col space-y a--no-underline-text-white">
-            <span>{t('Footer.madeIn')}</span>
+          <div className="flex flex-col space-y-1">
+            <span>{t('Footer.tagline')}</span>
             <span>
-              {t.rich('Footer.builtBy', {
+              {t.rich('Footer.forkedFrom', {
+                original: (txt) => (
+                  <a href="https://spliit.app" target="_blank" rel="noopener">
+                    {txt}
+                  </a>
+                ),
                 author: (txt) => (
                   <a href="https://scastiel.dev" target="_blank" rel="noopener">
                     {txt}
                   </a>
                 ),
-                source: (txt) => (
+              })}
+            </span>
+            <span>
+              {t.rich('Footer.maintainedBy', {
+                maintainer: (txt) => (
                   <a
-                    href="https://github.com/spliit-app/spliit/graphs/contributors"
+                    href="https://github.com/sora-grayscale"
                     target="_blank"
                     rel="noopener"
                   >
@@ -140,6 +157,24 @@ function Content({ children }: { children: React.ReactNode }) {
               })}
             </span>
           </div>
+        </div>
+        <div className="flex flex-col space-y-2">
+          <span className="font-semibold">{t('Footer.support')}</span>
+          <a
+            href="https://github.com/sponsors/sora-grayscale"
+            target="_blank"
+            rel="noopener"
+            className="flex items-center gap-1"
+          >
+            {t('Footer.sponsor')}
+          </a>
+          <a
+            href="https://github.com/sora-grayscale/spliit"
+            target="_blank"
+            rel="noopener"
+          >
+            GitHub
+          </a>
         </div>
       </footer>
       <Toaster />
@@ -156,7 +191,7 @@ export default async function RootLayout({
   const messages = await getMessages()
   return (
     <html lang={locale} suppressHydrationWarning>
-      <ApplePwaSplash icon="/logo-with-text.png" color="#027756" />
+      <ApplePwaSplash icon="/anon-spliit.png" color="#027756" />
       <body className="min-h-[100dvh] flex flex-col items-stretch bg-slate-50 bg-opacity-30 dark:bg-background">
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider
