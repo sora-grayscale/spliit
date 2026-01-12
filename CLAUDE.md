@@ -84,15 +84,19 @@ src/lib/hooks/use-group-url.ts # URL navigation with key preservation
 ### Priority: HIGH
 
 #### Issue #6: Group Deletion
-**Status**: TODO
+**Status**: DONE
 **Priority**: HIGH
 **Link**: https://github.com/sora-grayscale/spliit/issues/6
 
-- Delete button with confirmation dialog
-- Grace period before permanent deletion (configurable)
-- Auto-delete inactive groups (optional, configurable)
-- Soft delete with recovery option during grace period
-- Clear user feedback on deletion status
+- [x] Delete button with confirmation dialog (group name input required)
+- [x] Soft delete (sets `deletedAt` field)
+- [x] Grace period display (7 days before permanent deletion)
+- [x] Deleted group screen with restore/permanent delete options
+- [x] Days remaining countdown
+- [x] "Scheduled for deletion" section in groups list
+- [x] Auto-cleanup of permanently deleted groups from localStorage
+- [x] Share button includes encryption key in URL
+- [ ] Auto-delete inactive groups (optional, configurable) - future enhancement
 
 #### Issue #3: Amount Encryption (Complete E2EE)
 **Status**: TODO

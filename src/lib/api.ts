@@ -148,6 +148,7 @@ export async function getGroups(groupIds: string[]) {
   ).map((group) => ({
     ...group,
     createdAt: group.createdAt.toISOString(),
+    deletedAt: group.deletedAt?.toISOString() ?? null,
   }))
 }
 
@@ -281,6 +282,45 @@ export async function updateExpense(
       },
       notes: expenseFormValues.notes,
     },
+  })
+}
+
+export async function deleteGroup(groupId: string) {
+  const existingGroup = await getGroup(groupId)
+  if (!existingGroup) throw new Error('Invalid group ID')
+
+  return prisma.group.update({
+    where: { id: groupId },
+    data: {
+      deletedAt: new Date(),
+    },
+  })
+}
+
+export async function restoreGroup(groupId: string) {
+  const existingGroup = await prisma.group.findUnique({
+    where: { id: groupId },
+  })
+  if (!existingGroup) throw new Error('Invalid group ID')
+  if (!existingGroup.deletedAt) throw new Error('Group is not deleted')
+
+  return prisma.group.update({
+    where: { id: groupId },
+    data: {
+      deletedAt: null,
+    },
+  })
+}
+
+export async function permanentlyDeleteGroup(groupId: string) {
+  const existingGroup = await prisma.group.findUnique({
+    where: { id: groupId },
+  })
+  if (!existingGroup) throw new Error('Invalid group ID')
+
+  // Cascade delete will handle related records
+  return prisma.group.delete({
+    where: { id: groupId },
   })
 }
 

@@ -10,6 +10,7 @@ import { GroupFormValues } from '@/lib/schemas'
 import { trpc } from '@/trpc/client'
 import { useEffect, useRef, useState } from 'react'
 import { useCurrentGroup } from '../current-group-context'
+import { DeleteGroupButton } from './delete-group-button'
 
 export const EditGroup = () => {
   const { groupId } = useCurrentGroup()
@@ -75,22 +76,28 @@ export const EditGroup = () => {
   if (isLoading) return <></>
 
   return (
-    <GroupForm
-      group={decryptedGroup?.group}
-      onSubmit={async (groupFormValues, participantId) => {
-        // Encrypt group data if encryption key is available
-        const dataToSend = encryptionKey
-          ? await encryptGroupFormValues(groupFormValues, encryptionKey)
-          : groupFormValues
+    <div className="flex flex-col gap-6">
+      <GroupForm
+        group={decryptedGroup?.group}
+        onSubmit={async (groupFormValues, participantId) => {
+          // Encrypt group data if encryption key is available
+          const dataToSend = encryptionKey
+            ? await encryptGroupFormValues(groupFormValues, encryptionKey)
+            : groupFormValues
 
-        await mutateAsync({
-          groupId,
-          participantId,
-          groupFormValues: dataToSend as GroupFormValues,
-        })
-        await utils.groups.invalidate()
-      }}
-      protectedParticipantIds={decryptedGroup?.participantsWithExpenses}
-    />
+          await mutateAsync({
+            groupId,
+            participantId,
+            groupFormValues: dataToSend as GroupFormValues,
+          })
+          await utils.groups.invalidate()
+        }}
+        protectedParticipantIds={decryptedGroup?.participantsWithExpenses}
+      />
+
+      <div className="border-t pt-6">
+        <DeleteGroupButton />
+      </div>
+    </div>
   )
 }

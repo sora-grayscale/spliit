@@ -1,5 +1,6 @@
 'use client'
 import { CopyButton } from '@/components/copy-button'
+import { useEncryption } from '@/components/encryption-provider'
 import { ShareUrlButton } from '@/components/share-url-button'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +21,13 @@ type Props = {
 export function ShareButton({ group }: Props) {
   const t = useTranslations('Share')
   const baseUrl = useBaseUrl()
-  const url = baseUrl && `${baseUrl}/groups/${group.id}/expenses?ref=share`
+  const { encryptionKey } = useEncryption()
+
+  // Build URL with encryption key hash if available
+  const keyHash = encryptionKey
+    ? `#${btoa(String.fromCharCode(...Array.from(encryptionKey)))}`
+    : ''
+  const url = baseUrl && `${baseUrl}/groups/${group.id}/expenses?ref=share${keyHash}`
 
   return (
     <Popover>

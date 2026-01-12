@@ -63,6 +63,12 @@
     "archive": "Archive group",
     "unarchive": "Unarchive group",
     "removeRecent": "Remove from recent groups",
+    "scheduledDeletion": "Scheduled for deletion",
+    "ScheduledDeletion": {
+      "daysRemaining": "{count, plural, =0 {Expires today} =1 {1 day left} other {# days left}}",
+      "restore": "Restore",
+      "deleteNow": "Delete now"
+    },
     "RecentRemovedToast": {
       "title": "Group has been removed",
       "description": "The group was removed from your recent groups list.",
@@ -126,6 +132,16 @@
       "create": "Create",
       "creating": "Creating…",
       "cancel": "Cancel"
+    },
+    "Delete": {
+      "button": "Delete this group",
+      "title": "Delete group?",
+      "description": "All expenses, participants, and activity history will be deleted.",
+      "gracePeriodNotice": "The group will be recoverable for {days} days before being permanently deleted.",
+      "confirmLabel": "Type \"{name}\" to confirm:",
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "deleting": "Deleting…"
     }
   },
   "ExpenseForm": {
@@ -342,6 +358,19 @@
   },
   "Settings": {
     "title": "Settings"
+  },
+  "GroupDeleted": {
+    "title": "Group Deleted",
+    "description": "The group \"{name}\" has been marked for deletion.",
+    "daysRemaining": "{count, plural, =0 {Expires today} =1 {1 day remaining} other {# days remaining}}",
+    "restore": "Restore Group",
+    "restoring": "Restoring…",
+    "deleteNow": "Delete Permanently",
+    "permanentDeleteTitle": "Delete Permanently?",
+    "permanentDeleteDescription": "This will immediately and permanently delete the group. This action cannot be undone.",
+    "cancel": "Cancel",
+    "confirmDelete": "Delete Forever",
+    "deleting": "Deleting…"
   },
   "Share": {
     "title": "Share",

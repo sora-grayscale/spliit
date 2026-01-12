@@ -1,7 +1,9 @@
 'use client'
 import { AddGroupByUrlButton } from '@/app/groups/add-group-by-url-button'
 import {
+  RecentGroup,
   RecentGroups,
+  deleteRecentGroup,
   getArchivedGroups,
   getRecentGroups,
   getStarredGroups,
@@ -10,11 +12,12 @@ import { Button } from '@/components/ui/button'
 import { getGroups } from '@/lib/api'
 import { trpc } from '@/trpc/client'
 import { AppRouterOutput } from '@/trpc/routers/_app'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { PropsWithChildren, useEffect, useState } from 'react'
 import { RecentGroupListCard } from './recent-group-list-card'
+import { ScheduledDeletionCard } from './scheduled-deletion-card'
 
 export type RecentGroupsState =
   | { status: 'pending' }
@@ -36,15 +39,33 @@ function sortGroups({
   groups,
   starredGroups,
   archivedGroups,
+  groupDetails,
 }: {
   groups: RecentGroups
   starredGroups: string[]
   archivedGroups: string[]
+  groupDetails?: AppRouterOutput['groups']['list']['groups']
 }) {
   const starredGroupInfo = []
   const groupInfo = []
   const archivedGroupInfo = []
+  const scheduledDeletionInfo: Array<{
+    group: RecentGroup
+    deletedAt: string
+  }> = []
+
   for (const group of groups) {
+    const detail = groupDetails?.find((d) => d.id === group.id)
+
+    // Check if group is scheduled for deletion
+    if (detail?.deletedAt) {
+      scheduledDeletionInfo.push({
+        group,
+        deletedAt: detail.deletedAt,
+      })
+      continue
+    }
+
     if (starredGroups.includes(group.id)) {
       starredGroupInfo.push(group)
     } else if (archivedGroups.includes(group.id)) {
@@ -57,6 +78,7 @@ function sortGroups({
     starredGroupInfo,
     groupInfo,
     archivedGroupInfo,
+    scheduledDeletionInfo,
   }
 }
 
@@ -107,6 +129,21 @@ function RecentGroupList_({
     groupIds: groups.map((group) => group.id),
   })
 
+  // Remove groups from localStorage that no longer exist in DB
+  useEffect(() => {
+    if (!data || isLoading) return
+
+    const existingGroupIds = new Set(data.groups.map((g) => g.id))
+    const groupsToRemove = groups.filter((g) => !existingGroupIds.has(g.id))
+
+    if (groupsToRemove.length > 0) {
+      groupsToRemove.forEach((group) => {
+        deleteRecentGroup(group)
+      })
+      refreshGroupsFromStorage()
+    }
+  }, [data, isLoading, groups, refreshGroupsFromStorage])
+
   if (isLoading || !data) {
     return (
       <GroupsPage reload={refreshGroupsFromStorage}>
@@ -134,11 +171,13 @@ function RecentGroupList_({
     )
   }
 
-  const { starredGroupInfo, groupInfo, archivedGroupInfo } = sortGroups({
-    groups,
-    starredGroups,
-    archivedGroups,
-  })
+  const { starredGroupInfo, groupInfo, archivedGroupInfo, scheduledDeletionInfo } =
+    sortGroups({
+      groups,
+      starredGroups,
+      archivedGroups,
+      groupDetails: data.groups,
+    })
 
   return (
     <GroupsPage reload={refreshGroupsFromStorage}>
@@ -180,6 +219,25 @@ function RecentGroupList_({
               refreshGroupsFromStorage={refreshGroupsFromStorage}
             />
           </div>
+        </>
+      )}
+
+      {scheduledDeletionInfo.length > 0 && (
+        <>
+          <h2 className="mt-6 mb-2 text-destructive flex items-center gap-2">
+            <Trash2 className="w-4 h-4" />
+            {t('scheduledDeletion')}
+          </h2>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {scheduledDeletionInfo.map(({ group, deletedAt }) => (
+              <ScheduledDeletionCard
+                key={group.id}
+                group={group}
+                deletedAt={deletedAt}
+                refreshGroupsFromStorage={refreshGroupsFromStorage}
+              />
+            ))}
+          </ul>
         </>
       )}
     </GroupsPage>
