@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sora-grayscale/spliit"
+    "url": "https://github.com/sora-grayscale/anon-spliit"
   },
   "scripts": {
     "dev": "next dev",

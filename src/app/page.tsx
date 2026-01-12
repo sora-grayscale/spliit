@@ -29,7 +29,7 @@ export default function HomePage() {
                 <Link href="/groups">{t('Homepage.button.groups')}</Link>
               </Button>
               <Button asChild variant="secondary">
-                <Link href="https://github.com/sora-grayscale/spliit">
+                <Link href="https://github.com/sora-grayscale/anon-spliit">
                   <Github className="w-4 h-4 mr-2" />
                   {t('Homepage.button.github')}
                 </Link>
