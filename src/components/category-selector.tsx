@@ -176,7 +176,7 @@ function CategoryLabel({ category }: { category: Category }) {
   const t = useTranslations('Categories')
   return (
     <div className="flex items-center gap-3">
-      <CategoryIcon category={category} className="w-4 h-4" />
+      <CategoryIcon categoryId={category.id} className="w-4 h-4" />
       {t(`${category.grouping}.${category.name}`)}
     </div>
   )

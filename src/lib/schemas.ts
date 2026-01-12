@@ -62,7 +62,8 @@ export const expenseFormSchema = z
   .object({
     expenseDate: z.coerce.date(),
     title: z.string({ required_error: 'titleRequired' }).min(2, 'min2'),
-    category: z.coerce.number().default(0),
+    // Category can be number (form input) or encrypted string (Issue #19 - E2EE)
+    category: z.union([z.number(), z.string()]).default(0),
     amount: z
       .union(
         [

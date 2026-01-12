@@ -123,7 +123,7 @@ export function looksEncrypted(value: string): boolean {
 
 /**
  * Encrypt expense form values before sending to server
- * This encrypts title, notes, amount, originalAmount, and shares
+ * This encrypts title, notes, category, amount, originalAmount, and shares
  */
 export async function encryptExpenseFormValues(
   values: ExpenseFormValues,
@@ -133,6 +133,13 @@ export async function encryptExpenseFormValues(
   const encryptedNotes = values.notes
     ? await encrypt(values.notes, encryptionKey)
     : undefined
+
+  // Encrypt category (Issue #19 - E2EE for categories)
+  const categoryNum =
+    typeof values.category === 'string'
+      ? parseInt(values.category, 10)
+      : values.category
+  const encryptedCategory = await encryptNumber(categoryNum, encryptionKey)
 
   // Encrypt amount (convert to number first if needed, then encrypt)
   const amountNum =
@@ -168,6 +175,7 @@ export async function encryptExpenseFormValues(
     ...values,
     title: encryptedTitle,
     notes: encryptedNotes,
+    category: encryptedCategory as unknown as number, // Type assertion for schema compatibility
     amount: encryptedAmount as unknown as number, // Type assertion for schema compatibility
     originalAmount: encryptedOriginalAmount as unknown as number | undefined,
     paidFor: encryptedPaidFor as unknown as ExpenseFormValues['paidFor'],
@@ -176,12 +184,13 @@ export async function encryptExpenseFormValues(
 
 /**
  * Decrypt expense data received from server
- * This decrypts title, notes, amount, originalAmount, and shares
+ * This decrypts title, notes, category, amount, originalAmount, and shares
  */
 export async function decryptExpense<
   T extends {
     title: string
     notes?: string | null
+    categoryId?: string | number // Can be encrypted string or legacy integer
     amount: string | number
     originalAmount?: string | number | null
     paidFor?: Array<{
@@ -198,6 +207,26 @@ export async function decryptExpense<
       expense.notes && looksEncrypted(expense.notes)
         ? await decrypt(expense.notes, encryptionKey)
         : expense.notes
+
+    // Decrypt category (Issue #19 - E2EE for categories)
+    let decryptedCategoryId: number | undefined
+    if (expense.categoryId !== undefined) {
+      if (
+        typeof expense.categoryId === 'string' &&
+        looksEncrypted(expense.categoryId)
+      ) {
+        decryptedCategoryId = await decryptNumber(
+          expense.categoryId,
+          encryptionKey,
+        )
+      } else if (typeof expense.categoryId === 'string') {
+        // Legacy: plain number as string (e.g., "0", "1")
+        decryptedCategoryId = parseInt(expense.categoryId, 10)
+      } else {
+        // Legacy: plain number
+        decryptedCategoryId = expense.categoryId
+      }
+    }
 
     // Decrypt amount
     let decryptedAmount: number
@@ -234,6 +263,7 @@ export async function decryptExpense<
       ...expense,
       title: decryptedTitle,
       notes: decryptedNotes,
+      categoryId: decryptedCategoryId,
       amount: decryptedAmount,
       originalAmount: decryptedOriginalAmount,
     }
@@ -301,6 +331,7 @@ export async function decryptExpenses<
   T extends {
     title: string
     notes?: string | null
+    categoryId?: string | number
     amount: string | number
     originalAmount?: string | number | null
     paidFor?: Array<{

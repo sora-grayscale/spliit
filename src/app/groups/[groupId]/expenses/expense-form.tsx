@@ -670,7 +670,8 @@ export function ExpenseForm({
                   <CategorySelector
                     categories={categories}
                     defaultValue={
-                      form.watch(field.name) // may be overwritten externally
+                      // Convert to number (can be encrypted string or number from form)
+                      Number(form.watch(field.name)) || 0
                     }
                     onValueChange={field.onChange}
                     isLoading={isCategoryLoading}

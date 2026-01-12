@@ -143,18 +143,21 @@ describe('encrypt-helpers', () => {
       expect(encrypted.title).not.toBe(expenseFormValues.title)
       expect(encrypted.notes).not.toBe(expenseFormValues.notes)
       expect(encrypted.amount).not.toBe(expenseFormValues.amount) // Amount is also encrypted
-
-      // Check that non-sensitive values are preserved
-      expect(encrypted.category).toBe(expenseFormValues.category)
+      expect(encrypted.category).not.toBe(expenseFormValues.category) // Category is also encrypted (Issue #19)
 
       // Decrypt and verify (use type assertion since encrypted has different paidFor structure)
       const decrypted = await decryptExpense(
-        encrypted as unknown as Parameters<typeof decryptExpense>[0],
+        // Add categoryId for decryption (Issue #19)
+        {
+          ...(encrypted as unknown as Parameters<typeof decryptExpense>[0]),
+          categoryId: encrypted.category,
+        },
         key,
       )
       expect(decrypted.title).toBe('Dinner')
       expect(decrypted.notes).toBe('Great restaurant')
       expect(decrypted.amount).toBe(50)
+      expect(decrypted.categoryId).toBe(1) // Category is decrypted back to number (Issue #19)
     })
 
     it('should handle expense without notes', async () => {
@@ -217,6 +220,89 @@ describe('encrypt-helpers', () => {
     })
   })
 
+  describe('category encryption (Issue #19)', () => {
+    it('should encrypt and decrypt category', async () => {
+      const key = generateMasterKey()
+      const expenseFormValues = {
+        title: 'Groceries',
+        amount: 100,
+        expenseDate: new Date('2024-01-15'),
+        category: 9, // Groceries category
+        splitMode: 'EVENLY' as const,
+        paidFor: [] as { participant: string; shares: number }[],
+        paidBy: '1',
+        isReimbursement: false,
+        documents: [] as {
+          id: string
+          url: string
+          width: number
+          height: number
+        }[],
+        saveDefaultSplittingOptions: false,
+        recurrenceRule: 'NONE' as const,
+      }
+
+      const encrypted = await encryptExpenseFormValues(expenseFormValues, key)
+
+      // Category should be encrypted (not equal to original number)
+      expect(encrypted.category).not.toBe(expenseFormValues.category)
+      expect(typeof encrypted.category).toBe('string')
+
+      // Decrypt with categoryId field
+      const decrypted = await decryptExpense(
+        {
+          title: encrypted.title,
+          amount: encrypted.amount,
+          categoryId: encrypted.category as unknown as string,
+        },
+        key,
+      )
+
+      // Category should be decrypted back to original number
+      expect(decrypted.categoryId).toBe(9)
+    })
+
+    it('should handle all category IDs (0-42)', async () => {
+      const key = generateMasterKey()
+
+      // Test a few category IDs from different groupings
+      const categoryIds = [0, 8, 17, 25, 35, 42]
+
+      for (const categoryId of categoryIds) {
+        const expenseFormValues = {
+          title: 'Test',
+          amount: 10,
+          expenseDate: new Date('2024-01-15'),
+          category: categoryId,
+          splitMode: 'EVENLY' as const,
+          paidFor: [] as { participant: string; shares: number }[],
+          paidBy: '1',
+          isReimbursement: false,
+          documents: [] as {
+            id: string
+            url: string
+            width: number
+            height: number
+          }[],
+          saveDefaultSplittingOptions: false,
+          recurrenceRule: 'NONE' as const,
+        }
+
+        const encrypted = await encryptExpenseFormValues(expenseFormValues, key)
+        const decrypted = await decryptExpense(
+          {
+            title: encrypted.title,
+            amount: encrypted.amount,
+            categoryId: encrypted.category as unknown as string,
+          },
+          key,
+        )
+
+        expect(decrypted.categoryId).toBe(categoryId)
+      }
+    })
+  })
+
   describe('backward compatibility', () => {
     it('should handle unencrypted legacy data', async () => {
       const key = generateMasterKey()
@@ -234,6 +320,38 @@ describe('encrypt-helpers', () => {
       expect(decrypted.title).toBe('Plain text title')
       expect(decrypted.notes).toBe('Plain text notes')
       expect(decrypted.amount).toBe(50)
+    })
+
+    it('should handle legacy categoryId as plain number', async () => {
+      const key = generateMasterKey()
+
+      // Simulate legacy expense with plain categoryId (number)
+      const legacyExpense = {
+        title: 'Plain text title',
+        amount: 50,
+        categoryId: 5, // Plain number (legacy format)
+      }
+
+      const decrypted = await decryptExpense(legacyExpense, key)
+
+      // Should preserve categoryId as number
+      expect(decrypted.categoryId).toBe(5)
+    })
+
+    it('should handle legacy categoryId as plain string', async () => {
+      const key = generateMasterKey()
+
+      // Simulate legacy expense with plain categoryId string (e.g., from DB conversion)
+      const legacyExpense = {
+        title: 'Plain text title',
+        amount: 50,
+        categoryId: '10', // Plain number as string (legacy format)
+      }
+
+      const decrypted = await decryptExpense(legacyExpense, key)
+
+      // Should parse and return as number
+      expect(decrypted.categoryId).toBe(10)
     })
   })
 })

@@ -19,7 +19,7 @@ export async function GET(
           createdAt: true,
           expenseDate: true,
           title: true,
-          category: { select: { grouping: true, name: true } },
+          categoryId: true, // Encrypted category ID (Issue #19 - E2EE)
           amount: true,
           originalAmount: true,
           originalCurrency: true,
