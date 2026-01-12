@@ -1,7 +1,7 @@
 {
   "Homepage": {
-    "title": "友達や家族と<strong>費用</strong>を<strong>分担</strong>しよう",
-    "description": "新しい<strong>Spliit</strong>インスタンスへようこそ！",
+    "title": "<strong>プライベート</strong>に<strong>費用</strong>を分担",
+    "description": "<strong>anon-spliit</strong>へようこそ - エンドツーエンド暗号化による匿名の割り勘アプリ",
     "button": {
       "groups": "グループへ移動",
       "github": "GitHub"
@@ -11,8 +11,11 @@
     "groups": "グループ"
   },
   "Footer": {
-    "madeIn": "モントリオール、ケベック 🇨🇦 で製作",
-    "builtBy": "<author>Sebastien Castiel</author>と<source>貢献者</source>によって構築"
+    "tagline": "E2EEによる匿名の割り勘",
+    "forkedFrom": "<author>Sebastien Castiel</author>の<original>Spliit</original>からフォーク",
+    "maintainedBy": "<maintainer>sora-grayscale</maintainer>がメンテナンス",
+    "support": "サポート",
+    "sponsor": "GitHubでスポンサー"
   },
   "Expenses": {
     "title": "支出",
