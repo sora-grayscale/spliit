@@ -38,9 +38,16 @@ export default async function AdminPage() {
       email: true,
       name: true,
       createdAt: true,
+      twoFactorEnabled: true,
     },
     orderBy: { createdAt: 'desc' },
     take: 10,
+  })
+
+  // Get current user's 2FA status
+  const currentAdmin = await prisma.admin.findUnique({
+    where: { email: session.user.email },
+    select: { twoFactorEnabled: true },
   })
 
   // Get whitelist users (only select necessary fields for security)
@@ -71,6 +78,7 @@ export default async function AdminPage() {
         createdAt: u.createdAt.toISOString(),
       }))}
       currentUserEmail={session.user.email}
+      is2FAEnabled={currentAdmin?.twoFactorEnabled ?? false}
     />
   )
 }
