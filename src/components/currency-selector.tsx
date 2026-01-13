@@ -8,7 +8,12 @@ import {
   CommandInput,
   CommandItem,
 } from '@/components/ui/command'
-import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer'
 import {
   Popover,
   PopoverContent,
@@ -81,6 +86,7 @@ export function CurrencySelector({
         />
       </DrawerTrigger>
       <DrawerContent className="p-0">
+        <DrawerTitle className="sr-only">Select currency</DrawerTitle>
         <CurrencyCommand
           currencies={currencies}
           onValueChange={(id) => {
