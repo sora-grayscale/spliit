@@ -79,6 +79,18 @@ const envSchema = z
       z.boolean().default(false),
     ),
     OPENAI_API_KEY: z.preprocess(emptyStringToUndefined, z.string().optional()),
+    // Two-Factor Authentication (2FA)
+    TWO_FA_ENCRYPTION_KEY: z.preprocess(
+      emptyStringToUndefined,
+      z
+        .string()
+        .length(
+          64,
+          'TWO_FA_ENCRYPTION_KEY must be exactly 64 hex characters (256 bits)',
+        )
+        .regex(/^[0-9a-fA-F]+$/, 'TWO_FA_ENCRYPTION_KEY must be a hex string')
+        .optional(),
+    ),
   })
   .superRefine((env, ctx) => {
     if (

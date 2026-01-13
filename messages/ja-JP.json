@@ -517,5 +517,59 @@
       "medium": "普通のパスワード",
       "strong": "強いパスワード"
     }
+  },
+  "TwoFactorAuth": {
+    "verify": {
+      "title": "2段階認証",
+      "description": "認証アプリの6桁のコードを入力してください",
+      "codeLabel": "認証コード",
+      "codeHint": "認証アプリに表示されているコードを入力",
+      "submit": "認証",
+      "verifying": "認証中...",
+      "useBackupCode": "バックアップコードを使用",
+      "errors": {
+        "invalidLength": "コードは6桁である必要があります",
+        "verificationFailed": "無効なコードです。再度お試しください。",
+        "networkError": "ネットワークエラー。再度お試しください。"
+      }
+    },
+    "backup": {
+      "title": "バックアップコードを使用",
+      "description": "本人確認のためバックアップコードを入力してください",
+      "codeLabel": "バックアップコード",
+      "codeHint": "8文字のバックアップコードを入力",
+      "submit": "認証",
+      "verifying": "認証中...",
+      "useAuthenticator": "認証アプリを使用",
+      "warning": {
+        "title": "1回限り使用可能",
+        "description": "このバックアップコードは使用後に無効になり、再利用できません。"
+      },
+      "errors": {
+        "invalidLength": "コードは8文字である必要があります",
+        "verificationFailed": "無効なバックアップコードです。再度お試しください。",
+        "networkError": "ネットワークエラー。再度お試しください。"
+      }
+    },
+    "setup": {
+      "title": "2段階認証",
+      "description": "アカウントにセキュリティを追加します",
+      "enable": "2FAを有効化",
+      "disable": "2FAを無効化",
+      "enabled": "2FAは有効です",
+      "disabled": "2FAは無効です",
+      "qrCode": "認証アプリでこのQRコードをスキャンしてください",
+      "manualEntry": "または、このコードを手動で入力:",
+      "backupCodes": "バックアップコード",
+      "backupCodesDescription": "これらのコードを安全な場所に保存してください。各コードは1回のみ使用できます。",
+      "copySecret": "シークレットをコピー",
+      "copyBackupCodes": "すべてのコードをコピー",
+      "copied": "コピーしました！",
+      "verificationCode": "認証コード",
+      "verifyAndEnable": "認証して2FAを有効化",
+      "disableWarning": "2FAを無効にすると、アカウントのセキュリティが低下します。",
+      "password": "パスワード",
+      "currentCode": "現在の2FAコード"
+    }
   }
 }

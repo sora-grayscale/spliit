@@ -518,5 +518,59 @@
       "medium": "Medium password",
       "strong": "Strong password"
     }
+  },
+  "TwoFactorAuth": {
+    "verify": {
+      "title": "Two-Factor Authentication",
+      "description": "Enter the 6-digit code from your authenticator app",
+      "codeLabel": "Verification Code",
+      "codeHint": "Enter the code displayed in your authenticator app",
+      "submit": "Verify",
+      "verifying": "Verifying...",
+      "useBackupCode": "Use a backup code instead",
+      "errors": {
+        "invalidLength": "Code must be 6 digits",
+        "verificationFailed": "Invalid code. Please try again.",
+        "networkError": "Network error. Please try again."
+      }
+    },
+    "backup": {
+      "title": "Use Backup Code",
+      "description": "Enter one of your backup codes to verify your identity",
+      "codeLabel": "Backup Code",
+      "codeHint": "Enter an 8-character backup code",
+      "submit": "Verify",
+      "verifying": "Verifying...",
+      "useAuthenticator": "Use authenticator app instead",
+      "warning": {
+        "title": "One-time use",
+        "description": "This backup code will be consumed after use and cannot be used again."
+      },
+      "errors": {
+        "invalidLength": "Code must be 8 characters",
+        "verificationFailed": "Invalid backup code. Please try again.",
+        "networkError": "Network error. Please try again."
+      }
+    },
+    "setup": {
+      "title": "Two-Factor Authentication",
+      "description": "Add an extra layer of security to your account",
+      "enable": "Enable 2FA",
+      "disable": "Disable 2FA",
+      "enabled": "2FA is enabled",
+      "disabled": "2FA is disabled",
+      "qrCode": "Scan this QR code with your authenticator app",
+      "manualEntry": "Or enter this code manually:",
+      "backupCodes": "Backup Codes",
+      "backupCodesDescription": "Save these codes in a safe place. Each code can only be used once.",
+      "copySecret": "Copy secret",
+      "copyBackupCodes": "Copy all codes",
+      "copied": "Copied!",
+      "verificationCode": "Verification Code",
+      "verifyAndEnable": "Verify and Enable 2FA",
+      "disableWarning": "Disabling 2FA will reduce the security of your account.",
+      "password": "Password",
+      "currentCode": "Current 2FA Code"
+    }
   }
 }

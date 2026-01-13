@@ -27,6 +27,7 @@ import {
   Copy,
   Key,
   RotateCcw,
+  Shield,
   Trash2,
   UserPlus,
   Users,
@@ -35,6 +36,7 @@ import { signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { TwoFactorSetup } from './two-factor-setup'
 
 interface AdminDashboardProps {
   stats: {
@@ -55,6 +57,7 @@ interface AdminDashboardProps {
     createdAt: string
   }>
   currentUserEmail: string
+  is2FAEnabled: boolean
 }
 
 interface UserCredentials {
@@ -68,6 +71,7 @@ export function AdminDashboard({
   admins,
   whitelistUsers,
   currentUserEmail,
+  is2FAEnabled,
 }: AdminDashboardProps) {
   const router = useRouter()
   const [newUserEmail, setNewUserEmail] = useState('')
@@ -493,6 +497,25 @@ export function AdminDashboard({
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* Two-Factor Authentication Settings */}
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Two-Factor Authentication
+          </CardTitle>
+          <CardDescription>
+            Add an extra layer of security to your admin account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TwoFactorSetup
+            is2FAEnabled={is2FAEnabled}
+            onStatusChange={() => router.refresh()}
+          />
         </CardContent>
       </Card>
     </div>

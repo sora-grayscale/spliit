@@ -1,0 +1,120 @@
+/**
+ * 2FA Verify Setup API (Issue #4)
+ *
+ * Verifies the TOTP token during 2FA setup and enables 2FA for the user.
+ */
+
+import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { decryptSecret, verifyTOTP } from '@/lib/two-factor'
+import { NextResponse } from 'next/server'
+
+export async function POST(request: Request) {
+  try {
+    // 1. Check if user is authenticated
+    const session = await auth()
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // 2. Accept { token } in request body
+    const body = (await request.json()) as {
+      token?: string
+    }
+    const { token } = body
+
+    if (!token) {
+      return NextResponse.json({ error: 'Token is required' }, { status: 400 })
+    }
+
+    // Validate token format (6 digits)
+    if (!/^\d{6}$/.test(token)) {
+      return NextResponse.json(
+        { error: 'Token must be 6 digits' },
+        { status: 400 },
+      )
+    }
+
+    const userId = session.user.id
+    const isAdmin = session.user.isAdmin
+
+    // 3. Get user's twoFactorSecret from database
+    let twoFactorSecret: string | null = null
+    let twoFactorEnabled: boolean = false
+
+    if (isAdmin) {
+      const admin = await prisma.admin.findUnique({
+        where: { id: userId },
+        select: { twoFactorSecret: true, twoFactorEnabled: true },
+      })
+      twoFactorSecret = admin?.twoFactorSecret ?? null
+      twoFactorEnabled = admin?.twoFactorEnabled ?? false
+    } else {
+      const whitelistUser = await prisma.whitelistUser.findUnique({
+        where: { id: userId },
+        select: { twoFactorSecret: true, twoFactorEnabled: true },
+      })
+      twoFactorSecret = whitelistUser?.twoFactorSecret ?? null
+      twoFactorEnabled = whitelistUser?.twoFactorEnabled ?? false
+    }
+
+    // Check if 2FA is already enabled
+    if (twoFactorEnabled) {
+      return NextResponse.json(
+        { error: '2FA is already enabled' },
+        { status: 400 },
+      )
+    }
+
+    // Check if secret exists (setup must be initiated first)
+    if (!twoFactorSecret) {
+      return NextResponse.json(
+        { error: '2FA setup not initiated. Please start setup first.' },
+        { status: 400 },
+      )
+    }
+
+    // 4. Decrypt the secret and verify the TOTP token
+    let decryptedSecret: string
+    try {
+      decryptedSecret = decryptSecret(twoFactorSecret)
+    } catch {
+      return NextResponse.json(
+        { error: 'Failed to decrypt 2FA secret' },
+        { status: 500 },
+      )
+    }
+
+    const isValidToken = verifyTOTP(decryptedSecret, token)
+
+    if (!isValidToken) {
+      return NextResponse.json(
+        { error: 'Invalid token. Please try again.' },
+        { status: 400 },
+      )
+    }
+
+    // 5. If valid, set twoFactorEnabled=true
+    if (isAdmin) {
+      await prisma.admin.update({
+        where: { id: userId },
+        data: { twoFactorEnabled: true },
+      })
+    } else {
+      await prisma.whitelistUser.update({
+        where: { id: userId },
+        data: { twoFactorEnabled: true },
+      })
+    }
+
+    // 6. Return { success: true }
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error verifying 2FA setup:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 },
+    )
+  }
+}
