@@ -10,6 +10,36 @@
 const isClient =
   typeof globalThis !== 'undefined' && globalThis.crypto?.subtle !== undefined
 
+// ============================================================
+// Derived Key Cache (Performance optimization)
+// ============================================================
+
+/**
+ * Cache for derived CryptoKeys to avoid repeated HKDF operations
+ * Key format: `${base64MasterKey}:${purpose}`
+ * Stores Promise to handle concurrent requests efficiently
+ */
+const derivedKeyCache = new Map<string, Promise<CryptoKey>>()
+
+/**
+ * Maximum cache size to prevent memory leaks in long-running sessions
+ */
+const MAX_CACHE_SIZE = 100
+
+/**
+ * Generate cache key from master key and purpose
+ */
+function getCacheKey(masterKey: Uint8Array, purpose: string): string {
+  return `${keyToBase64(masterKey)}:${purpose}`
+}
+
+/**
+ * Clear the derived key cache (useful for testing or key rotation)
+ */
+export function clearDerivedKeyCache(): void {
+  derivedKeyCache.clear()
+}
+
 /**
  * Generate a new random master key (128-bit)
  */
@@ -48,6 +78,7 @@ export function base64ToKey(base64: string): Uint8Array {
 
 /**
  * Derive an encryption key from the master key using HKDF
+ * Uses caching to avoid repeated HKDF operations for the same key
  */
 export async function deriveKey(
   masterKey: Uint8Array,
@@ -57,31 +88,61 @@ export async function deriveKey(
     throw new Error('Crypto API not available')
   }
 
-  // Import the master key - pass Uint8Array directly (accepted as BufferSource)
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    new Uint8Array(masterKey),
-    'HKDF',
-    false,
-    ['deriveKey'],
-  )
+  // Check cache first
+  const cacheKey = getCacheKey(masterKey, purpose)
+  const cached = derivedKeyCache.get(cacheKey)
+  if (cached) {
+    return cached
+  }
 
-  // Derive the actual encryption key
-  const info = new TextEncoder().encode(`spliit-e2ee-${purpose}`)
-  const salt = new Uint8Array(16) // Zero salt (key is already random)
+  // Prevent memory leaks by limiting cache size
+  if (derivedKeyCache.size >= MAX_CACHE_SIZE) {
+    // Remove oldest entry (first entry in Map)
+    const firstKey = derivedKeyCache.keys().next().value
+    if (firstKey) {
+      derivedKeyCache.delete(firstKey)
+    }
+  }
 
-  return crypto.subtle.deriveKey(
-    {
-      name: 'HKDF',
-      hash: 'SHA-256',
-      salt,
-      info,
-    },
-    keyMaterial,
-    { name: 'AES-GCM', length: 128 },
-    false,
-    ['encrypt', 'decrypt'],
-  )
+  // Create derivation promise and cache it immediately
+  // This handles concurrent requests efficiently
+  const derivationPromise = (async () => {
+    // Import the master key - pass Uint8Array directly (accepted as BufferSource)
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      new Uint8Array(masterKey),
+      'HKDF',
+      false,
+      ['deriveKey'],
+    )
+
+    // Derive the actual encryption key
+    const info = new TextEncoder().encode(`spliit-e2ee-${purpose}`)
+    const salt = new Uint8Array(16) // Zero salt (key is already random)
+
+    return crypto.subtle.deriveKey(
+      {
+        name: 'HKDF',
+        hash: 'SHA-256',
+        salt,
+        info,
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 128 },
+      false,
+      ['encrypt', 'decrypt'],
+    )
+  })()
+
+  // Cache the promise
+  derivedKeyCache.set(cacheKey, derivationPromise)
+
+  // If derivation fails, remove from cache
+  derivationPromise.catch(() => {
+    derivedKeyCache.delete(cacheKey)
+  })
+
+  return derivationPromise
 }
 
 /**

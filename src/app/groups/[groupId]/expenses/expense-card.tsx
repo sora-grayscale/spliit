@@ -10,7 +10,7 @@ import { ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Fragment } from 'react'
+import { Fragment, memo } from 'react'
 
 type Expense = Awaited<ReturnType<typeof getGroupExpenses>>[number]
 
@@ -55,7 +55,12 @@ type Props = {
   participantCount: number
 }
 
-export function ExpenseCard({
+/**
+ * ExpenseCard component - displays a single expense in the list
+ * Wrapped with React.memo to prevent unnecessary re-renders when
+ * parent component re-renders but expense data hasn't changed
+ */
+export const ExpenseCard = memo(function ExpenseCard({
   expense,
   currency,
   groupId,
@@ -118,4 +123,4 @@ export function ExpenseCard({
       </Button>
     </div>
   )
-}
+})

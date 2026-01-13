@@ -38,6 +38,9 @@ model Participant {
   groupId         String
   expensesPaidBy  Expense[]
   expensesPaidFor ExpensePaidFor[]
+
+  // Indexes for performance
+  @@index([groupId])  // For group participant lookups
 }
 
 model Category {
