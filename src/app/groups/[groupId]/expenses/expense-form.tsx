@@ -197,7 +197,7 @@ export function ExpenseForm({
           expenseDate: expense.expenseDate ?? new Date(),
           amount: amountAsDecimal(expense.amount, groupCurrency),
           originalCurrency: expense.originalCurrency ?? group.currencyCode,
-          originalAmount: expense.originalAmount ?? undefined,
+          originalAmount: expense.originalAmount ?? '',
           conversionRate: expense.conversionRate?.toNumber(),
           category: expense.categoryId,
           paidBy: expense.paidById,
@@ -227,7 +227,7 @@ export function ExpenseForm({
               groupCurrency,
             ),
             originalCurrency: group.currencyCode,
-            originalAmount: undefined,
+            originalAmount: '',
             conversionRate: undefined,
             category: 1, // category with Id 1 is Payment
             paidBy: searchParams.get('from') ?? undefined,
@@ -252,8 +252,8 @@ export function ExpenseForm({
               ? new Date(searchParams.get('date') as string)
               : new Date(),
             amount: Number(searchParams.get('amount')) || 0,
-            originalCurrency: group.currencyCode ?? undefined,
-            originalAmount: undefined,
+            originalCurrency: group.currencyCode ?? '',
+            originalAmount: '',
             conversionRate: undefined,
             category: searchParams.get('categoryId')
               ? Number(searchParams.get('categoryId'))

@@ -205,7 +205,8 @@ export async function initializeAdmin(): Promise<void> {
     },
   })
 
-  console.log(`Initial admin created: ${adminEmail}`)
+  // Log admin creation without exposing email in production
+  console.log('Initial admin account created successfully')
 }
 
 /**

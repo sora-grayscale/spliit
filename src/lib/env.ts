@@ -5,6 +5,12 @@ const interpretEnvVarAsBool = (val: unknown): boolean => {
   return ['true', 'yes', '1', 'on'].includes(val.toLowerCase())
 }
 
+// Convert empty strings to undefined for optional fields
+const emptyStringToUndefined = (val: unknown): unknown => {
+  if (typeof val === 'string' && val.trim() === '') return undefined
+  return val
+}
+
 const envSchema = z
   .object({
     POSTGRES_URL_NON_POOLING: z.string().url(),
@@ -12,16 +18,25 @@ const envSchema = z
     // Auto-delete settings (Issue #10)
     AUTO_DELETE_INACTIVE_DAYS: z.coerce.number().int().min(0).default(90),
     DELETE_GRACE_PERIOD_DAYS: z.coerce.number().int().min(1).default(7),
-    CRON_SECRET: z.string().optional(),
+    CRON_SECRET: z.preprocess(emptyStringToUndefined, z.string().optional()),
     // Private Instance Mode (Issue #4)
     PRIVATE_INSTANCE: z.preprocess(
       interpretEnvVarAsBool,
       z.boolean().default(false),
     ),
-    ADMIN_EMAIL: z.string().email().optional(),
-    ADMIN_PASSWORD: z.string().optional(),
-    NEXTAUTH_SECRET: z.string().optional(),
-    NEXTAUTH_URL: z.string().url().optional(),
+    ADMIN_EMAIL: z.preprocess(
+      emptyStringToUndefined,
+      z.string().email().optional(),
+    ),
+    ADMIN_PASSWORD: z.preprocess(emptyStringToUndefined, z.string().optional()),
+    NEXTAUTH_SECRET: z.preprocess(
+      emptyStringToUndefined,
+      z.string().optional(),
+    ),
+    NEXTAUTH_URL: z.preprocess(
+      emptyStringToUndefined,
+      z.string().url().optional(),
+    ),
     NEXT_PUBLIC_BASE_URL: z
       .string()
       .optional()
@@ -34,12 +49,27 @@ const envSchema = z
       interpretEnvVarAsBool,
       z.boolean().default(false),
     ),
-    NEXT_PUBLIC_DEFAULT_CURRENCY_CODE: z.string().optional(),
-    S3_UPLOAD_KEY: z.string().optional(),
-    S3_UPLOAD_SECRET: z.string().optional(),
-    S3_UPLOAD_BUCKET: z.string().optional(),
-    S3_UPLOAD_REGION: z.string().optional(),
-    S3_UPLOAD_ENDPOINT: z.string().optional(),
+    NEXT_PUBLIC_DEFAULT_CURRENCY_CODE: z.preprocess(
+      emptyStringToUndefined,
+      z.string().optional(),
+    ),
+    S3_UPLOAD_KEY: z.preprocess(emptyStringToUndefined, z.string().optional()),
+    S3_UPLOAD_SECRET: z.preprocess(
+      emptyStringToUndefined,
+      z.string().optional(),
+    ),
+    S3_UPLOAD_BUCKET: z.preprocess(
+      emptyStringToUndefined,
+      z.string().optional(),
+    ),
+    S3_UPLOAD_REGION: z.preprocess(
+      emptyStringToUndefined,
+      z.string().optional(),
+    ),
+    S3_UPLOAD_ENDPOINT: z.preprocess(
+      emptyStringToUndefined,
+      z.string().optional(),
+    ),
     NEXT_PUBLIC_ENABLE_RECEIPT_EXTRACT: z.preprocess(
       interpretEnvVarAsBool,
       z.boolean().default(false),
@@ -48,7 +78,7 @@ const envSchema = z
       interpretEnvVarAsBool,
       z.boolean().default(false),
     ),
-    OPENAI_API_KEY: z.string().optional(),
+    OPENAI_API_KEY: z.preprocess(emptyStringToUndefined, z.string().optional()),
   })
   .superRefine((env, ctx) => {
     if (
@@ -94,4 +124,18 @@ const envSchema = z
     }
   })
 
-export const env = envSchema.parse(process.env)
+function parseEnv() {
+  const result = envSchema.safeParse(process.env)
+  if (!result.success) {
+    const errorMessages = result.error.issues
+      .map((issue) => `  - ${issue.path.join('.')}: ${issue.message}`)
+      .join('\n')
+    console.error(
+      '\n❌ Environment variable validation failed:\n' + errorMessages + '\n',
+    )
+    throw new Error('Invalid environment variables. Check console for details.')
+  }
+  return result.data
+}
+
+export const env = parseEnv()

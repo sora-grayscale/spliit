@@ -1,13 +1,18 @@
 /**
- * Proxy for Private Instance Mode (Issue #4)
+ * Middleware for Private Instance Mode (Issue #4)
  * Handles authentication and access control
- *
- * Note: Next.js 16 renamed middleware.ts to proxy.ts
- * https://nextjs.org/docs/messages/middleware-to-proxy
  */
 
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
+
+// Check if private instance mode is enabled
+// Must match env.ts interpretEnvVarAsBool logic
+function isPrivateInstanceEnabled(): boolean {
+  const val = process.env.PRIVATE_INSTANCE
+  if (typeof val !== 'string') return false
+  return ['true', 'yes', '1', 'on'].includes(val.toLowerCase())
+}
 
 // Routes that don't require authentication even in private mode
 const publicRoutes = [
@@ -25,14 +30,17 @@ const sharedRoutes = ['/groups/'] // Group pages can be accessed via shared link
 // Admin-only routes
 const adminRoutes = ['/admin']
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Check if private instance mode is enabled
-  const isPrivateInstance = process.env.PRIVATE_INSTANCE === 'true'
+  const isPrivateInstance = isPrivateInstanceEnabled()
 
   if (!isPrivateInstance) {
-    // Public instance - allow all requests
+    // Public instance - block auth pages (they require SessionProvider)
+    if (pathname.startsWith('/auth/') || pathname.startsWith('/admin')) {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
     return NextResponse.next()
   }
 
