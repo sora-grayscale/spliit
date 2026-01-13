@@ -1,6 +1,7 @@
 /**
- * Middleware for Private Instance Mode (Issue #4)
+ * Proxy for Private Instance Mode (Issue #4)
  * Handles authentication and access control
+ * Note: Migrated from middleware.ts for Next.js 16 compatibility
  */
 
 import type { NextRequest } from 'next/server'
@@ -30,7 +31,7 @@ const sharedRoutes = ['/groups/'] // Group pages can be accessed via shared link
 // Admin-only routes
 const adminRoutes = ['/admin']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Check if private instance mode is enabled
