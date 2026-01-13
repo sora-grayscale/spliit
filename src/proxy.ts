@@ -20,6 +20,7 @@ const publicRoutes = [
   '/auth/signin',
   '/auth/error',
   '/auth/change-password',
+  '/auth/verify-2fa',
   '/api/auth',
   '/api/health',
   '/api/trpc', // tRPC routes handle their own auth

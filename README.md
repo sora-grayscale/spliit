@@ -38,6 +38,7 @@
 | **E2E Encryption**        | AES-128-GCM encryption with keys stored in URL fragments |
 | **Zero-Knowledge Server** | Server only stores encrypted data                        |
 | **Password Protection**   | Optional PBKDF2-based password for additional security   |
+| **Two-Factor Authentication (2FA)** | TOTP-based with backup codes for recovery |
 | **No Tracking**           | No analytics, no cookies, no fingerprinting              |
 
 ## What's Encrypted
@@ -72,6 +73,11 @@
 - Dark mode support
 - Multi-language (English, Japanese, and more)
 - **Private Instance Mode** - Restrict access to whitelisted users
+- **Two-Factor Authentication (2FA)**
+  - TOTP-based authentication for enhanced security
+  - QR code setup for easy enrollment
+  - Backup codes for account recovery
+  - Rate-limited verification to prevent brute force attacks
 
 ## Quick Start
 
@@ -131,6 +137,31 @@ NEXTAUTH_URL=https://your-domain.com
 - **Password Reset** - Admins can reset user passwords
 - **Shared Group Access** - Shared links still work without authentication (protected by encryption key)
 - **Group Creation** - Only whitelisted users can create new groups
+
+## Environment Variables
+
+### Authentication & Security
+
+```bash
+# Two-Factor Authentication (2FA)
+TWO_FA_ENCRYPTION_KEY=<256-bit hex key>  # Optional - encryption key for 2FA secrets
+
+# Generate with:
+# openssl rand -hex 32
+```
+
+### Database
+
+```bash
+DATABASE_URL=postgresql://user:password@localhost:5432/spliit
+```
+
+### NextAuth.js (Private Instance Mode)
+
+```bash
+NEXTAUTH_SECRET=your-secret-key
+NEXTAUTH_URL=https://your-domain.com
+```
 
 ## Tech Stack
 
