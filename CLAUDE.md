@@ -29,7 +29,7 @@
 ### Key Files
 
 ```
-src/lib/crypto.ts              # Core crypto utilities (PBKDF2, key derivation, password generation)
+src/lib/crypto.ts              # Core crypto utilities (PBKDF2, key derivation, password generation, cached deriveKey)
 src/lib/encrypt-helpers.ts     # Encryption/decryption helpers (amount, category, currency, title, notes)
 src/lib/totals.ts              # Stats calculation utilities
 src/lib/hooks/useBalances.ts   # Client-side balance calculation with decryption
@@ -315,6 +315,13 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 - [x] Auto-submit on 6 digits entry in verification form
 - [x] Success toast notification on 2FA enable
 - [x] Backup code copy/download requirement before enabling
+
+#### Performance Optimizations - DONE
+
+- [x] Derived key caching in crypto.ts (Map with FIFO eviction, max 100 entries)
+- [x] Database index on Participant.groupId for faster group participant lookups
+- [x] React.memo on ExpenseCard component to prevent unnecessary re-renders
+- [x] Promise-based cache to handle concurrent key derivation requests efficiently
 
 ## Security Considerations
 

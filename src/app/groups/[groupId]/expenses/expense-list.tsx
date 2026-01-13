@@ -217,6 +217,12 @@ const ExpenseListForSearch = ({
     [displayExpenses],
   )
 
+  // Memoize currency to ensure stable reference for React.memo in ExpenseCard
+  const currency = useMemo(
+    () => (group ? getCurrencyFromGroup(group) : null),
+    [group],
+  )
+
   if (isLoading) return <ExpensesLoading />
 
   if (displayExpenses.length === 0)
@@ -250,7 +256,7 @@ const ExpenseListForSearch = ({
               <ExpenseCard
                 key={expense.id}
                 expense={expense}
-                currency={getCurrencyFromGroup(group)}
+                currency={currency!}
                 groupId={groupId}
                 participantCount={group.participants.length}
               />
