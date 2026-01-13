@@ -4,7 +4,8 @@ Welcome to the anon-spliit documentation.
 
 ## Deployment
 
-- [Vercel Deployment](./deployment/vercel.md) - Deploy to Vercel with Vercel Postgres
+- [Vercel + Supabase](./deployment/supabase.md) - Deploy to Vercel with Supabase (free tier)
+- [Vercel + Vercel Postgres](./deployment/vercel.md) - Deploy to Vercel with Vercel Postgres (Pro plan required)
 - [Local Development](./deployment/local.md) - Set up local development environment
 
 ## Features
