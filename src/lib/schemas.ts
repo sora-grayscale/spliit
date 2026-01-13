@@ -119,7 +119,8 @@ export const expenseFormSchema = z
         const numAmount = typeof amount === 'string' ? Number(amount) : amount
         return numAmount <= 10_000_000_00
       }, 'amountTenMillion'),
-    originalCurrency: z.union([z.string().length(3).nullish(), z.literal('')]),
+    // Can be 3-char currency code (plain) or encrypted string (Issue #22 - E2EE)
+    originalCurrency: z.union([z.string().max(500).nullish(), z.literal('')]),
     conversionRate: z
       .union([
         z.literal('').transform(() => undefined),
