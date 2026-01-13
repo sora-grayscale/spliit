@@ -2,9 +2,11 @@
 
 Deploy anon-spliit to Vercel with Vercel Postgres.
 
+> **Note:** Vercel Postgres requires a **Pro plan** ($20/month). For free tier deployment, see [Supabase + Vercel guide](./supabase.md).
+
 ## Prerequisites
 
-- [Vercel account](https://vercel.com)
+- [Vercel account](https://vercel.com) **(Pro plan required)**
 - [GitHub account](https://github.com) (for repository import)
 
 ## Step 1: Fork or Import Repository
@@ -92,6 +94,8 @@ Use your Vercel deployment URL from Step 3:
 - With custom domain: `https://yourdomain.com`
 
 **Important:** After adding Private Instance variables, redeploy for changes to take effect.
+
+The admin user is **automatically created** when you first access the login page - no manual initialization required.
 
 ### Document Upload (Optional)
 
