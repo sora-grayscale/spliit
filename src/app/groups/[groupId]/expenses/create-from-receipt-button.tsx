@@ -112,8 +112,12 @@ function ReceiptDialogContent() {
         console.log('Uploading image…')
         let { url } = await uploadToS3(file)
         console.log('Extracting information from receipt…')
-        const { amount, categoryId, date, title } =
-          await extractExpenseInformationFromImage(url)
+        const extractedInfo = await extractExpenseInformationFromImage(url)
+        // Handle case when OpenAI API key is not configured
+        if (extractedInfo.amount === null) {
+          throw new Error('Receipt extraction is not configured')
+        }
+        const { amount, categoryId, date, title } = extractedInfo
         const { width, height } = await getImageData(file)
         setReceiptInfo({ amount, categoryId, date, title, url, width, height })
       } catch (err) {
