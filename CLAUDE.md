@@ -318,7 +318,7 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 
 #### Performance Optimizations - DONE
 
-- [x] Derived key caching in crypto.ts (Map with LRU-style eviction, max 100 entries)
+- [x] Derived key caching in crypto.ts (Map with FIFO eviction, max 100 entries)
 - [x] Database index on Participant.groupId for faster group participant lookups
 - [x] React.memo on ExpenseCard component to prevent unnecessary re-renders
 - [x] Promise-based cache to handle concurrent key derivation requests efficiently

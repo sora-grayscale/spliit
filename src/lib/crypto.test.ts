@@ -4,7 +4,12 @@
  * which is available in browsers but limited in Jest/Node.js
  */
 
-import { base64ToKey, isEncrypted, keyToBase64 } from './crypto'
+import {
+  base64ToKey,
+  clearDerivedKeyCache,
+  isEncrypted,
+  keyToBase64,
+} from './crypto'
 
 describe('crypto utilities', () => {
   describe('keyToBase64 and base64ToKey', () => {
@@ -108,6 +113,22 @@ describe('crypto utilities', () => {
       const restored = base64ToKey(base64)
 
       expect(restored).toEqual(key)
+    })
+  })
+
+  describe('clearDerivedKeyCache', () => {
+    it('should be a function that can be called without error', () => {
+      // clearDerivedKeyCache should not throw when called
+      expect(() => clearDerivedKeyCache()).not.toThrow()
+    })
+
+    it('should be idempotent (safe to call multiple times)', () => {
+      // Calling multiple times should not cause issues
+      expect(() => {
+        clearDerivedKeyCache()
+        clearDerivedKeyCache()
+        clearDerivedKeyCache()
+      }).not.toThrow()
     })
   })
 })
