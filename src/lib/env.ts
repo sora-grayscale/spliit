@@ -76,6 +76,22 @@ const envSchema = z
           'If NEXT_PUBLIC_ENABLE_RECEIPT_EXTRACT or NEXT_PUBLIC_ENABLE_CATEGORY_EXTRACT is specified, then OPENAI_API_KEY must be specified too',
       })
     }
+    // NEXTAUTH_SECRET is required for Private Instance Mode
+    if (env.PRIVATE_INSTANCE && !env.NEXTAUTH_SECRET) {
+      ctx.addIssue({
+        code: ZodIssueCode.custom,
+        message:
+          'NEXTAUTH_SECRET must be set when PRIVATE_INSTANCE is enabled for secure JWT signing',
+      })
+    }
+    // ADMIN_EMAIL and ADMIN_PASSWORD are required for Private Instance Mode
+    if (env.PRIVATE_INSTANCE && (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD)) {
+      ctx.addIssue({
+        code: ZodIssueCode.custom,
+        message:
+          'ADMIN_EMAIL and ADMIN_PASSWORD must be set when PRIVATE_INSTANCE is enabled',
+      })
+    }
   })
 
 export const env = envSchema.parse(process.env)

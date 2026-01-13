@@ -5,9 +5,9 @@ import { z } from 'zod'
 export const listGroupActivitiesProcedure = baseProcedure
   .input(
     z.object({
-      groupId: z.string(),
-      cursor: z.number().optional().default(0),
-      limit: z.number().optional().default(5),
+      groupId: z.string().min(1).max(30), // nanoid is typically 21 chars
+      cursor: z.number().int().min(0).max(100000).optional().default(0), // Pagination offset
+      limit: z.number().int().min(1).max(100).optional().default(5), // Max 100 items per request
     }),
   )
   .query(async ({ input: { groupId, cursor, limit } }) => {

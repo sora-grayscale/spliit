@@ -122,9 +122,12 @@ export async function decryptGroup<
       currencyCode: decryptedCurrencyCode,
       participants: decryptedParticipants,
     }
-  } catch (error) {
+  } catch {
     // If decryption fails, return original data (might be unencrypted legacy data)
-    console.warn('Decryption failed, returning original data:', error)
+    // Note: Don't log error details as they may contain sensitive information
+    console.warn(
+      'Group decryption failed - returning original data (may be legacy unencrypted)',
+    )
     return group
   }
 }
@@ -352,8 +355,12 @@ export async function decryptExpense<
     }
 
     return result as T
-  } catch (error) {
-    console.warn('Expense decryption failed, returning original data:', error)
+  } catch {
+    // If decryption fails, return original data (might be unencrypted legacy data)
+    // Note: Don't log error details as they may contain sensitive information
+    console.warn(
+      'Expense decryption failed - returning original data (may be legacy unencrypted)',
+    )
     return expense
   }
 }
@@ -396,7 +403,8 @@ export async function decryptActivity<
       ...activity,
       data: decryptedData,
     }
-  } catch (error) {
+  } catch {
+    // If decryption fails, return original data (might be unencrypted legacy data)
     return activity
   }
 }
