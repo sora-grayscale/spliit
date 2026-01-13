@@ -25,6 +25,10 @@ model Group {
   // Password protection (Issue #2)
   passwordSalt String?       // Salt for PBKDF2 key derivation (base64 encoded)
   passwordHint String?       // Encrypted password hint
+
+  // Indexes for performance
+  @@index([createdAt])  // For auto-delete inactive groups query
+  @@index([deletedAt])  // For grace period cleanup query
 }
 
 model Participant {
@@ -69,6 +73,11 @@ model Expense {
   recurrenceRule         RecurrenceRule?       @default(NONE)
   recurringExpenseLink   RecurringExpenseLink?
   recurringExpenseLinkId String?
+
+  // Indexes for performance
+  @@index([groupId, expenseDate(sort: Desc)])  // For expense listing by date
+  @@index([groupId, createdAt(sort: Desc)])    // For recent expenses query
+  @@index([paidById])                          // For participant-specific queries
 }
 
 model ExpenseDocument {
@@ -118,6 +127,7 @@ model ExpensePaidFor {
   shares        String      @default("1") // Encrypted shares (or plain number as string)
 
   @@id([expenseId, participantId])
+  @@index([participantId])  // For participant-centric balance queries
 }
 
 model Activity {
@@ -129,6 +139,8 @@ model Activity {
   participantId String?
   expenseId     String?
   data          String?
+
+  @@index([groupId, time(sort: Desc)])  // For activity feed queries
 }
 
 enum ActivityType {

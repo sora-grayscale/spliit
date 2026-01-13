@@ -3,6 +3,11 @@
  */
 
 import { prisma } from '@/lib/prisma'
+import {
+  checkRateLimit,
+  clearAttempts,
+  recordFailedAttempt,
+} from '@/lib/rate-limit'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import bcrypt from 'bcryptjs'
 import NextAuth, { type NextAuthConfig } from 'next-auth'
@@ -42,6 +47,16 @@ const authConfig: NextAuthConfig = {
         const email = credentials.email as string
         const password = credentials.password as string
 
+        // Check rate limit before attempting authentication
+        const rateLimit = checkRateLimit(email)
+        if (rateLimit.isLimited) {
+          console.warn(
+            `Rate limited login attempt for ${email}. Retry after ${rateLimit.retryAfter}s`,
+          )
+          // Return null to indicate failed auth (NextAuth will show generic error)
+          return null
+        }
+
         // Check if user is an admin
         const admin = await prisma.admin.findUnique({
           where: { email },
@@ -50,6 +65,8 @@ const authConfig: NextAuthConfig = {
         if (admin) {
           const isValidPassword = await bcrypt.compare(password, admin.password)
           if (isValidPassword) {
+            // Clear rate limit on successful login
+            clearAttempts(email)
             return {
               id: admin.id,
               email: admin.email,
@@ -71,6 +88,8 @@ const authConfig: NextAuthConfig = {
             whitelistUser.password,
           )
           if (isValidPassword) {
+            // Clear rate limit on successful login
+            clearAttempts(email)
             return {
               id: whitelistUser.id,
               email: whitelistUser.email,
@@ -81,6 +100,8 @@ const authConfig: NextAuthConfig = {
           }
         }
 
+        // Record failed attempt for rate limiting
+        recordFailedAttempt(email)
         return null
       },
     }),
