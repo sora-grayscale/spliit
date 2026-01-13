@@ -29,17 +29,22 @@
 ### Key Files
 
 ```
-src/lib/crypto.ts              # Core crypto utilities (PBKDF2, key derivation, password generation)
+src/lib/crypto.ts              # Core crypto utilities (PBKDF2, key derivation, password generation, cached deriveKey)
 src/lib/encrypt-helpers.ts     # Encryption/decryption helpers (amount, category, currency, title, notes)
 src/lib/totals.ts              # Stats calculation utilities
 src/lib/hooks/useBalances.ts   # Client-side balance calculation with decryption
 src/lib/auto-delete.ts         # Auto-delete inactive groups (Issue #10)
+src/lib/two-factor.ts          # 2FA utilities (TOTP, backup codes, encryption) (Issue #18)
+src/lib/rate-limit.ts          # Rate limiting utilities (Issue #18)
 src/app/groups/[groupId]/expenses/category-icon.tsx  # Static category mapping for E2EE (Issue #19)
 src/components/encryption-provider.tsx  # React context for encryption (handles password protection)
 src/components/password-prompt.tsx      # Password entry component with rate limiting
 src/lib/hooks/use-group-url.ts # URL navigation with key preservation
 src/app/groups/[groupId]/stats/totals.tsx  # Client-side stats with decryption
 src/app/api/cron/auto-delete/route.ts  # Cron endpoint for auto-deletion
+src/app/api/2fa/*              # 2FA API endpoints (enable, disable, verify) (Issue #18)
+src/app/auth/verify-2fa/*      # 2FA verification pages (Issue #18)
+src/app/admin/two-factor-setup.tsx  # 2FA setup component (Issue #18)
 src/lib/auth.ts                    # NextAuth.js configuration (Issue #4)
 src/proxy.ts                       # Route protection proxy (Issue #4, Next.js 16)
 src/app/admin/                     # Admin dashboard (Issue #4)
@@ -176,25 +181,6 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 
 ### Priority: LOW
 
-#### Issue #4: Private Instance Mode
-
-**Status**: DONE
-**Priority**: LOW
-**Link**: https://github.com/sora-grayscale/anon-spliit/issues/4
-
-- [x] Admin user with NextAuth.js authentication (Credentials provider)
-- [x] Initial admin creation via environment variables (ADMIN_EMAIL, ADMIN_PASSWORD)
-- [x] Whitelist-based access control (email-based)
-- [x] Admin dashboard for user management (add/remove/reset password)
-- [x] Initial password generation with forced change on first login
-- [x] Password change API with security validations
-- [x] No auth required for shared group access (/groups/[groupId])
-- [x] Only /groups/create requires authentication
-- [x] PRIVATE_INSTANCE=false maintains current public behavior
-- [x] Self-hosted friendly
-- [x] Security: Never trust client-sent mustChangePassword values
-- [x] Security: Email format validation, Prisma select for data protection
-
 #### Issue #5: Docker/Podman Deployment
 
 **Status**: TODO
@@ -272,23 +258,6 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 - [x] localStorage key persistence
 - [x] Error screen for missing encryption key
 
-#### Private Instance Mode (Issue #4) - DONE
-
-- [x] Prisma schema: Admin and WhitelistUser models with password fields
-- [x] NextAuth.js v5 with Credentials provider
-- [x] JWT-based session strategy with isAdmin/mustChangePassword claims
-- [x] bcryptjs password hashing (12 rounds)
-- [x] proxy.ts route protection (Next.js 16 convention)
-- [x] Sign in/error/change-password pages
-- [x] Admin dashboard with stats and user management
-- [x] Whitelist user CRUD API endpoints (POST, GET, DELETE, PATCH)
-- [x] Password reset functionality for admins
-- [x] Initial password generation with forced change on first login
-- [x] PasswordChangeGuard component for redirect enforcement
-- [x] UserMenu component in header (shows when authenticated)
-- [x] AuthProvider wrapper in layout (conditional on PRIVATE_INSTANCE)
-- [x] Security tests (107 total tests passing)
-
 #### Category Encryption (Issue #19) - DONE
 
 - [x] Schema: categoryId changed from Int to String (encrypted)
@@ -310,6 +279,49 @@ src/__tests__/private-instance.test.ts    # Private instance mode tests
 - [x] Backward compatibility for unencrypted legacy data
 - [x] schemas.ts: Removed length validation for currency fields (encrypted strings are longer)
 - [x] Tests for currency encryption (117 total tests passing)
+
+#### Private Instance Mode (Issue #4) - DONE
+
+- [x] Prisma schema: Admin and WhitelistUser models with password fields
+- [x] NextAuth.js v5 with Credentials provider
+- [x] JWT-based session strategy with isAdmin/mustChangePassword claims
+- [x] bcryptjs password hashing (12 rounds)
+- [x] proxy.ts route protection (Next.js 16 convention)
+- [x] Sign in/error/change-password pages
+- [x] Admin dashboard with stats and user management
+- [x] Whitelist user CRUD API endpoints (POST, GET, DELETE, PATCH)
+- [x] Password reset functionality for admins
+- [x] Initial password generation with forced change on first login
+- [x] PasswordChangeGuard component for redirect enforcement
+- [x] UserMenu component in header (shows when authenticated)
+- [x] AuthProvider wrapper in layout (conditional on PRIVATE_INSTANCE)
+- [x] Security tests (107 total tests passing)
+- [x] 2FA integration for admin users (Issue #18)
+
+#### Two-Factor Authentication (Issue #18) - DONE
+
+- [x] TOTP (Time-based One-Time Password) setup with QR code generation
+- [x] Backup codes (10 one-time codes for account recovery)
+- [x] AES-256-GCM encryption for 2FA secrets storage
+- [x] Rate limiting for brute force protection (attempt counting and delays)
+- [x] Timing-safe comparison for TOTP verification
+- [x] NextAuth.js integration with session handling
+- [x] 2FA API endpoints: enable, disable, verify (/api/2fa/\*)
+- [x] 2FA verification page during authentication (/auth/verify-2fa)
+- [x] Admin two-factor-setup component with setup flow
+- [x] Backup code display and download
+- [x] Secure secret encryption with TWO_FA_ENCRYPTION_KEY
+- [x] Database schema: twoFactorSecret, twoFactorEnabled, backupCodes, attemptCount, lastAttempt fields
+- [x] Auto-submit on 6 digits entry in verification form
+- [x] Success toast notification on 2FA enable
+- [x] Backup code copy/download requirement before enabling
+
+#### Performance Optimizations - DONE
+
+- [x] Derived key caching in crypto.ts (Map with LRU-style eviction, max 100 entries)
+- [x] Database index on Participant.groupId for faster group participant lookups
+- [x] React.memo on ExpenseCard component to prevent unnecessary re-renders
+- [x] Promise-based cache to handle concurrent key derivation requests efficiently
 
 ## Security Considerations
 
@@ -352,6 +364,9 @@ ADMIN_EMAIL=admin@example.com    # Initial admin email (required when PRIVATE_IN
 ADMIN_PASSWORD=                  # Initial admin password (required when PRIVATE_INSTANCE=true)
 NEXTAUTH_SECRET=                 # NextAuth.js secret (required when PRIVATE_INSTANCE=true)
 NEXTAUTH_URL=http://localhost:3000  # NextAuth.js URL (required in production)
+
+# Two-Factor Authentication (Issue #18)
+TWO_FA_ENCRYPTION_KEY=           # 256-bit hex key for 2FA secret encryption
 ```
 
 ## Commands

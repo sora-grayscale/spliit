@@ -22,11 +22,15 @@ declare module 'next-auth' {
       name?: string | null
       isAdmin: boolean
       mustChangePassword: boolean
+      twoFactorEnabled: boolean
+      requiresTwoFactor: boolean
     }
   }
   interface User {
     isAdmin: boolean
     mustChangePassword: boolean
+    twoFactorEnabled: boolean
+    requiresTwoFactor: boolean
   }
 }
 
@@ -67,12 +71,16 @@ const authConfig: NextAuthConfig = {
           if (isValidPassword) {
             // Clear rate limit on successful login
             clearAttempts(email)
+            // Check if 2FA is enabled for this user
+            const twoFactorEnabled = admin.twoFactorEnabled ?? false
             return {
               id: admin.id,
               email: admin.email,
               name: admin.name,
               isAdmin: true,
               mustChangePassword: admin.mustChangePassword,
+              twoFactorEnabled,
+              requiresTwoFactor: twoFactorEnabled,
             }
           }
         }
@@ -90,12 +98,16 @@ const authConfig: NextAuthConfig = {
           if (isValidPassword) {
             // Clear rate limit on successful login
             clearAttempts(email)
+            // Check if 2FA is enabled for this user
+            const twoFactorEnabled = whitelistUser.twoFactorEnabled ?? false
             return {
               id: whitelistUser.id,
               email: whitelistUser.email,
               name: whitelistUser.name,
               isAdmin: false,
               mustChangePassword: whitelistUser.mustChangePassword,
+              twoFactorEnabled,
+              requiresTwoFactor: twoFactorEnabled,
             }
           }
         }
@@ -115,25 +127,51 @@ const authConfig: NextAuthConfig = {
         ;(token as Record<string, unknown>).isAdmin = user.isAdmin
         ;(token as Record<string, unknown>).mustChangePassword =
           user.mustChangePassword
+        ;(token as Record<string, unknown>).twoFactorEnabled =
+          user.twoFactorEnabled
+        ;(token as Record<string, unknown>).requiresTwoFactor =
+          user.requiresTwoFactor
       }
       // Handle session update - always refresh from database for security
       // Never trust client-sent values for security-critical flags
       if (trigger === 'update' && token.sub) {
         const admin = await prisma.admin.findUnique({
           where: { id: token.sub },
-          select: { mustChangePassword: true },
+          select: { mustChangePassword: true, twoFactorEnabled: true },
         })
         if (admin) {
           ;(token as Record<string, unknown>).mustChangePassword =
             admin.mustChangePassword
+          ;(token as Record<string, unknown>).twoFactorEnabled =
+            admin.twoFactorEnabled ?? false
+          // Clear requiresTwoFactor after 2FA verification (triggered by session update)
+          if (
+            updateData &&
+            typeof updateData === 'object' &&
+            'twoFactorVerified' in updateData &&
+            updateData.twoFactorVerified === true
+          ) {
+            ;(token as Record<string, unknown>).requiresTwoFactor = false
+          }
         } else {
           const whitelistUser = await prisma.whitelistUser.findUnique({
             where: { id: token.sub },
-            select: { mustChangePassword: true },
+            select: { mustChangePassword: true, twoFactorEnabled: true },
           })
           if (whitelistUser) {
             ;(token as Record<string, unknown>).mustChangePassword =
               whitelistUser.mustChangePassword
+            ;(token as Record<string, unknown>).twoFactorEnabled =
+              whitelistUser.twoFactorEnabled ?? false
+            // Clear requiresTwoFactor after 2FA verification (triggered by session update)
+            if (
+              updateData &&
+              typeof updateData === 'object' &&
+              'twoFactorVerified' in updateData &&
+              updateData.twoFactorVerified === true
+            ) {
+              ;(token as Record<string, unknown>).requiresTwoFactor = false
+            }
           }
         }
       }
@@ -146,6 +184,12 @@ const authConfig: NextAuthConfig = {
           ((token as Record<string, unknown>).isAdmin as boolean) ?? false
         session.user.mustChangePassword =
           ((token as Record<string, unknown>).mustChangePassword as boolean) ??
+          false
+        session.user.twoFactorEnabled =
+          ((token as Record<string, unknown>).twoFactorEnabled as boolean) ??
+          false
+        session.user.requiresTwoFactor =
+          ((token as Record<string, unknown>).requiresTwoFactor as boolean) ??
           false
       }
       return session

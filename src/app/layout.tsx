@@ -5,6 +5,7 @@ import { PasswordChangeGuard } from '@/components/password-change-guard'
 import { ProgressBar } from '@/components/progress-bar'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { TwoFactorGuard } from '@/components/two-factor-guard'
 import { Button } from '@/components/ui/button'
 import { Toaster } from '@/components/ui/toaster'
 import { UserMenu } from '@/components/user-menu'
@@ -214,9 +215,11 @@ export default async function RootLayout({
                 <ProgressBar />
               </Suspense>
               <PasswordChangeGuard enabled={isPrivateInstance}>
-                <Content isPrivateInstance={isPrivateInstance}>
-                  {children}
-                </Content>
+                <TwoFactorGuard enabled={isPrivateInstance}>
+                  <Content isPrivateInstance={isPrivateInstance}>
+                    {children}
+                  </Content>
+                </TwoFactorGuard>
               </PasswordChangeGuard>
             </ThemeProvider>
           </AuthProvider>
