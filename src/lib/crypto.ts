@@ -18,6 +18,7 @@ const isClient =
  * Cache for derived CryptoKeys to avoid repeated HKDF operations
  * Key format: `${base64MasterKey}:${purpose}`
  * Stores Promise to handle concurrent requests efficiently
+ * Bounded by MAX_CACHE_SIZE with simple FIFO (oldest-entry) eviction
  */
 const derivedKeyCache = new Map<string, Promise<CryptoKey>>()
 
